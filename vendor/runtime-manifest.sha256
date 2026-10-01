@@ -1,0 +1,10 @@
+# MirrorLink bundled runtime manifest
+# Official scrcpy v4.1 / Android Platform Tools binaries copied into vendor/scrcpy.
+# Verify with: shasum -a 256 vendor/scrcpy/arm64/* vendor/scrcpy/x86_64/*
+
+9fdf861259dc807937b13afdd5f053c7fda9f3b7726933fe0e0f45130ecb8dc7  vendor/scrcpy/arm64/adb
+e318a04c11986d9afa7f438a81cc9c7cc0f3ea66945db1e127f373eb02f4e1d3  vendor/scrcpy/arm64/scrcpy
+deacb991ed2509715160ffdc7907e47b4160eb30d1566217e9047fd5b8850cae  vendor/scrcpy/arm64/scrcpy-server
+9fdf861259dc807937b13afdd5f053c7fda9f3b7726933fe0e0f45130ecb8dc7  vendor/scrcpy/x86_64/adb
+3f2c348954c2b19be55def5b72b9d3274dfe5eddee99a060e0d7469f7b3ef159  vendor/scrcpy/x86_64/scrcpy
+deacb991ed2509715160ffdc7907e47b4160eb30d1566217e9047fd5b8850cae  vendor/scrcpy/x86_64/scrcpy-server

@@ -1,0 +1,19 @@
+# MirrorLink 项目协作约定
+
+## 用户已确认的交付方式
+
+- 本目录是镜连 macOS 应用的完整项目；GitHub 源码仓库为 `zhaozachary1-cpu/MirrorLink`，默认私有。
+- 用户要求后续版本直接同步 GitHub。完成用户授权的代码迭代、验证后，提交本项目所有允许的新增、修改、删除文件并推送 `origin/main`，再核对远端与本地 SHA。若用户明确只要方案/审查或禁止上传，则不提交。
+- 可运行 `./script/sync_github.sh "修改说明"`；不要 force push、覆盖远端提交或把“配置了 origin”说成“已上传”。遇到未整合的远端修改先停下来检查。
+- 不创建后台文件监听，不在用户工作未完成时频繁自动提交。推送源码不等于发布应用；公开仓库、公开发行包、更新下载托管需单独获得授权。
+
+## 验证与分发边界
+
+- 原生 SwiftUI / SwiftPM、最低 macOS 13，保留现有手机到显示器图标及多设备独立投屏。
+- 验证入口：`script/run_core_checks.sh`、`script/run_session_checks.sh`、`script/run_update_checks.sh`、`script/build_and_run.sh --verify --no-launch`。
+- 会话脚本使用模拟子进程；不能声称已完成多台真机画面验收。启动进程也不能替代原生 UI 验收。
+- 更新采用锁定版本的 Sparkle。公钥可以入库，私钥仅存钥匙串账户 `com.mirrorlink.desktop.updates`，绝不导出入库。没有公开 HTTPS 更新源时，诚实显示“尚未配置”。
+- Developer ID、公证、完整性校验是三种不同证据。不能将 ad-hoc 当成正式签名，不能绕过 Gatekeeper 或全局移除 quarantine。
+- 裸 `.app` 放 `~/Library/Application Support/MirrorLink/Builds` 或 `Releases`，避免 Documents 的同步服务追加 FinderInfo 破坏签名；分享目录只放 ZIP/DMG。
+- 不上传 `.p12`、`.p8`、`.pem`、`.key`、Apple/GitHub 凭据、`.env`、构建缓存、设备日志或临时 QA 截图。
+- 安装/替换本机应用前备份旧版；仅清理镜连拥有的子进程，不终止其他软件的 ADB/scrcpy。
