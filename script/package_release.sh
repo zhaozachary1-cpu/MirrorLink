@@ -198,13 +198,18 @@ notarize_artifact() {
   local artifact="$1" label="$2"
   local result="$PACKAGE_ROOT/notary-$label-result.json"
   # Keep evidence even on rejection/network failure; do not write credentials.
-  xcrun notarytool submit "$artifact" --keychain-profile "$NOTARY_PROFILE" --wait --output-format json | tee "$result"
+  local submit_status=0
+  if xcrun notarytool submit "$artifact" --keychain-profile "$NOTARY_PROFILE" --wait --output-format json | tee "$result"; then
+    :
+  else
+    submit_status=$?
+  fi
   local submission_id
   submission_id="$(plutil -extract id raw "$result" 2>/dev/null || true)"
   if [[ -n "$submission_id" ]]; then
     xcrun notarytool log "$submission_id" --keychain-profile "$NOTARY_PROFILE" "$PACKAGE_ROOT/notary-$label-log.json" || true
   fi
-  if [[ "$(plutil -extract status raw "$result")" != Accepted ]]; then
+  if [[ "$submit_status" != 0 || "$(plutil -extract status raw "$result" 2>/dev/null || true)" != Accepted ]]; then
     print -u2 "Apple 公证未通过；诊断保留在 $PACKAGE_ROOT"
     exit 1
   fi

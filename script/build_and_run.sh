@@ -111,6 +111,10 @@ SPARKLE_FRAMEWORK="$SPARKLE_ROOT/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.
 test -d "$SPARKLE_FRAMEWORK"
 mkdir -p "$CONTENTS_DIR/Frameworks"
 ditto "$SPARKLE_FRAMEWORK" "$CONTENTS_DIR/Frameworks/Sparkle.framework"
+# The dependency cache also lives in Documents: File Provider adds FinderInfo
+# to nested .xpc/.app bundles. Clean only this metadata on our staged copy.
+# Keep download quarantine, provenance, and all other attributes untouched.
+xattr -dr com.apple.FinderInfo "$CONTENTS_DIR/Frameworks/Sparkle.framework" 2>/dev/null || true
 cp "$SPARKLE_ROOT/LICENSE" "$RESOURCES_DIR/NOTICE-Sparkle.txt"
 
 echo "==> 生成 MirrorLink 投屏图标"
@@ -146,7 +150,9 @@ if [[ "$VERIFY" == "1" ]]; then
   test -x "$MACOS_DIR/adb"
   test -f "$RESOURCES_DIR/scrcpy-server"
   test -s "$RESOURCES_DIR/AppIcon.icns"
-  lipo -verify_arch arm64 x86_64 "$CONTENTS_DIR/Frameworks/Sparkle.framework/Versions/B/Sparkle"
+  for architecture in arm64 x86_64; do
+    lipo -verify_arch "$architecture" "$CONTENTS_DIR/Frameworks/Sparkle.framework/Versions/B/Sparkle"
+  done
   codesign --verify --deep --strict --verbose=2 "$APP_DIR"
 fi
 

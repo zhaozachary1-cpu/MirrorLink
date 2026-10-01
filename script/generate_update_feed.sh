@@ -32,6 +32,7 @@ ACCOUNT=com.mirrorlink.desktop.updates
 EXPECTED_KEY="$(plutil -extract SUPublicEDKey raw "$APP_PATH/Contents/Info.plist")"
 ACTUAL_KEY="$("$TOOLS/generate_keys" --account "$ACCOUNT" -p)"
 [[ "$EXPECTED_KEY" == "$ACTUAL_KEY" ]] || { print -u2 '钥匙串更新密钥与应用公钥不匹配；已停止'; exit 2; }
+echo '接下来使用钥匙串中的更新签名密钥。若 macOS 弹出授权窗口，请发布者在本机手动确认；不要将登录密码发送到聊天或写入文件。'
 "$TOOLS/generate_appcast" --account "$ACCOUNT" --maximum-deltas 0 --maximum-versions 3 \
   --embed-release-notes --download-url-prefix "$DOWNLOAD_PREFIX" "$UPDATE_DIR"
 "$TOOLS/sign_update" --account "$ACCOUNT" --verify "$UPDATE_DIR/appcast.xml"

@@ -7,6 +7,7 @@
 - 更新公钥嵌入应用并随应用代码签名封装；私钥保存在发布机钥匙串账户 `com.mirrorlink.desktop.updates`，不会入库。
 - 默认没有 `SUFeedURL`，没有可声称已经上线的更新服务器。可以在设置中配置发布者提供的 HTTPS appcast 地址。
 - 本机尚无可用 Developer ID Application 证书/私钥，因此本地包仍是 ad-hoc；不能声称 Apple 已接受公证。
+- 0.3.0 已完成双架构构建、ZIP 解包和 DMG 只读挂载完整性校验，并安装到本机。更新源生成在系统钥匙串授权处暂停，未完成签名源/在线替换端到端验收，详见 [UPDATE-QA.md](UPDATE-QA.md)。
 
 ## 用户流程
 
@@ -55,6 +56,8 @@ xcrun notarytool store-credentials mirrorlink-notary
 ```
 
 脚本检查公证状态和签名密钥是否匹配，生成同时签署了 XML 和更新 ZIP 的 appcast，再校验 XML 签名。私钥不会导出。测试用 `--allow-local-test` 只绕过正式公证前置检查，不关闭更新签名，也不联网发布；测试源不能当作正式上线。
+
+第一次使用 `generate_appcast` 或 `sign_update` 时，macOS 可能要求批准访问钥匙串中的更新签名密钥。此安全窗口需要发布者在本机操作；不要通过导出私钥、修改系统安全策略或在聊天中提供密码绕过它。
 
 公钥轮换需要按 Sparkle 官方迁移流程，不能每个版本重新生成密钥。丢失原钥匙串私钥会影响已安装用户的更新信任链；应由发布者进行安全离线备份。
 
