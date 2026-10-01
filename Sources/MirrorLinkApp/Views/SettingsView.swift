@@ -8,6 +8,9 @@ struct SettingsView: View {
         if channel == "developer-id" {
             return "Developer ID 签名构建。公证结果以随安装包提供的发行清单及 macOS 安全验证为准。"
         }
+        if channel == "community" {
+            return "免费社区版：更新包和更新清单使用镜连自己的签名校验，应用使用 ad-hoc 完整性签名，未获 Apple 公证。首次打开可能需要在“系统设置 → 隐私与安全”中手动允许；受管理的 Mac 可能不允许安装。请仅从镜连官方 GitHub 下载，不要关闭系统安全检查。"
+        }
         return "开发体验版：仅使用本地 ad-hoc 签名，未通过 Developer ID 签名与 Apple 公证。下载到其他 Mac 可能被系统拦截，不属于正式公开发行版。"
     }
 

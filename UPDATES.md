@@ -1,81 +1,76 @@
 # 应用内更新与 GitHub 发布
 
-## 当前状态（2026-10-01）
+## 0.3.1 社区版配置
 
-- 应用版本：0.3.0 / Build 3。新增 Sparkle 2.10.0 更新器和三个入口。
-- 源码仓库：`zhaozachary1-cpu/MirrorLink`，已公开；后续源码和经确认的发行复用此仓库，不另建仓库。
-- 更新公钥嵌入应用并随应用代码签名封装；私钥保存在发布机钥匙串账户 `com.mirrorlink.desktop.updates`，不会入库。
-- 默认没有 `SUFeedURL`，没有可声称已经上线的更新服务器。可以在设置中配置发布者提供的 HTTPS appcast 地址。
-- 本机尚无可用 Developer ID Application 证书/私钥，因此本地包仍是 ad-hoc；不能声称 Apple 已接受公证。
-- 0.3.0 已完成双架构构建、ZIP 解包和 DMG 只读挂载完整性校验，并安装到本机。更新源生成在系统钥匙串授权处暂停，未完成签名源/在线替换端到端验收，详见 [UPDATE-QA.md](UPDATE-QA.md)。
-- 2026-10-01，用户已明确授权公开安装包、签名更新清单，并将现有仓库 Releases 作为默认更新源。授权已完成，实际发布尚未完成；这两种状态不能混淆。
+- 源码、公开安装包、签名更新清单使用现有 `zhaozachary1-cpu/MirrorLink`，不另建仓库。
+- `CFBundleVersion=4`，高于 0.3.0 的 Build 3；Sparkle 固定为 2.10.0。
+- 默认源：`https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest/download/appcast.xml`。
+- `SURequireSignedFeed` 与 `SUVerifyUpdateBeforeExtraction` 均为 true，原有 Ed25519 公钥不变。更新来源不能替换信任公钥。
+- 不静默下载或安装、不发送系统配置；自动检查默认关闭，用户可主动开启。
+- 免费社区版没有 Apple 公证，首次打开可能需要用户在系统设置中手动允许。不是 Apple 验证的开发者发行。
+- 真实发布与旧版覆盖验证状态见 [UPDATE-QA.md](UPDATE-QA.md)。配置地址、源码 push 与“已发布并可安装”是三件事，分别核验。
 
-### 首次上线前复核（2026-10-01）
+## 用户使用
 
-- GitHub API 确认当前凭据具有现有仓库的管理与写入权限，仓库公开；Releases 列表仍为空。没有创建空发行版，也没有上传本地 ad-hoc 包。
-- 本机运行 `/Applications/MirrorLink.app` 的版本为 0.3.0 / Build 3；没有 `SUFeedURL`，也没有保存自定义更新地址。截图中的提示发生在联网检查之前，不是已经下载后的安装失败。
-- `security find-identity -v -p codesigning` 仍返回 `0 valid identities found`；`xcrun notarytool history --keychain-profile mirrorlink-notary --output-format json` 返回该钥匙串配置不存在。正式发布当前阻塞在 Apple 身份与公证配置，不能由 GitHub 发布授权替代。
-- 用户需在 Apple 官方账户页面本人登录并确认开发者资格，配置 Developer ID Application 证书及对应私钥和公证凭据。不得在聊天中索取登录密码、验证码或私钥，不自动购买会员或签署协议。
-- 待发行条件补齐后，按以下流程生成高于 Build 3 的版本、签名并公证、生成和校验更新清单，再发布到已获授权的仓库。只有匿名 HTTPS 下载及签名验证通过后，才配置当前应用的更新地址并进行低版本覆盖更新验收；不要提前填入尚未上线的 URL 使“未配置”变成网络错误。
+0.3.1 起直接点击主窗口更新按钮、应用菜单“检查更新…”或“设置 → 应用更新”即可。0.3.0 需在设置中展开“设置更新地址”，保存上述完整 HTTPS 地址一次；0.2.0 及更早没有更新器，需要手动安装一次新版。
 
-## 用户流程
+发现新版后由用户确认下载、安装，更新器验证签名再替换原应用并重启。投屏进行中会询问是否延后；设置仍使用同一应用标识下的 UserDefaults。网络或签名错误必须失败，不降级为未验证的安装。
 
-1. 旧版 0.2.0 没有更新器，需先安装一次包含更新器的版本。
-2. 发布者上线更新源后，在“镜连 → 设置 → 应用更新 → 设置更新地址”保存其完整 HTTPS 地址。
-3. 点击“检查更新…”，查看新版本说明并确认下载、安装。
-4. 更新器验证签名并替换当前应用，随后重启；设置仍保留在同一应用标识的 UserDefaults 中。
-5. 投屏进行中安装更新或退出时，先确认停止；选择“稍后安装”或“继续投屏”不会自动终止会话。
+## 发布者：免费社区路线
 
-更新关闭静默下载/静默安装及系统信息上报。自动检查默认为关闭，可主动开启。网络、下载、签名等错误会显示失败提示；不得自动退回未签名安装方式。
+### 1. 构建与配套材料
 
-## 发布者流程
-
-### 1. 准备 Apple 身份
-
-发布机钥匙串必须有 Developer ID Application 证书及匹配私钥。先验证：
+递增 Info.plist 中显示版本与单调递增的 Build，更新 RELEASE-NOTES.md，然后运行：
 
 ```zsh
-security find-identity -v -p codesigning
-xcrun notarytool store-credentials mirrorlink-notary
+./script/run_core_checks.sh
+./script/run_session_checks.sh
+./script/run_update_checks.sh
+./script/package_release.sh --community
 ```
 
-在系统提示中输入凭据，不将密码、应用专用密码、API 私钥发到聊天或写入仓库。若证书由其他 Mac 创建，需要安全迁移证书和私钥；只有 `.cer` 可能不足以签名。
+该模式先运行 `prepare_third_party.sh` 校验上游运行时和许可，构建通用应用、ad-hoc 签名，生成完整 ZIP/DMG、更新专用 ZIP、配套第三方源码包和公开校验清单。第一次准备源码可能需要下载较大的归档；缓存位于不入库的 `work/community-sources/`。本地 RELEASE-MANIFEST 含绝对路径，不原样公开。
 
-### 2. 递增版本并打包
+### 2. 生成签名更新清单
 
-修改 `Sources/MirrorLinkApp/Resources/Info.plist` 的显示版本与 **单调递增**的 `CFBundleVersion`，更新本文件和 README。运行全部回归检查，再执行：
-
-```zsh
-./script/package_release.sh \
-  --sign "Developer ID Application: 公司或个人名 (TEAMID)" \
-  --notary-profile mirrorlink-notary --notarize
-```
-
-脚本先验证身份/公证配置，再嵌套签名 Sparkle、工具和应用，提交并保存 Apple 结果、附加票据；DMG 也独立签名、公证、附加票据。只有 Accepted 和后续验证通过才生成 `notarized=yes` 的发行清单。
-
-每个发行目录含分享 ZIP/DMG，以及 `updates/MirrorLink-<version>-update.zip`（仅包含 `.app`）。不要把含 Applications 快捷方式的分享 ZIP 当作更新 ZIP。
-
-### 3. 生成安全更新源
-
-在 `updates` 目录放与更新 ZIP 同名的 Markdown 发行说明（仅替换扩展名）。使用实际批准的下载地址，不照抄示例域名：
+把 RELEASE-NOTES.md 复制到发行目录的 `updates/MirrorLink-<version>-update.md`，再按真实版本 URL 生成：
 
 ```zsh
 ./script/generate_update_feed.sh "/绝对路径/发行目录" \
-  "https://你的公开下载域名/镜连版本路径/"
+  "https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.3.1/" --community
 ```
 
-脚本检查公证状态和签名密钥是否匹配，生成同时签署了 XML 和更新 ZIP 的 appcast，再校验 XML 签名。私钥不会导出。测试用 `--allow-local-test` 只绕过正式公证前置检查，不关闭更新签名，也不联网发布；测试源不能当作正式上线。
+脚本必须确认社区渠道、ad-hoc 签名完整、对应源码包齐全、公钥与现有钥匙串匹配。它使用账户 `com.mirrorlink.desktop.updates` 内的原有密钥同时签署 XML 和更新 ZIP，并验证 XML。不要手工修改签名后的 XML；重新生成时要更新校验清单。
 
-第一次使用 `generate_appcast` 或 `sign_update` 时，macOS 可能要求批准访问钥匙串中的更新签名密钥。此安全窗口需要发布者在本机操作；不要通过导出私钥、修改系统安全策略或在聊天中提供密码绕过它。
+若 macOS 请求钥匙串访问，**发布者在本机安全窗口确认**，不把密码发到聊天，不导出私钥、不修改安全策略。不能通过重新生成一把密钥来绕过此步骤，否则旧用户将不信任更新。
 
-公钥轮换需要按 Sparkle 官方迁移流程，不能每个版本重新生成密钥。丢失原钥匙串私钥会影响已安装用户的更新信任链；应由发布者进行安全离线备份。
+`--allow-local-test` 仅用于隔离测试，不是公开发布开关。省略社区/测试参数的默认路径仍严格要求 Developer ID、公证票据与 Gatekeeper 验证；社区路径不会放宽正式路径。
 
-### 4. 上线与验收
+### 3. 源码与 Release
 
-用户已确认直接公开现有 `zhaozachary1-cpu/MirrorLink` 仓库，不另建二进制发行仓库，并于 2026-10-01 授权公开安装包、签名更新清单及默认更新源接入；该范围无需重复征求发布授权。正式安装包和更新文件使用同一仓库的 Releases 发布；当前没有已发布的 Release 或 appcast，不应把源码地址填作更新源，也不要把 GitHub token 嵌入客户端。
+先执行 `./script/sync_github.sh "版本说明"` 验证、提交及推送，并核对远端 SHA。为相同源码提交创建版本标签与 GitHub Release，建议先建草稿，上传并核对下面六项后再公开为 latest：
 
-上传更新 ZIP 和完整签名的 `appcast.xml`；先上传 ZIP，确认匿名 HTTPS 可下载，再更新固定 appcast 地址。签名后不要手动改 XML。需要保留历史版本时，在生成前放回上一版 appcast/必要的更新文件，并检查生成差异。
+1. 完整安装 ZIP。
+2. 完整安装 DMG。
+3. 更新专用 ZIP。
+4. 完整签名 `appcast.xml`。
+5. 对应第三方源码 `.tar.gz`。
+6. `SHA256SUMS.txt`。
 
-首次上线必须从较低版本实测：发现更新 → 断网失败重试 → 签名异常拒绝 → 下载安装 → 投屏中的延后安装 → 替换重启 → 版本号提升 → 设置保留。还要在未参与开发的 Mac 上验证 Gatekeeper；Intel 运行验收需 Intel Mac。
+Release 必须明确“免费社区版、无 Apple 公证”和首次打开说明。仅发布了完整可用的更新源之后，才为 0.3.0 用户配置此地址。GitHub token 只用于发布者工具认证，不嵌入客户端。
 
-源码 push 不会自动公开安装包，也不代表线上更新链路完成。项目尚未配置 CI 签名秘密、自动 Release 或后台同步任务。
+更新归档 URL 固定到版本标签；更新清单使用 `latest/download/appcast.xml`。未来每次发布应保持完整六项，并将已完成校验的 Release 标为 latest。不要让无 appcast 的 Release 意外接管 latest。需要分支版本/兼容性历史时，保留旧版 appcast 条目及仍被引用的归档；不要覆写历史版本的签名 ZIP。
+
+### 4. 验收
+
+- 匿名 HTTPS 请求能取得 canonical appcast 及其引用的 ZIP，公开资产哈希与本地一致。
+- XML/ZIP 签名均通过；单字节修改的 XML/ZIP 被拒绝；不依赖 Apple 身份作为更新签名替代。
+- ZIP 解包、DMG 只读挂载后严格签名和许可检查通过。
+- 备份已安装旧版与设置，然后从旧版实际执行发现、下载、确认安装、覆盖、重启、版本核对、设置保留及再次检查无更新。
+- 另行验证断网重试、投屏中的延后安装、陌生 Mac 首次打开、Intel 实际运行；未执行的项目要单独记录，不以脚本或本机进程代替。
+
+## 可选公证路线
+
+发布者未来获得 Developer ID 后可执行 [DISTRIBUTION.md](DISTRIBUTION.md) 中的签名与公证命令，再不带 `--community` 生成更新清单。仍沿用现有更新密钥，不因 Apple 签名方式变化而自动轮换 Ed25519 密钥。
+
+本项目未配置 CI 私钥或后台自动发布任务；源码同步不是 Release 发布。用户已授权上述现有仓库的公开发行范围，但安全确认、收费注册与协议仍只能本人处理。

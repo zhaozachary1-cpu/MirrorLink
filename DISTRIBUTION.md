@@ -1,49 +1,57 @@
 # 镜连发行与分享说明
 
-## 当前可交付状态
+## 免费社区版
 
-0.3.0 新增 Sparkle 更新器，构建及签名会覆盖其内置 XPC/辅助程序/框架。`updates/` 中会额外生成用于覆盖安装的单应用 ZIP；完整更新发布流程见 [UPDATES.md](UPDATES.md)。
+0.3.1 支持 `--community` 发行模式：应用为 ad-hoc 完整性签名，**没有 Developer ID 身份认证，也没有 Apple 公证**。应用内更新的清单和更新 ZIP 另以 Sparkle Ed25519 签名；私钥保留在发布机钥匙串，客户端只含原有公钥。
 
-`script/package_release.sh` 会构建一个包含 arm64 + x86_64 的通用 macOS 应用，并生成 ZIP 与 DMG。应用内置官方 scrcpy v4.1、ADB 和 scrcpy-server，不依赖用户先安装 Homebrew。
+这解决“不购买 Apple 开发者会员也能分享和安全校验应用更新”的需求，但不承诺“任何 Mac 都能无提示打开”。首次打开需要用户判断是否信任来源；企业管理策略可能禁止例外。若将来需要更顺畅的公众首次安装体验，可再使用下方公证流程。
 
-直接执行：
+## 接收者安装
+
+1. 从 [本项目 Releases](https://github.com/zhaozachary1-cpu/MirrorLink/releases) 下载完整 `macOS-universal.zip` 或 DMG；不要下载用于开发的源码 ZIP 或更新专用 ZIP。
+2. 解压 ZIP 或打开 DMG，将 `MirrorLink.app` 拖入“应用程序”。内置 ADB、scrcpy 和服务器文件，无需安装 Homebrew。
+3. 尝试打开镜连。如果系统仅提示无法验证开发者或无法检查恶意软件，确认副本来自本项目后，前往“系统设置 → 隐私与安全”，对镜连选择“仍要打开”，按系统要求完成确认。
+4. 如提示应用含恶意软件、会损害电脑或已损坏，请停止安装、重新核对来源及校验值，不将此提示自动当作普通首次打开确认。受管理 Mac 没有允许按钮时，请联系其管理员。
+5. USB 连接 Android 手机、开启并允许 USB 调试后，在镜连选择设备并投屏。后续使用菜单或设置中的“检查更新…”；仍需用户确认安装。
+
+Apple 官方说明：[在 Mac 上安全地打开 App](https://support.apple.com/102445)。不要要求用户关闭 Gatekeeper、全局放宽安全设置或移除 quarantine。
+
+## 发布者打包
 
 ```zsh
-./script/package_release.sh
+./script/run_core_checks.sh
+./script/run_session_checks.sh
+./script/run_update_checks.sh
+./script/package_release.sh --community
 ```
 
-默认产物位于 `~/Library/Application Support/MirrorLink/Releases/`，可用 `--output-dir` 指定其他非同步目录。裸 `.app` 应保留在本地非同步目录，ZIP/DMG 可复制到“文稿”或“桌面”分享；这样可以避免文件同步服务反复添加导致严格签名校验失败的 Finder 元数据。
+显式社区模式会校验固定的上游归档哈希、比对内置运行时、补齐许可文件，构建 arm64 + x86_64 通用应用并依次签署嵌套代码，生成：
 
-如果没有提供 Developer ID，脚本会在所有资源组装完成后，依次对内置工具和整个 `.app` 做本地 ad-hoc 签名，并用 `codesign --verify --deep --strict` 检查完整性。产物会被明确标记为 `signing=local-adhoc`。它适合本机或开发环境验证，但完整性校验通过不代表 Apple 信任，也不能承诺其他用户下载后无 Gatekeeper 拦截。
+- `MirrorLink-<version>-macOS-universal.zip` / `.dmg`：完整分享包。
+- `updates/MirrorLink-<version>-update.zip`：Sparkle 专用单应用包。
+- `MirrorLink-<version>-third-party-sources.tar.gz`：scrcpy 及静态链接库的源码、许可证、上游版本/哈希和重新编译说明；须与二进制在同一 Release 提供。
+- `SHA256SUMS.txt`：可公开的文件校验清单。生成 appcast 后脚本追加其校验值。
+- `RELEASE-MANIFEST.txt`：含本机路径的本地构建记录，**不要原样上传**。
 
-## 面向他人分发的正式流程
+默认目录为 `~/Library/Application Support/MirrorLink/Releases/`。裸 `.app` 不放入 Documents/Desktop 的同步目录，以免同步服务附加 FinderInfo 破坏封装；可复制 ZIP/DMG 分享。只清理本次暂存副本的 FinderInfo，不删除下载隔离或其他安全属性。
 
-要让陌生用户双击下载包后获得正常的 macOS 信任体验，需要 Apple Developer Program 账号，以及 Developer ID Application 签名和 Apple 公证：
+不带 `--community` 的普通打包仍是 `local-preview`，不能误当社区发行。`--community` 与 `--sign` / `--notarize` 互斥；不使用 `--allow-local-test` 替代社区发布。完整更新源生成、上传和验收流程见 [UPDATES.md](UPDATES.md)。
+
+## 可选：Developer ID 与 Apple 公证版
+
+这是独立路线，不是免费社区版的前置条件。需要发布者自行取得有效 Developer ID Application 证书及对应私钥和公证凭据。不得借用第三方证书，不把私钥/密码写入仓库。
 
 ```zsh
+xcrun notarytool store-credentials mirrorlink-notary
 ./script/package_release.sh \
   --sign "Developer ID Application: 你的公司名 (TEAMID)" \
-  --notary-profile mirrorlink-notary \
-  --notarize
+  --notary-profile mirrorlink-notary --notarize
 ```
 
-先用 `xcrun notarytool store-credentials mirrorlink-notary` 将公证凭据保存到钥匙串，再把配置名称传给脚本。脚本只接受钥匙串 profile，不把 Apple 密码、应用专用密码或证书私钥写入命令行或仓库。
+脚本验证身份、嵌套签名、提交公证并保存结果；只有 Accepted 才附加和验证票据，DMG 也独立公证。不将 `codesign` 完整性通过等同于 `spctl` 接受或 Apple 公证。
 
-公证完成后，脚本会把票据 stapler 到 `.app`，再重新生成 ZIP/DMG，并写入 `RELEASE-MANIFEST.txt`。应额外验证：
+## 许可与验证边界
 
-```zsh
-codesign -dvvv --entitlements :- "$HOME/Library/Application Support/MirrorLink/Releases/.../MirrorLink.app"
-spctl -a -vv --type execute "$HOME/Library/Application Support/MirrorLink/Releases/.../MirrorLink.app"
-```
+应用包含项目的 Apache-2.0 文本、NOTICE、第三方清单、scrcpy/Sparkle 原始许可及完整的 `ThirdPartyLicenses/`。构建验证会核对这些文本；对应源码材料的版本和重新链接说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 与 [vendor/licenses/README.md](vendor/licenses/README.md)。源码随包材料不等于每一项第三方依赖都已在本机重新编译，也不是外部法律审计。
 
-## 为什么微信下载的文件容易被 macOS 拦截
-
-微信、浏览器和其他下载渠道通常会给文件写入 macOS 的 `com.apple.quarantine` 下载隔离标记。这个标记本身不代表文件非法，而是告诉 Gatekeeper：文件来自外部来源，需要检查开发者签名、公证和用户意图。
-
-因此，用户侧删除隔离标记只能作为本机排障手段，不能替代发布修复；也不应要求用户关闭 Gatekeeper。真正面向公众的修复是使用 Developer ID + Hardened Runtime + Apple 公证，并把公证后的 ZIP/DMG 作为分享文件。
-
-## 许可证
-
-MirrorLink 自有代码和文档采用 [Apache License 2.0](LICENSE)，项目声明见 [NOTICE](NOTICE)。从本次修改开始，构建脚本会在签名前把 `LICENSE`、`NOTICE`、`THIRD_PARTY_NOTICES.md` 放入应用的 `Contents/Resources/`，并继续保留 `NOTICE-scrcpy.txt` 和含外部组件声明的完整 `NOTICE-Sparkle.txt`。`--verify` 会逐字节核对这五份文件是否与构建输入一致。
-
-第三方组件保留各自许可证，不被项目 Apache-2.0 许可证重新许可。公开二进制发行前仍需补齐精确匹配当前 ADB 的上游许可/NOTICE，并核对 scrcpy 链接的 SDL、FFmpeg、libusb 及传递依赖的实际构建与许可义务，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。源码开源不代表这些事项、Developer ID 签名或 Apple 公证已经完成；本次许可证修改没有重新发布既有 ZIP/DMG 或替换本机应用。
+实际构建、签名、线上下载、旧版替换和 UI 的验收结果分别记录在 [UPDATE-QA.md](UPDATE-QA.md)，未实测的项目不标记为通过。

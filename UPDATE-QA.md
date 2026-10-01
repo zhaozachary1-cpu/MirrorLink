@@ -1,4 +1,38 @@
-# MirrorLink 0.3.0 更新与分发验证
+# MirrorLink 更新与分发验证
+
+## 0.3.1 社区版：当前验证状态
+
+验证时间：本机 Asia/Shanghai 2026-10-02；对应 UTC 构建日期 2026-10-01。版本：0.3.1 / Build 4。用户已确认免费社区路线，不申请 Developer ID 或 Apple 公证，仍保留原有 Sparkle Ed25519 密钥与双重验签。
+
+### 已通过
+
+- 基础逻辑检查、27 项模拟多设备会话检查、28 项更新策略检查；新增检查覆盖默认更新源、原有公钥、清单签名要求、解包前验签、用户确认与本地预览渠道。模拟会话不代表真机视频验收。
+- `package_release.sh --community` 成功调用既有构建入口完成 arm64、x86_64 Release 构建，生成完整 ZIP、DMG、更新专用 ZIP 和对应第三方源码包。
+- 封装后的应用及分享 ZIP / 更新 ZIP 解压副本均通过 `codesign --verify --deep --strict`；DMG 校验和通过，只读挂载后的应用校验通过并已卸载。签名是 ad-hoc，不是 Apple 身份认证。
+- 源码包中的六份固定版本归档与 `vendor/third-party-sources.tsv` 的 SHA-256 一致；两个架构的六项内置运行时资源与上游官方发行包逐字节一致，ADB 与 Google Platform-Tools 37.0.0 归档一致；八份完整许可/来源文件的哈希在构建与封装时验证通过。
+- 独立临时副本的缺少源码包测试被公开发行门禁拒绝；修改临时应用 Info.plist 后严格签名校验失败。原始发行包未改动。
+- `--community --notarize`、`--community --sign` 均以退出码 2 拒绝；不带社区参数的正式更新源流程拒绝 ad-hoc 社区包。修复了 `grep -q` 提前退出引发的 SIGPIPE，以及 zsh 对以 `--` 开头错误文案的选项误解析。
+- `zsh -n` 与 `git diff --check` 通过；尚未更改本机已安装应用或其更新源配置。
+
+### 未完成与明确边界
+
+- 原有公钥比对已通过，`generate_appcast` 在读取钥匙串中的私钥时等待系统授权；进程采样停在 `SecItemCopyMatching`。没有导出私钥、轮换密钥、绕过安全确认，尚不能声称更新 ZIP 或 appcast 已获得 Ed25519 签名。
+- GitHub Releases 当前仍为空；没有公开发行包，也没有上线可用的默认更新源。签名完成后才上传完整资产并验证匿名 HTTPS 下载与签名。
+- 已安装 `/Applications/MirrorLink.app` 仍为 0.3.0 / Build 3；尚未执行备份后的真实下载、安装、重启、版本提升和设置保留验收。没有手动替换旧应用来冒充更新成功。
+- 原生界面工具选择已安装应用时返回超时，未取得可验证的 UI 状态；没有用进程存在代替界面验收。陌生 Mac 的首次安装、Intel 真机、投屏期间延后安装和多台真机画面均未验收。
+- Command Line Tools 的搜索路径与 Intel 兼容库警告仍出现，但两次构建退出码为 0。此前 XCTest 模块缺失问题本轮未解决，未宣称 XCTest 通过。
+- 完整来源及许可材料已随包整理，不等于全部第三方依赖已经本机重建或外部法律审计。未进行 Apple 公证，也未更改 Gatekeeper、quarantine 或电脑全局安全设置。
+
+发行目录：`~/Library/Application Support/MirrorLink/Releases/MirrorLink-0.3.1-20261001-160931/`。这是待完成更新签名的本地产物，不是已发布版本。
+
+| 产物 | SHA-256 |
+| --- | --- |
+| 分享 ZIP | `d6586b916e4660344b21f645f1a072e7bbf7bdd8461f244fe0bd6a112f0d73d2` |
+| DMG | `8600d1afde111f70cb77ec9d473bd2aee3db01d7546845e953353fd745c4d063` |
+| 更新专用 ZIP | `08c52ca2b71aaf3f19a496c73d8e7c81d882941c0df05066c80869c5456293f2` |
+| 第三方源码包 | `8b209e37168cf8fd3077e5e8f6ec88adc4173cb9621d0d4ef272ce1fd672f951` |
+
+## 历史记录：0.3.0
 
 验证日期：2026-10-01。版本：0.3.0 / Build 3。
 

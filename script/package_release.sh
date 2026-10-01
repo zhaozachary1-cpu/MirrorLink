@@ -8,6 +8,7 @@ ROOT_DIR="${0:A:h:h}"
 RELEASE_ROOT="${MIRRORLINK_RELEASE_DIR:-$HOME/Library/Application Support/MirrorLink/Releases}"
 SIGN_IDENTITY=""
 NOTARIZE=0
+COMMUNITY=0
 CREATE_DMG=1
 CREATE_ZIP=1
 NOTARY_PROFILE="${NOTARY_PROFILE:-}"
@@ -18,6 +19,7 @@ usage() {
   ./script/package_release.sh [选项]
 
 选项：
+  --community        免费社区发行：ad-hoc 完整性签名，不申请 Apple 公证
   --sign <identity>   用指定的 Developer ID Application 身份签名
   --notarize          提交公证并将票据 stapler 到应用（必须已签名）
   --notary-profile <name> 使用 notarytool 已保存的钥匙串配置
@@ -37,9 +39,10 @@ while (( $# > 0 )); do
   argument="$1"
   shift
   case "$argument" in
+    --community) COMMUNITY=1 ;;
     --sign)
       if (( $# == 0 )); then
-        print -u2 "--sign 需要一个签名身份。"
+        print -u2 -- "--sign 需要一个签名身份。"
         exit 2
       fi
       SIGN_IDENTITY="$1"
@@ -48,7 +51,7 @@ while (( $# > 0 )); do
     --notarize) NOTARIZE=1 ;;
     --notary-profile)
       if (( $# == 0 )); then
-        print -u2 "--notary-profile 需要配置名称。"
+        print -u2 -- "--notary-profile 需要配置名称。"
         exit 2
       fi
       NOTARY_PROFILE="$1"
@@ -58,7 +61,7 @@ while (( $# > 0 )); do
     --no-zip) CREATE_ZIP=0 ;;
     --output-dir)
       if (( $# == 0 )); then
-        print -u2 "--output-dir 需要一个目录路径。"
+        print -u2 -- "--output-dir 需要一个目录路径。"
         exit 2
       fi
       RELEASE_ROOT="$1"
@@ -76,13 +79,18 @@ while (( $# > 0 )); do
   esac
 done
 
+if [[ "$COMMUNITY" == 1 && ( -n "$SIGN_IDENTITY" || "$NOTARIZE" == 1 ) ]]; then
+  print -u2 -- '--community 不能与 Developer ID 或公证模式混用。'
+  exit 2
+fi
+
 if [[ "$NOTARIZE" == "1" && -z "$SIGN_IDENTITY" ]]; then
-  print -u2 "--notarize 必须与 --sign 一起使用。"
+  print -u2 -- "--notarize 必须与 --sign 一起使用。"
   exit 2
 fi
 
 if [[ "$NOTARIZE" == "1" && -z "$NOTARY_PROFILE" ]]; then
-  print -u2 "--notarize 需要 --notary-profile，避免把 Apple 凭据暴露在命令行或环境变量中。"
+  print -u2 -- "--notarize 需要 --notary-profile，避免把 Apple 凭据暴露在命令行或环境变量中。"
   exit 2
 fi
 
@@ -92,14 +100,14 @@ if [[ "$CREATE_DMG" == "1" && "$(uname -s)" != "Darwin" ]]; then
 fi
 
 if [[ "$NOTARIZE" == "1" && ! -x "$(command -v xcrun 2>/dev/null || true)" ]]; then
-  print -u2 "--notarize 需要安装 Xcode Command Line Tools 或 Xcode。"
+  print -u2 -- "--notarize 需要安装 Xcode Command Line Tools 或 Xcode。"
   exit 2
 fi
 
 # Fail before compilation when a required identity/profile is unavailable.
 if [[ -n "$SIGN_IDENTITY" ]]; then
   if [[ "$SIGN_IDENTITY" != "Developer ID Application: "* ]]; then
-    print -u2 '--sign 必须是 Developer ID Application 身份。'
+    print -u2 -- '--sign 必须是 Developer ID Application 身份。'
     exit 2
   fi
   if ! security find-identity -p codesigning -v | grep -Fq "\"$SIGN_IDENTITY\""; then
@@ -109,6 +117,12 @@ if [[ -n "$SIGN_IDENTITY" ]]; then
 fi
 if [[ "$NOTARIZE" == "1" ]]; then
   xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" --output-format json >/dev/null
+fi
+
+# Public binaries carry matching notices and an accompanying source archive.
+# The default local preview remains an offline packaging path.
+if [[ "$COMMUNITY" == 1 || -n "$SIGN_IDENTITY" ]]; then
+  "$ROOT_DIR/script/prepare_third_party.sh"
 fi
 
 BUILD_ID="$(date -u +%Y%m%d-%H%M%S)"
@@ -143,12 +157,19 @@ ditto "$BUILT_APP" "$APP_PATH"
 xattr -d com.apple.FinderInfo "$APP_PATH" 2>/dev/null || true
 
 SIGNING_STATUS="local-adhoc"
+DISTRIBUTION="local-preview"
 if [[ -n "$SIGN_IDENTITY" ]]; then
   # This value is part of the sealed bundle, so set it before signing.
   plutil -replace MirrorLinkDistributionChannel -string "developer-id" "$APP_PATH/Contents/Info.plist"
   echo "==> 使用签名身份：$SIGN_IDENTITY"
   "$ROOT_DIR/script/sign_bundle.sh" "$APP_PATH" "$SIGN_IDENTITY"
   SIGNING_STATUS="developer-id"
+  DISTRIBUTION="developer-id"
+elif [[ "$COMMUNITY" == 1 ]]; then
+  DISTRIBUTION="community"
+  plutil -replace MirrorLinkDistributionChannel -string "$DISTRIBUTION" "$APP_PATH/Contents/Info.plist"
+  "$ROOT_DIR/script/sign_bundle.sh" "$APP_PATH" -
+  echo '==> 免费社区版：未公证，首次安装可能需要用户手动允许打开'
 else
   echo "==> 未提供 Developer ID，保留本地 ad-hoc 发行包"
 fi
@@ -179,6 +200,9 @@ xattr -d com.apple.FinderInfo "$SHARE_STAGE/MirrorLink.app" 2>/dev/null || true
 codesign --verify --deep --strict --verbose=2 "$SHARE_STAGE/MirrorLink.app"
 cp "$ROOT_DIR/README.md" "$SHARE_STAGE/README.md"
 cp "$ROOT_DIR/DISTRIBUTION.md" "$SHARE_STAGE/DISTRIBUTION.md"
+cp "$ROOT_DIR/LICENSE" "$SHARE_STAGE/LICENSE"
+cp "$ROOT_DIR/NOTICE" "$SHARE_STAGE/NOTICE"
+cp "$ROOT_DIR/THIRD_PARTY_NOTICES.md" "$SHARE_STAGE/THIRD_PARTY_NOTICES.md"
 
 make_zip() {
   local output_path="$1"
@@ -259,6 +283,33 @@ mkdir -p "$UPDATE_DIR"
 UPDATE_ZIP="$UPDATE_DIR/MirrorLink-$VERSION-update.zip"
 ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$UPDATE_ZIP"
 
+SOURCE_ARCHIVE=""
+if [[ "$DISTRIBUTION" != local-preview ]]; then
+  SOURCE_NAME="MirrorLink-$VERSION-third-party-sources"
+  SOURCE_STAGE="$TEMP_ROOT/$SOURCE_NAME"
+  mkdir -p "$SOURCE_STAGE/sources" "$SOURCE_STAGE/licenses"
+  while read -r kind filename digest url; do
+    [[ "$kind" == source ]] || continue
+    cp "$ROOT_DIR/work/community-sources/$filename" "$SOURCE_STAGE/sources/$filename"
+  done < "$ROOT_DIR/vendor/third-party-sources.tsv"
+  ditto "$ROOT_DIR/vendor/licenses" "$SOURCE_STAGE/licenses"
+  cp "$ROOT_DIR/vendor/third-party-sources.tsv" "$SOURCE_STAGE/third-party-sources.tsv"
+  cp "$ROOT_DIR/vendor/licenses/README.md" "$SOURCE_STAGE/README.md"
+  cp "$ROOT_DIR/THIRD_PARTY_NOTICES.md" "$SOURCE_STAGE/THIRD_PARTY_NOTICES.md"
+  SOURCE_ARCHIVE="$PACKAGE_ROOT/$SOURCE_NAME.tar.gz"
+  COPYFILE_DISABLE=1 tar -czf "$SOURCE_ARCHIVE" -C "$TEMP_ROOT" "$SOURCE_NAME"
+fi
+
+# This public checksum list contains only filenames, never local paths.
+(
+  cd "$PACKAGE_ROOT"
+  [[ -f "${ZIP_PATH:t}" ]] && shasum -a 256 "${ZIP_PATH:t}"
+  [[ -f "${DMG_PATH:t}" ]] && shasum -a 256 "${DMG_PATH:t}"
+  [[ -n "$SOURCE_ARCHIVE" ]] && shasum -a 256 "${SOURCE_ARCHIVE:t}"
+  cd updates
+  shasum -a 256 "${UPDATE_ZIP:t}"
+) > "$PACKAGE_ROOT/SHA256SUMS.txt"
+
 MANIFEST="$PACKAGE_ROOT/RELEASE-MANIFEST.txt"
 {
   echo "MirrorLink release manifest"
@@ -267,9 +318,11 @@ MANIFEST="$PACKAGE_ROOT/RELEASE-MANIFEST.txt"
   echo "build_id=$BUILD_ID"
   echo "architecture=arm64+x86_64"
   echo "signing=$SIGNING_STATUS"
+  echo "distribution=$DISTRIBUTION"
   echo "notarized=$([[ "$NOTARIZE" == "1" ]] && echo yes || echo no)"
   echo "app=$APP_PATH"
   echo "update_zip=$UPDATE_ZIP"
+  [[ -n "$SOURCE_ARCHIVE" ]] && echo "third_party_sources=$SOURCE_ARCHIVE"
   if [[ -f "$ZIP_PATH" ]]; then echo "zip=$ZIP_PATH"; fi
   if [[ -f "$DMG_PATH" ]]; then echo "dmg=$DMG_PATH"; fi
   echo
@@ -282,11 +335,15 @@ MANIFEST="$PACKAGE_ROOT/RELEASE-MANIFEST.txt"
   [[ -f "$ZIP_PATH" ]] && shasum -a 256 "$ZIP_PATH"
   [[ -f "$DMG_PATH" ]] && shasum -a 256 "$DMG_PATH"
   shasum -a 256 "$UPDATE_ZIP"
+  [[ -n "$SOURCE_ARCHIVE" ]] && shasum -a 256 "$SOURCE_ARCHIVE"
+  :
 } > "$MANIFEST"
 
 echo "==> 发行包已生成"
 echo "$PACKAGE_ROOT"
 echo "签名状态：$SIGNING_STATUS"
-if [[ "$SIGNING_STATUS" != "developer-id" ]]; then
+if [[ "$DISTRIBUTION" == "community" ]]; then
+  echo '社区版未经过 Apple 公证。必须生成签名更新清单、核对第三方材料后方可公开上传。'
+elif [[ "$SIGNING_STATUS" != "developer-id" ]]; then
   echo "注意：这是本地 ad-hoc 包，适合本机验证，不保证其他用户通过 Gatekeeper。"
 fi

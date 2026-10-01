@@ -1,43 +1,36 @@
 # 第三方组件与许可说明
 
-MirrorLink 自有代码和文档采用根目录 [LICENSE](LICENSE) 中的 Apache License 2.0；项目声明见 [NOTICE](NOTICE)。第三方源码、二进制、图片和框架保留各自的版权与许可证，不因本项目的许可证选择而改变。
+MirrorLink 自有代码和文档采用根目录 [LICENSE](LICENSE) 中的 Apache License 2.0，归属见 [NOTICE](NOTICE)。第三方源码、二进制、图片和框架保留各自版权与许可证，不被项目许可证重新许可。
 
-本清单记录当前已核对的来源、声明位置和待办，不是对所有传递依赖及预编译二进制的完整许可审计。源码仓库公开不代表安装包已经具备面向公众发行的全部条件。
+## 固定运行时与证据
 
-## scrcpy 4.1
+本项目使用 [Genymobile/scrcpy v4.1](https://github.com/Genymobile/scrcpy/tree/v4.1) 的原始 macOS arm64/x86_64 运行时。对应上游归档、两套内置文件及 Google Platform-Tools 37.0.0 的 ADB 已逐字节核对匹配。完整下载地址与 SHA-256 见 [vendor/third-party-sources.tsv](vendor/third-party-sources.tsv)，运行时文件清单见 [vendor/runtime-manifest.sha256](vendor/runtime-manifest.sha256)。构建封装会合并架构并重新签名，不改变上游源代码。
 
-- 上游：[Genymobile/scrcpy v4.1](https://github.com/Genymobile/scrcpy/tree/v4.1)。
-- 本地运行时位于 `vendor/scrcpy/arm64/` 和 `vendor/scrcpy/x86_64/`；scrcpy 自身采用 Apache License 2.0。
-- 两个目录中的原始 `LICENSE` 均予以保留，包含 Genymobile 和 Romain Vimont 的版权声明；没有替换为 MirrorLink 的版权信息。
-- 构建脚本把该完整文本复制到应用的 `Contents/Resources/NOTICE-scrcpy.txt`。
-- 随附的 ADB 及 scrcpy 链接的库并不因此全部成为 Apache-2.0 组件，其许可需要分别核对。
+scrcpy 4.1 对应上游提交 `2926c06c5dc3064ae6d8db706f1a98a37cfcf3f0`。其 `release/build_macos.sh` 与 `app/deps/*.sh` 指明以下依赖、版本和静态构建选项；macOS FFmpeg 脚本未启用 GPL 或 nonfree。arm64 的 zlib 版本另通过实际二进制字符串核对，x86_64 动态使用 macOS 系统 zlib。
 
-当前 arm64 运行时的 `scrcpy --version` 报告 SDL 3.4.12、libavcodec 62.28.102、libavformat 62.12.102、libavutil 60.26.102 和 libusb 1.0.30。这份运行时输出不是完整的软件物料清单，也不能证明 Intel 构建使用完全相同的依赖或构建选项。
+| 组件 | 版本 | 主要许可证与随附文本 |
+| --- | --- | --- |
+| scrcpy / server / 上游图像 | 4.1 | Apache-2.0，保留原始 LICENSE，随应用为 NOTICE-scrcpy.txt |
+| ADB | 1.0.41 / 37.0.0-14910828 | Android 与各内置组件独立声明，完整 NOTICE-Android-Platform-Tools-37.0.0.txt |
+| FFmpeg | 8.1.2 | LGPL-2.1-or-later（本构建配置），FFmpeg-COPYING.LGPLv2.1 与完整 LICENSE.md |
+| SDL | 3.4.12 | zlib，SDL-LICENSE.txt |
+| libusb | 1.0.30 | LGPL-2.1-or-later，libusb-COPYING |
+| dav1d | 1.5.3 | BSD-2-Clause，dav1d-COPYING |
+| zlib（arm64 静态依赖） | 1.3.2 | zlib，zlib-LICENSE |
+| Sparkle | 2.10.0 | MIT 及 EXTERNAL LICENSES，完整 NOTICE-Sparkle.txt |
 
-公开分发预编译运行时前，应对照实际构建补齐 SDL、FFmpeg、libusb 及其传递依赖的许可文本、版权声明和适用的源码/重新链接材料。FFmpeg 的具体构建配置尚未完成核对，不能仅凭库名判定整个 scrcpy 二进制的许可义务。上游参考：[SDL 许可](https://www.libsdl.org/license.php)、[FFmpeg 法律与许可说明](https://ffmpeg.org/legal.html)、[libusb](https://github.com/libusb/libusb)。
+Platform-Tools 的原始完整 NOTICE 约 1.15 MB，涵盖 adb 以及 SDK 工具中的其他组件。保留全部内容，不能把整个文件只概括成 Apache-2.0；MirrorLink 只分发其中的 adb，不分发 fastboot 等其余工具。`Android-Platform-Tools-source.properties` 保留原始版本信息。
 
-## Android Debug Bridge（ADB）
+Sparkle 的 `Package.swift` 和 `Package.resolved` 锁定版本/提交；其完整许可证同时包括 bsdiff/bspatch、sais-lite、orlp/ed25519 和 SUSignatureVerifier.m 等外部声明。Apple 系统库/框架由 macOS 提供，不装入本应用。
 
-- 来源项目：[Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools)。
-- 当前内置二进制报告 `Android Debug Bridge version 1.0.41`、`Version 37.0.0-14910828`；文件位于两个架构的 `vendor/scrcpy/` 目录中。
-- 两处 ADB 文件哈希相同；记录见 [运行时校验清单](vendor/runtime-manifest.sha256)。哈希用于核对文件身份，不替代许可声明。
-- 当前仓库尚未收录与这份预编译 ADB 精确对应的完整 Platform-Tools 许可/NOTICE 集合。公开二进制发行前必须补齐并核对，不将该预编译文件整体标注为仅受 MirrorLink 的 Apache-2.0 许可证约束。
+## 对应源码与重新链接
 
-## Sparkle 2.10.0
+公开社区 Release 必须与安装包一起提供 `MirrorLink-<version>-third-party-sources.tar.gz`，包含未修改的 scrcpy 完整源码、FFmpeg、SDL、libusb、dav1d、zlib 对应源码，以及许可、来源/哈希清单和构建说明。源码也包含静态链接应用的完整源和上游构建脚本，供修改库后重新编译/链接使用。详见 [vendor/licenses/README.md](vendor/licenses/README.md)。
 
-- 上游：[sparkle-project/Sparkle 2.10.0](https://github.com/sparkle-project/Sparkle/tree/2.10.0)。
-- `Package.swift` 固定版本为 2.10.0，`Package.resolved` 记录具体修订；框架由 SwiftPM 获取。
-- Sparkle 主体采用 MIT 许可；上游完整 [LICENSE](https://github.com/sparkle-project/Sparkle/blob/2.10.0/LICENSE) 还包含 bsdiff/bspatch、sais-lite、orlp/ed25519、`SUSignatureVerifier.m` 的独立版权和许可声明。
-- 构建脚本把依赖产物的整个 `LICENSE` 复制为 `Contents/Resources/NOTICE-Sparkle.txt`，保留 `EXTERNAL LICENSES` 部分，不只摘录首段 MIT 文本。
+本项目不对修改 LGPL 库或为调试此类修改进行逆向工程施加额外限制。修改应用内容将破坏原签名，应构建并本地签署自己的副本；自建版本不使用官方更新信任链。本机没有实际重新编译全部第三方依赖，不声称可逐字节复现上游二进制，也不把材料整理称作完整外部法律审计。重新配置/替换依赖时必须重新核查许可证和源码义务。
 
-## 应用包内的声明
+## 应用包内声明与可复核入口
 
-从本次修改开始，新构建应用的 `Contents/Resources/` 包含：
+`Contents/Resources/` 包含项目 LICENSE/NOTICE、本清单、NOTICE-scrcpy.txt、NOTICE-Sparkle.txt，及 `ThirdPartyLicenses/` 中的完整上游许可、版本信息、哈希与来源清单。`script/build_and_run.sh --verify` 检查随包文件；`script/prepare_third_party.sh` 验证下载材料并比对原始运行时。新社区包必须通过这些检查后才能生成公开更新源。
 
-- `LICENSE`：MirrorLink 的完整 Apache-2.0 标准文本。
-- `NOTICE`：MirrorLink 项目版权与归属说明。
-- `THIRD_PARTY_NOTICES.md`：本清单及尚待完成的发行许可核对。
-- `NOTICE-scrcpy.txt`：随运行时保留的完整 scrcpy 许可文本。
-- `NOTICE-Sparkle.txt`：Sparkle 依赖产物中的完整许可文本及外部组件声明。
-
-`script/build_and_run.sh --verify` 会逐字节比较上述随包文本与构建输入；该检查只证明已列文本没有漏装或被截断，不证明缺失的第三方声明已经补齐。既有安装包和本机已安装版本不会被此源码修改自动更新。
+上游补充说明：[FFmpeg licensing](https://ffmpeg.org/legal.html)、[SDL license](https://www.libsdl.org/license.php)、[libusb](https://github.com/libusb/libusb)、[Android Platform-Tools](https://developer.android.com/tools/releases/platform-tools)。已安装旧版不会仅因本文件更新自动获得新声明，需要安装/更新至新构建。

@@ -1,0 +1,10 @@
+# kind filename sha256 upstream_url
+source scrcpy-4.1.tar.gz 537b2ade623cb94b6edddfa5c61bf0b0af21484aa8365ea2531b686ea573249a https://github.com/Genymobile/scrcpy/archive/refs/tags/v4.1.tar.gz
+source ffmpeg-8.1.2.tar.xz 464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz
+source sdl-3.4.12.tar.gz b68381f06a7580e63400b3b6eb547ec57d8c3ebde70f9f40e0aba530ba05da27 https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.4.12.tar.gz
+source libusb-1.0.30.tar.gz 2ae28adb0bb9558c86135c4e1c11b320b0805461e207a64a6e520a114094bf07 https://github.com/libusb/libusb/archive/refs/tags/v1.0.30.tar.gz
+source dav1d-1.5.3.tar.gz cbe212b02faf8c6eed5b6d55ef8a6e363aaab83f15112e960701a9c3df813686 https://code.videolan.org/videolan/dav1d/-/archive/1.5.3/dav1d-1.5.3.tar.gz
+source zlib-1.3.2.tar.xz d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3 https://zlib.net/zlib-1.3.2.tar.xz
+reference platform-tools_r37.0.0-darwin.zip 094a1395683c509fd4d48667da0d8b5ef4d42b2abfcd29f2e8149e2f989357c7 https://dl.google.com/android/repository/platform-tools_r37.0.0-darwin.zip
+reference scrcpy-macos-aarch64-v4.1.tar.gz 20fd47c9014dd5e0fa77091f3cb7adbda8445a360c4584aeaa0150b5b3988ff3 https://github.com/Genymobile/scrcpy/releases/download/v4.1/scrcpy-macos-aarch64-v4.1.tar.gz
+reference scrcpy-macos-x86_64-v4.1.tar.gz ee2a7223bc8dbdc4f482db1134bcf441178dafb833492b71ca4c22090c58ce72 https://github.com/Genymobile/scrcpy/releases/download/v4.1/scrcpy-macos-x86_64-v4.1.tar.gz

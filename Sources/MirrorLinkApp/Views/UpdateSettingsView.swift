@@ -11,6 +11,14 @@ struct UpdateSettingsView: View {
     var body: some View {
         Section("应用更新") {
             LabeledContent("当前版本", value: "\(updates.version)（\(updates.build)）")
+            if updates.isConfigured {
+                LabeledContent("更新来源") {
+                    Text(updates.feedAddress)
+                        .font(.caption)
+                        .textSelection(.enabled)
+                        .lineLimit(2)
+                }
+            }
             HStack {
                 Button(updates.installationPending ? "安装已下载的更新…" : "检查更新…") {
                     updates.checkForUpdates()

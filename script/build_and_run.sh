@@ -107,6 +107,10 @@ cp "$ROOT_DIR/README.md" "$RESOURCES_DIR/README.md"
 for notice in LICENSE NOTICE THIRD_PARTY_NOTICES.md; do
   cp "$ROOT_DIR/$notice" "$RESOURCES_DIR/$notice"
 done
+echo "==> 嵌入完整第三方许可与来源清单"
+(cd "$ROOT_DIR/vendor/licenses" && shasum -a 256 -c SHA256SUMS.txt)
+ditto "$ROOT_DIR/vendor/licenses" "$RESOURCES_DIR/ThirdPartyLicenses"
+cp "$ROOT_DIR/vendor/third-party-sources.tsv" "$RESOURCES_DIR/ThirdPartyLicenses/third-party-sources.tsv"
 
 echo "==> 嵌入 Sparkle 安全更新组件"
 SPARKLE_ROOT="$SCRATCH_ARM/artifacts/sparkle/Sparkle"
@@ -161,6 +165,8 @@ if [[ "$VERIFY" == "1" ]]; then
   test -s "$RESOURCES_DIR/NOTICE-Sparkle.txt"
   cmp "$ARM_TOOLS/LICENSE" "$RESOURCES_DIR/NOTICE-scrcpy.txt"
   cmp "$SPARKLE_ROOT/LICENSE" "$RESOURCES_DIR/NOTICE-Sparkle.txt"
+  (cd "$RESOURCES_DIR/ThirdPartyLicenses" && shasum -a 256 -c SHA256SUMS.txt)
+  cmp "$ROOT_DIR/vendor/third-party-sources.tsv" "$RESOURCES_DIR/ThirdPartyLicenses/third-party-sources.tsv"
   for architecture in arm64 x86_64; do
     lipo -verify_arch "$architecture" "$CONTENTS_DIR/Frameworks/Sparkle.framework/Versions/B/Sparkle"
   done
