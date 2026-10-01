@@ -45,3 +45,5 @@ spctl -a -vv --type execute "$HOME/Library/Application Support/MirrorLink/Releas
 ## 许可证
 
 发行包包含 `NOTICE-scrcpy.txt`，对应内置 scrcpy 的 Apache License 2.0。请在公开分发前一并保留该许可证和其他第三方组件的声明。
+
+现有 GitHub 源码仓库已公开，但 MirrorLink 自身尚未添加项目级 `LICENSE`，许可证选择仍待维护者确认。scrcpy 或 Sparkle 的许可证不自动适用于 MirrorLink 自身代码；公开源码也不代表已完成正式发行所需的许可核对、签名或公证。

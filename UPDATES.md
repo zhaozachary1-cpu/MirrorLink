@@ -3,7 +3,7 @@
 ## 当前状态（2026-10-01）
 
 - 应用版本：0.3.0 / Build 3。新增 Sparkle 2.10.0 更新器和三个入口。
-- 源码仓库：`zhaozachary1-cpu/MirrorLink`，私有。
+- 源码仓库：`zhaozachary1-cpu/MirrorLink`，已公开；后续源码和经确认的发行复用此仓库，不另建仓库。
 - 更新公钥嵌入应用并随应用代码签名封装；私钥保存在发布机钥匙串账户 `com.mirrorlink.desktop.updates`，不会入库。
 - 默认没有 `SUFeedURL`，没有可声称已经上线的更新服务器。可以在设置中配置发布者提供的 HTTPS appcast 地址。
 - 本机尚无可用 Developer ID Application 证书/私钥，因此本地包仍是 ad-hoc；不能声称 Apple 已接受公证。
@@ -63,7 +63,7 @@ xcrun notarytool store-credentials mirrorlink-notary
 
 ### 4. 上线与验收
 
-私有源码仓库与公开安装包可以分开：例如继续保留本仓库私有，另建经用户批准的公开二进制发行仓库或 HTTPS 下载站。不要把 GitHub token 嵌入客户端来访问私有发行包。
+用户已确认直接公开现有 `zhaozachary1-cpu/MirrorLink` 仓库，不另建二进制发行仓库。后续经确认的正式安装包和更新文件可通过同一仓库的 Releases 发布；当前没有已发布的 Release 或 appcast，不应把源码地址填作更新源，也不要把 GitHub token 嵌入客户端。
 
 上传更新 ZIP 和完整签名的 `appcast.xml`；先上传 ZIP，确认匿名 HTTPS 可下载，再更新固定 appcast 地址。签名后不要手动改 XML。需要保留历史版本时，在生成前放回上一版 appcast/必要的更新文件，并检查生成差异。
 
