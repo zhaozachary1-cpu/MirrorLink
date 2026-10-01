@@ -8,6 +8,15 @@
 - 默认没有 `SUFeedURL`，没有可声称已经上线的更新服务器。可以在设置中配置发布者提供的 HTTPS appcast 地址。
 - 本机尚无可用 Developer ID Application 证书/私钥，因此本地包仍是 ad-hoc；不能声称 Apple 已接受公证。
 - 0.3.0 已完成双架构构建、ZIP 解包和 DMG 只读挂载完整性校验，并安装到本机。更新源生成在系统钥匙串授权处暂停，未完成签名源/在线替换端到端验收，详见 [UPDATE-QA.md](UPDATE-QA.md)。
+- 2026-10-01，用户已明确授权公开安装包、签名更新清单，并将现有仓库 Releases 作为默认更新源。授权已完成，实际发布尚未完成；这两种状态不能混淆。
+
+### 首次上线前复核（2026-10-01）
+
+- GitHub API 确认当前凭据具有现有仓库的管理与写入权限，仓库公开；Releases 列表仍为空。没有创建空发行版，也没有上传本地 ad-hoc 包。
+- 本机运行 `/Applications/MirrorLink.app` 的版本为 0.3.0 / Build 3；没有 `SUFeedURL`，也没有保存自定义更新地址。截图中的提示发生在联网检查之前，不是已经下载后的安装失败。
+- `security find-identity -v -p codesigning` 仍返回 `0 valid identities found`；`xcrun notarytool history --keychain-profile mirrorlink-notary --output-format json` 返回该钥匙串配置不存在。正式发布当前阻塞在 Apple 身份与公证配置，不能由 GitHub 发布授权替代。
+- 用户需在 Apple 官方账户页面本人登录并确认开发者资格，配置 Developer ID Application 证书及对应私钥和公证凭据。不得在聊天中索取登录密码、验证码或私钥，不自动购买会员或签署协议。
+- 待发行条件补齐后，按以下流程生成高于 Build 3 的版本、签名并公证、生成和校验更新清单，再发布到已获授权的仓库。只有匿名 HTTPS 下载及签名验证通过后，才配置当前应用的更新地址并进行低版本覆盖更新验收；不要提前填入尚未上线的 URL 使“未配置”变成网络错误。
 
 ## 用户流程
 
@@ -63,7 +72,7 @@ xcrun notarytool store-credentials mirrorlink-notary
 
 ### 4. 上线与验收
 
-用户已确认直接公开现有 `zhaozachary1-cpu/MirrorLink` 仓库，不另建二进制发行仓库。后续经确认的正式安装包和更新文件可通过同一仓库的 Releases 发布；当前没有已发布的 Release 或 appcast，不应把源码地址填作更新源，也不要把 GitHub token 嵌入客户端。
+用户已确认直接公开现有 `zhaozachary1-cpu/MirrorLink` 仓库，不另建二进制发行仓库，并于 2026-10-01 授权公开安装包、签名更新清单及默认更新源接入；该范围无需重复征求发布授权。正式安装包和更新文件使用同一仓库的 Releases 发布；当前没有已发布的 Release 或 appcast，不应把源码地址填作更新源，也不要把 GitHub token 嵌入客户端。
 
 上传更新 ZIP 和完整签名的 `appcast.xml`；先上传 ZIP，确认匿名 HTTPS 可下载，再更新固定 appcast 地址。签名后不要手动改 XML。需要保留历史版本时，在生成前放回上一版 appcast/必要的更新文件，并检查生成差异。
 
