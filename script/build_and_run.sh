@@ -104,6 +104,9 @@ chmod +x "$MACOS_DIR/scrcpy" "$MACOS_DIR/adb"
 
 cp "$ROOT_DIR/Sources/MirrorLinkApp/Resources/Info.plist" "$CONTENTS_DIR/Info.plist"
 cp "$ROOT_DIR/README.md" "$RESOURCES_DIR/README.md"
+for notice in LICENSE NOTICE THIRD_PARTY_NOTICES.md; do
+  cp "$ROOT_DIR/$notice" "$RESOURCES_DIR/$notice"
+done
 
 echo "==> 嵌入 Sparkle 安全更新组件"
 SPARKLE_ROOT="$SCRATCH_ARM/artifacts/sparkle/Sparkle"
@@ -150,6 +153,14 @@ if [[ "$VERIFY" == "1" ]]; then
   test -x "$MACOS_DIR/adb"
   test -f "$RESOURCES_DIR/scrcpy-server"
   test -s "$RESOURCES_DIR/AppIcon.icns"
+  for notice in LICENSE NOTICE THIRD_PARTY_NOTICES.md; do
+    test -s "$RESOURCES_DIR/$notice"
+    cmp "$ROOT_DIR/$notice" "$RESOURCES_DIR/$notice"
+  done
+  test -s "$RESOURCES_DIR/NOTICE-scrcpy.txt"
+  test -s "$RESOURCES_DIR/NOTICE-Sparkle.txt"
+  cmp "$ARM_TOOLS/LICENSE" "$RESOURCES_DIR/NOTICE-scrcpy.txt"
+  cmp "$SPARKLE_ROOT/LICENSE" "$RESOURCES_DIR/NOTICE-Sparkle.txt"
   for architecture in arm64 x86_64; do
     lipo -verify_arch "$architecture" "$CONTENTS_DIR/Frameworks/Sparkle.framework/Versions/B/Sparkle"
   done

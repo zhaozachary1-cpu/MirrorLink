@@ -1,0 +1,14 @@
+MirrorLink (镜连)
+Copyright 2026 MirrorLink contributors
+
+MirrorLink's original code and documentation are licensed under the
+Apache License, Version 2.0. See LICENSE for the full license text.
+
+Third-party components retain their own copyrights and licenses; the
+project license does not relicense those components. MirrorLink uses
+scrcpy and Android Debug Bridge for Android screen mirroring and Sparkle
+for application updates. See THIRD_PARTY_NOTICES.md and the corresponding
+upstream license files for component-specific notices and review status.
+
+MirrorLink is an independent project. Mentioning upstream projects does
+not imply their endorsement or affiliation.

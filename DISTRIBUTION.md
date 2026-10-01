@@ -44,6 +44,6 @@ spctl -a -vv --type execute "$HOME/Library/Application Support/MirrorLink/Releas
 
 ## 许可证
 
-发行包包含 `NOTICE-scrcpy.txt`，对应内置 scrcpy 的 Apache License 2.0。请在公开分发前一并保留该许可证和其他第三方组件的声明。
+MirrorLink 自有代码和文档采用 [Apache License 2.0](LICENSE)，项目声明见 [NOTICE](NOTICE)。从本次修改开始，构建脚本会在签名前把 `LICENSE`、`NOTICE`、`THIRD_PARTY_NOTICES.md` 放入应用的 `Contents/Resources/`，并继续保留 `NOTICE-scrcpy.txt` 和含外部组件声明的完整 `NOTICE-Sparkle.txt`。`--verify` 会逐字节核对这五份文件是否与构建输入一致。
 
-现有 GitHub 源码仓库已公开，但 MirrorLink 自身尚未添加项目级 `LICENSE`，许可证选择仍待维护者确认。scrcpy 或 Sparkle 的许可证不自动适用于 MirrorLink 自身代码；公开源码也不代表已完成正式发行所需的许可核对、签名或公证。
+第三方组件保留各自许可证，不被项目 Apache-2.0 许可证重新许可。公开二进制发行前仍需补齐精确匹配当前 ADB 的上游许可/NOTICE，并核对 scrcpy 链接的 SDL、FFmpeg、libusb 及传递依赖的实际构建与许可义务，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。源码开源不代表这些事项、Developer ID 签名或 Apple 公证已经完成；本次许可证修改没有重新发布既有 ZIP/DMG 或替换本机应用。

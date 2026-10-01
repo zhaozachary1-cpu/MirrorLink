@@ -19,7 +19,17 @@
 - 直接修改现有仓库可见性，没有新建仓库；仓库 ID 仍为 `1399877323`，主分支仍为 `main`。
 - GitHub 返回 `private=false`、`visibility=public`；不带登录凭据的 API 请求也成功返回相同仓库及公开状态。
 - 公开前检查了全部两次提交中的 53 个去重 Git 文件对象；常见凭据特征只命中更新测试中的示例 URL，经复核不是实际凭据。未发现真实密钥或凭据；这不等于完整安全审计。既有作者姓名、邮箱和提交历史随源码公开，未改写历史。
-- 本次只变更仓库可见性与相关文档，不上传安装包、不生成更新源、不替换本机应用。项目级许可证仍待确认，不以公开状态代替许可证。
+- 此次公开操作只变更仓库可见性与相关文档，不上传安装包、不生成更新源、不替换本机应用。当时项目级许可证待确认；维护者随后已确认采用 Apache-2.0，后续变更见下节，不以公开状态代替许可证。
+
+## 同日补充：确认 Apache-2.0 与随包许可声明
+
+- 维护者确认 MirrorLink 自有代码和文档采用 Apache-2.0；新增根目录 `LICENSE`、`NOTICE`、`THIRD_PARTY_NOTICES.md`，并同步更新 README、发行说明与项目协作约定。第三方组件保留各自许可证。
+- `LICENSE` 与从 Apache 官方获取的标准文本逐字节一致，SHA-256 为 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`；scrcpy 原有包含上游版权信息的许可文件没有被替换。
+- 验证命令：`./script/build_and_run.sh --debug --verify --no-launch --output-dir "$HOME/Library/Application Support/MirrorLink/Builds/License-Verification"`。SwiftPM 可执行产品 `MirrorLink` 的 arm64、x86_64 Debug 构建成功；许可文件在签名前装入应用包。
+- 验证产物为 `~/Library/Application Support/MirrorLink/Builds/License-Verification/MirrorLink-20261001-130729.app`。五份随包许可文件均非空、与构建输入逐字节相同；两个架构的 scrcpy 上游许可文件也一致。暂存包与最终验证包的 `codesign --verify --deep --strict` 均通过，仍仅为 ad-hoc 签名。
+- `git diff --check`、新增文本空白检查、`zsh -n script/build_and_run.sh`、基础逻辑检查、27 项模拟多设备检查与 18 项更新配置检查通过。
+- 额外尝试 `swift test --scratch-path .build-mirrorlink-arm64 --triple arm64-apple-macos13 --filter MirrorLinkAppTests`，因 `unable to resolve module dependency: 'XCTest'` 失败。本机选中的工具链是 Command Line Tools，未安装 `/Applications/Xcode.app`；没有把独立脚本检查视为 XCTest 已通过。双架构构建同时出现 Command Line Tools 搜索路径及 Intel 兼容库警告，构建退出码仍为 0；没有做 Intel Mac 实际运行验收。
+- 本次不变更版本号，不启动或替换本机已安装应用，不重新生成发行 ZIP/DMG，不发布 Release 或更新源。下节旧发行产物的哈希保持原样；本次 Debug 验证不替代原生 UI、真机投屏、正式签名公证或线上更新验收。
 
 ## 发行产物证据
 
@@ -37,6 +47,7 @@
 2. **更新源签名**：以保留域名 `https://updates.example.invalid/mirrorlink/0.3.0/` 进行本地生成测试，没有上传或部署。公钥匹配检查通过后，`generate_appcast` 停在 `SecItemCopyMatching`；系统 SecurityAgent 正在等待钥匙串授权。未绕过授权或导出私钥，已终止本次测试进程。因此不能声称 XML/更新包签名验签或篡改拒绝测试通过。
 3. **原生界面验收**：原生 UI 检查工具返回 `Sky Computer Use native pipe closed before response`。只能确认安装版本、签名和运行进程，不能据此声称三个更新入口的交互已验收。
 4. **线上更新与真机回归**：尚无公开 HTTPS 更新源，也未完成较低版本发现更新、断网重试、投屏时延后、替换重启、版本提升和设置保留的端到端测试。本次没有两台以上真实手机画面验收。
+5. **第三方二进制许可核对**：项目 Apache-2.0 已确认，但当前 ADB 对应的完整上游许可/NOTICE 及 scrcpy 链接库的构建、传递依赖许可义务尚未核对齐全。现状与公开二进制发行前待办见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)，不以新增项目许可证或随包文件校验代替该审查。
 
 ## 本次修正
 

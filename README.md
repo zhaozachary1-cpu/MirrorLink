@@ -32,7 +32,7 @@
 ./script/package_release.sh
 ```
 
-构建脚本会生成 arm64 + x86_64 通用 `.app`，把 ADB、scrcpy、scrcpy-server 及 Sparkle.framework 复制进应用包，对嵌套辅助程序、框架、内置工具和完整应用包依次进行本地 ad-hoc 签名，并通过 macOS `open` 启动应用。`--verify` 会检查包结构、双架构和完整代码签名。应用包中的官方 scrcpy 运行时来源和哈希见 `vendor/scrcpy/` 与构建日志。
+构建脚本会生成 arm64 + x86_64 通用 `.app`，把 ADB、scrcpy、scrcpy-server 及 Sparkle.framework 复制进应用包，对嵌套辅助程序、框架、内置工具和完整应用包依次进行本地 ad-hoc 签名，并通过 macOS `open` 启动应用。`--verify` 会检查包结构、双架构、随包许可声明与完整代码签名。应用包中的官方 scrcpy 运行时来源和哈希见 `vendor/scrcpy/` 与构建日志。仅验证构建且不启动应用时，使用 `./script/build_and_run.sh --debug --verify --no-launch`。
 
 默认构建与发行目录分别为 `~/Library/Application Support/MirrorLink/Builds/` 和 `~/Library/Application Support/MirrorLink/Releases/`。已签名的裸 `.app` 不放在启用文件同步的“文稿”或“桌面”中，避免同步服务反复添加破坏严格签名校验的 Finder 元数据；分享时复制 ZIP/DMG 即可。可用 `--output-dir` 指定其他非同步目录。
 
@@ -54,8 +54,8 @@
 
 脚本运行三组检查、检查远端冲突及常见凭据特征、提交所有允许的文件变化、推送 main 并核对远端 SHA；不强制推送，不发布 Release。新增文件仍需人工确认是否包含业务敏感信息，自动扫描不是完整的数据安全审计。安装包、构建缓存、临时日志和密钥不纳入 Git；正式安装包应通过单独的发行流程上传。
 
-## 许可证状态
+## 许可证
 
-源码已公开，MirrorLink 自身的项目级开源许可证尚待维护者确认，目前根目录没有 `LICENSE`。不能将“可以查看源码”与“已选定开源许可证”混为一谈。
+MirrorLink 自有代码和文档采用 [Apache License 2.0](LICENSE)，项目版权与归属声明见 [NOTICE](NOTICE)。许可证选择已由维护者于 2026-10-01 确认。
 
-第三方组件保留各自许可证：内置 scrcpy 的 Apache License 2.0 文本位于 `vendor/scrcpy/<架构>/LICENSE`，Sparkle 的许可证随依赖提供并由构建脚本复制进应用。第三方许可证不自动覆盖本项目自身代码；正式发行时仍须保留并核对各组件的许可声明。
+第三方组件保留各自的版权与许可证，具体来源、随包声明和待核对事项见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。新构建的应用会携带项目 `LICENSE`、`NOTICE`、第三方清单以及现有 scrcpy、Sparkle 完整许可文本。项目许可证不替代预编译运行时及其传递依赖的发行合规核对，也不替代 Developer ID 签名或 Apple 公证。
