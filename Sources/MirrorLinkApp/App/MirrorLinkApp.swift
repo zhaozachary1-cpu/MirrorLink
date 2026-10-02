@@ -8,10 +8,15 @@ struct MirrorLinkApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var store: MirrorSessionStore
     @StateObject private var updates: AppUpdateStore
+    @StateObject private var wireless: WirelessConnectionStore
+    @Environment(\.openWindow) private var openWindow
 
     init() {
         let sessions = MirrorSessionStore()
         _store = StateObject(wrappedValue: sessions)
+        _wireless = StateObject(wrappedValue: WirelessConnectionStore(paths: sessions.paths) { [weak sessions] device in
+            sessions?.connectAndMirror(device)
+        })
         _updates = StateObject(wrappedValue: AppUpdateStore(
             activeSessionCount: { [weak sessions] in sessions?.runningCount ?? 0 },
             stopSessions: { [weak sessions] in sessions?.stopMirroring() }
@@ -35,6 +40,8 @@ struct MirrorLinkApp: App {
                 .disabled(!updates.canCheckForUpdates)
             }
             CommandMenu("投屏") {
+                Button("无线连接…") { openWindow(id: "wireless") }
+                    .keyboardShortcut("w", modifiers: [.command, .shift])
                 Button("刷新设备") { store.refresh() }
                     .keyboardShortcut("r", modifiers: [.command])
 
@@ -49,6 +56,11 @@ struct MirrorLinkApp: App {
                     .disabled(!store.isMirroring)
             }
         }
+
+        Window("无线连接", id: "wireless") {
+            WirelessConnectionView(store: wireless)
+        }
+        .defaultSize(width: 640, height: 720)
 
         Settings {
             SettingsView(paths: store.paths, updates: updates)

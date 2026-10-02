@@ -26,17 +26,23 @@ struct ADBService: Sendable {
 
             if result.succeeded {
                 let devices = ADBDeviceParser.parse(result.stdout, adbSocket: socket)
-                for device in devices {
-                    if let existing = allDevices.firstIndex(where: { $0.serial == device.serial }) {
-                        if stateRank(device.state) < stateRank(allDevices[existing].state) {
-                            allDevices[existing] = device
-                        }
+                for var device in devices {
+                    if device.isWireless && device.state == .ready {
+                        device.hardwareSerial = ADBDeviceIdentity.hardwareSerial(from: ProcessRunner.run(
+                            executablePath: paths.adb.path,
+                            arguments: ["-s", device.serial, "shell", "getprop", "ro.serialno"],
+                            environmentOverrides: overrides,
+                            timeout: 2
+                        ))
+                    }
+                    if let existing = allDevices.firstIndex(where: { $0.id == device.id }) {
+                        allDevices[existing] = ADBDeviceIdentity.preferred(allDevices[existing], device)
                     } else {
                         allDevices.append(device)
                     }
                 }
             } else {
-                let error = result.timedOut ? "扫描超时，请重插 USB 后刷新。" : result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+                let error = result.timedOut ? "扫描超时，请检查 USB / Wi-Fi 连接后刷新。" : result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
                 // An absent optional 5038 daemon is normal. Never hide a primary-daemon failure.
                 if !error.isEmpty && (socket == nil || !error.contains("cannot connect")) {
                     diagnostics.append("\(socket == nil ? "ADB 5037" : "ADB 5038"): \(error)")

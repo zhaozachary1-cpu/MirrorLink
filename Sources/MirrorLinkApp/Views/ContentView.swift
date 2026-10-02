@@ -4,6 +4,7 @@ import Combine
 struct ContentView: View {
     @ObservedObject var store: MirrorSessionStore
     @ObservedObject var updates: AppUpdateStore
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         NavigationSplitView {
@@ -13,6 +14,13 @@ struct ContentView: View {
             DetailView(store: store)
         }
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { openWindow(id: "wireless") } label: {
+                    Label("无线连接", systemImage: "wifi")
+                }
+                .help("配对或连接同一 Wi-Fi 下的 Android 手机")
+                .disabled(!store.toolchainAvailable)
+            }
             ToolbarItem(placement: .automatic) {
                 Button { updates.checkForUpdates() } label: {
                     Label("检查更新", systemImage: "arrow.down.circle")

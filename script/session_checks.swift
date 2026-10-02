@@ -260,5 +260,58 @@ private final class SessionChecks {
         try await refresh(badStore)
         badStore.startMirroring()
         try check(badStore.sessionState(for: a).isFailure && !badStore.isMirroring && badStore.canStart, "Process.run failure leaves no phantom active session")
+
+        let mixedSource = SnapshotSource()
+        let mixedStore = makeStore(mixedSource)
+        let wired = device("WIRELESS-HARDWARE")
+        var wifi = AndroidDevice(serial: "192.168.1.8:39847", model: "Test_Phone", product: "mock", transport: "Wi-Fi", state: .ready, adbSocket: nil)
+        wifi.hardwareSerial = wired.serial
+        mixedSource.set([wired])
+        try await refresh(mixedStore)
+        mixedStore.startMirroring()
+        try await wait("wired frame") { mixedStore.sessionState(for: wired) == .mirroring }
+        mixedSource.set([wifi])
+        mixedStore.connectAndMirror(wifi)
+        try await refresh(mixedStore)
+        try check(mixedStore.runningCount == 1 && launches(wifi.serial).isEmpty, "USB plus Wi-Fi same hardware never launches duplicate session")
+        try check(mixedStore.displayedDevices.first?.transport == "USB", "existing process stays visibly pinned to its USB route")
+        mixedStore.stopMirroring(for: wifi.id)
+        try await wait("stop old route") { !mixedStore.isMirroring }
+        mixedStore.connectAndMirror(wifi)
+        try await wait("Wi-Fi frame") { mixedStore.sessionState(for: wifi) == .mirroring }
+        try check(launches(wifi.serial).count == 1 && mixedStore.displayedDevices.first?.isWireless == true, "stop/restart switches to verified Wi-Fi transport")
+        let wiredPeer = device("WIRED-PEER", socket: "tcp:127.0.0.1:5038")
+        mixedSource.set([wifi, wiredPeer])
+        try await refresh(mixedStore)
+        mixedStore.startMirroring(for: wiredPeer.id)
+        try await wait("mixed transports") { mixedStore.sessionState(for: wiredPeer) == .mirroring }
+        try check(mixedStore.runningCount == 2, "USB and wireless phones mirror independently")
+        try write("fail", serial: wifi.serial, suffix: "command")
+        try await wait("Wi-Fi lost") { mixedStore.sessionState(for: wifi).isFailure }
+        try check(mixedStore.isMirroring(for: wiredPeer.id) && mixedStore.logLines.contains { $0.contains("端口变化") }, "wireless loss gives reconnect guidance without stopping USB peer")
+
+        let identitySource = SnapshotSource()
+        let identityStore = makeStore(identitySource)
+        var lateIdentity = AndroidDevice(serial: "192.168.1.10:39848", model: "Test_Phone", product: "mock", transport: "Wi-Fi", state: .ready, adbSocket: nil)
+        identitySource.set([lateIdentity])
+        try await refresh(identityStore)
+        identityStore.startMirroring()
+        let originalID = lateIdentity.id
+        try await wait("unresolved Wi-Fi identity starts") { identityStore.sessionStates[originalID] == .mirroring }
+        lateIdentity.hardwareSerial = "LATE-HARDWARE"
+        identitySource.set([lateIdentity, device("LATE-HARDWARE")])
+        try await refresh(identityStore)
+        identityStore.connectAndMirror(lateIdentity)
+        try check(identityStore.devices.count == 1 && identityStore.devices[0].id == originalID && identityStore.runningCount == 1 && launches(lateIdentity.serial).count == 1, "late hardware identity preserves selection and running process key")
+        var unavailableIdentity = lateIdentity
+        unavailableIdentity.hardwareSerial = nil
+        identitySource.set([unavailableIdentity])
+        try await refresh(identityStore)
+        try check(identityStore.devices[0].id == originalID && identityStore.devices[0].hardwareSerial == "LATE-HARDWARE" && identityStore.selectedDeviceIDs.contains(originalID), "transient getprop failure does not lose learned hardware identity")
+        identitySource.set([])
+        try await refresh(identityStore)
+        identitySource.set([device("LATE-HARDWARE")])
+        try await refresh(identityStore)
+        try check(identityStore.devices[0].id == originalID && !identityStore.canStart(for: originalID), "USB rediscovery after Wi-Fi loss retains live session ownership")
     }
 }

@@ -13,7 +13,8 @@
 ## 验证与分发边界
 
 - 原生 SwiftUI / SwiftPM、最低 macOS 13，保留现有手机到显示器图标及多设备独立投屏。
-- 验证入口：`script/run_core_checks.sh`、`script/run_session_checks.sh`、`script/run_update_checks.sh`、`script/build_and_run.sh --verify --no-launch`。
+- 验证入口：`script/run_core_checks.sh`、`script/run_session_checks.sh`、`script/run_wireless_checks.sh`、`script/run_update_checks.sh`、`script/build_and_run.sh --verify --no-launch`。
+- 无线连接面向 Android 11+ 的无线调试配对；保留配对码的临时性，不在进程参数、日志或设置中保存。不得自动开启旧式 TCP/5555、修改手机安全设置或将同一 Wi-Fi 当成授权。模拟 ADB 检查不等于真实无线画面验收，记录见 `WIRELESS-QA.md`。
 - 会话脚本使用模拟子进程；不能声称已完成多台真机画面验收。启动进程也不能替代原生 UI 验收。
 - 更新采用锁定版本的 Sparkle。公钥可以入库，私钥仅存钥匙串账户 `com.mirrorlink.desktop.updates`，绝不导出入库。没有公开 HTTPS 更新源时，诚实显示“尚未配置”。
 - Developer ID、公证、完整性校验是三种不同证据。不能将 ad-hoc 当成正式签名，不能绕过 Gatekeeper 或全局移除 quarantine。

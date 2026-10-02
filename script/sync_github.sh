@@ -13,6 +13,7 @@ BRANCH="$(git symbolic-ref --short HEAD)"
 [[ "$BRANCH" == main ]] || { print -u2 '请先人工检查分支；此脚本仅同步 main，不自动合并/改写历史'; exit 2; }
 ./script/run_core_checks.sh
 ./script/run_session_checks.sh
+./script/run_wireless_checks.sh
 ./script/run_update_checks.sh
 git fetch origin
 if git rev-parse --verify origin/main >/dev/null 2>&1; then

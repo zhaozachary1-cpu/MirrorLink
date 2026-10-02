@@ -52,7 +52,7 @@ private struct HeaderView: View {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                 Text("把多台 Android 手机画面同时投到 Mac 上")
                     .foregroundStyle(.secondary)
-                Text("连接手机 → 允许 USB 调试 → 勾选设备 → 开始投屏")
+                Text("USB 或同一 Wi-Fi 连接 → 手机授权 → 多设备独立投屏")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
@@ -146,6 +146,10 @@ private struct DeviceSessionRow: View {
     private var connection: AndroidDevice? { store.connectedDevice(for: device.id) }
 
     private var guidance: String? {
+        if device.isWireless {
+            guard let connection else { return "无线连接已断开。请确认同一 Wi-Fi 和无线调试，点击“无线连接”填写手机当前的连接端口。" }
+            return connection.state == .ready ? nil : "无线设备尚未就绪。请检查无线调试授权与当前连接端口，必要时重新配对。"
+        }
         guard let connection else {
             return "设备已断开。请检查 USB 连接，重新连接后可再次开始投屏。"
         }
@@ -171,7 +175,7 @@ private struct DeviceSessionRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(device.displayName)
                         .font(.callout.weight(.medium))
-                    Text(device.serial)
+                    Text("\(device.transport) · \(device.serial)")
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
@@ -250,6 +254,7 @@ private struct StatusCard: View {
 
 private struct EmptySelectionCard: View {
     @ObservedObject var store: MirrorSessionStore
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(spacing: 12) {
@@ -262,6 +267,9 @@ private struct EmptySelectionCard: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+            Button { openWindow(id: "wireless") } label: {
+                Label("无线连接手机", systemImage: "wifi")
+            }
             if !store.readyDevices.isEmpty {
                 Button("全选已连接设备") { store.selectAllReadyDevices() }
                     .buttonStyle(.borderedProminent)
@@ -292,7 +300,7 @@ private struct LogCard: View {
         )) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("用于定位 USB、ADB 或 scrcpy 启动问题；日志会标注对应手机。")
+                    Text("用于定位 USB、Wi-Fi、ADB 或 scrcpy 启动问题；日志会标注对应手机。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()

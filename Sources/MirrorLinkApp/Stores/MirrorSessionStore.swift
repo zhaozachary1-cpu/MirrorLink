@@ -22,6 +22,7 @@ final class MirrorSessionStore: ObservableObject {
     private let snapshotProvider: (ToolPaths) -> ADBSnapshot
     private var shuttingDown = false
     private var hasResolvedInitialSelection = false
+    private var refreshRequested = false
 
     init(
         paths: ToolPaths? = ToolPaths.discover(),
@@ -47,7 +48,8 @@ final class MirrorSessionStore: ObservableObject {
     var displayedDevices: [AndroidDevice] {
         var visible = sessionDevices
         for device in devices where selectedDeviceIDs.contains(device.id) || visible[device.id] != nil {
-            visible[device.id] = device
+            // A live process remains pinned to the route with which it started.
+            if runningSessions[device.id] == nil { visible[device.id] = device }
         }
         return visible.values.sorted {
             $0.logLabel.localizedStandardCompare($1.logLabel) == .orderedAscending
@@ -135,7 +137,11 @@ final class MirrorSessionStore: ObservableObject {
     }
 
     func refresh(silent: Bool = false) {
-        guard !isRefreshing, !shuttingDown else { return }
+        guard !shuttingDown else { return }
+        if isRefreshing {
+            if !silent { refreshRequested = true }
+            return
+        }
         guard let paths, paths.isUsable else {
             toolchainAvailable = false
             if !silent { appendLog("刷新失败：应用内置工具不存在。") }
@@ -143,7 +149,7 @@ final class MirrorSessionStore: ObservableObject {
         }
 
         isRefreshing = true
-        if !silent { appendLog("正在扫描 USB 设备…") }
+        if !silent { appendLog("正在扫描 USB / Wi-Fi 设备…") }
         let provider = snapshotProvider
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let snapshot = provider(paths)
@@ -152,29 +158,88 @@ final class MirrorSessionStore: ObservableObject {
                 self.isRefreshing = false
                 guard !self.shuttingDown else { return }
 
-                let changed = self.devices != snapshot.devices
-                self.devices = snapshot.devices
+                let resolvedDevices = self.reconcileDeviceIdentities(snapshot.devices)
+                let changed = self.devices != resolvedDevices
+                self.devices = resolvedDevices
                 self.lastRefresh = Date()
                 self.toolchainAvailable = paths.isUsable
                 for diagnostic in snapshot.diagnostics { self.appendLog(diagnostic) }
 
                 // Remember explicit choices for this app run, including across
                 // reconnects. A refresh never undoes Clear Selection or starts a phone.
-                if !self.hasResolvedInitialSelection && !snapshot.devices.isEmpty {
+                if !self.hasResolvedInitialSelection && !resolvedDevices.isEmpty {
                     self.hasResolvedInitialSelection = true
-                    let ready = snapshot.devices.filter { $0.state == .ready }
+                    let ready = resolvedDevices.filter { $0.state == .ready }
                     if ready.count == 1 {
                         self.selectedDeviceIDs = [ready[0].id]
-                    } else if snapshot.devices.count == 1 {
-                        self.selectedDeviceIDs = [snapshot.devices[0].id]
+                    } else if resolvedDevices.count == 1 {
+                        self.selectedDeviceIDs = [resolvedDevices[0].id]
                     }
                 }
 
                 if changed || !silent {
-                    self.appendLog(snapshot.devices.isEmpty ? "没有发现 USB 设备。" : "发现 \(snapshot.devices.count) 个 USB 设备。")
+                    self.appendLog(resolvedDevices.isEmpty ? "没有发现已连接设备。可使用 USB 或“无线连接”。" : "发现 \(resolvedDevices.count) 台设备（USB / Wi-Fi）。")
+                }
+                if self.refreshRequested {
+                    self.refreshRequested = false
+                    self.refresh()
                 }
             }
         }
+    }
+
+    /// Only called after the wireless service verifies the exact target as ready.
+    func connectAndMirror(_ device: AndroidDevice) {
+        guard !shuttingDown, device.isWireless, device.state == .ready else { return }
+        guard let device = reconcileDeviceIdentities([device]).first else { return }
+        if let index = devices.firstIndex(where: { $0.id == device.id }) {
+            devices[index] = device
+        } else {
+            devices.append(device)
+        }
+        setDeviceSelected(device.id, isSelected: true)
+        if let running = runningSessions[device.id], running.device.serial != device.serial {
+            appendLog("\(device.displayName) 已有投屏窗口，仍使用 \(running.device.transport)。如需切到 Wi-Fi，请先停止该窗口再开始。")
+        } else {
+            startMirroring(for: device.id)
+        }
+        refresh()
+    }
+
+    /// A transient getprop failure must not turn one phone into a second row or
+    /// orphan its running process. Learn identity without changing process keys.
+    private func reconcileDeviceIdentities(_ incoming: [AndroidDevice]) -> [AndroidDevice] {
+        func physicalID(_ device: AndroidDevice) -> String? {
+            device.hardwareSerial ?? (device.isWireless ? nil : device.serial)
+        }
+        var known = sessionDevices.values.sorted {
+            (runningSessions[$0.id] != nil ? 0 : 1) < (runningSessions[$1.id] != nil ? 0 : 1)
+        } + devices
+        for index in known.indices {
+            guard physicalID(known[index]) == nil,
+                  let learned = incoming.first(where: { $0.serial == known[index].serial && $0.hardwareSerial != nil }) else { continue }
+            let stableID = known[index].id
+            known[index].sessionIdentity = stableID
+            known[index].hardwareSerial = learned.hardwareSerial
+            if sessionDevices[stableID] != nil { sessionDevices[stableID] = known[index] }
+        }
+
+        var resolved: [AndroidDevice] = []
+        for var device in incoming {
+            let physical = physicalID(device)
+            let match = known.first(where: { candidate in
+                if let physical { return physicalID(candidate) == physical }
+                return candidate.serial == device.serial
+            })
+            if let match {
+                device.sessionIdentity = match.id
+                if device.hardwareSerial == nil { device.hardwareSerial = match.hardwareSerial }
+            }
+            if let index = resolved.firstIndex(where: { $0.id == device.id }) {
+                resolved[index] = ADBDeviceIdentity.preferred(resolved[index], device)
+            } else { resolved.append(device) }
+        }
+        return resolved
     }
 
     /// Starts every selected, ready device that is not already running.
@@ -225,7 +290,7 @@ final class MirrorSessionStore: ObservableObject {
             return
         }
         guard device.state == .ready else {
-            failGlobally(device.state == .unauthorized ? "请解锁手机并允许 USB 调试。" : "设备当前不可用：\(device.state.title)。")
+            failGlobally(device.state == .unauthorized ? "请解锁手机并允许调试；无线设备请确认配对授权。" : "设备当前不可用：\(device.state.title)。")
             return
         }
         guard !isMirroring(for: device.id) else {
@@ -336,7 +401,9 @@ final class MirrorSessionStore: ObservableObject {
                       let current = self.runningSessions[device.id],
                       current.token == token,
                       self.sessionStates[device.id] == .starting else { return }
-                self.failDevice(device.id, message: "启动超时：尚未收到手机画面。请解锁手机、确认 USB 调试授权后重试。")
+                self.failDevice(device.id, message: device.isWireless
+                    ? "启动超时：尚未收到手机画面。请检查 Wi-Fi 和无线调试；如端口变化，请重新无线连接。"
+                    : "启动超时：尚未收到手机画面。请解锁手机、确认 USB 调试授权后重试。")
                 self.terminateOwnedProcess(deviceID: device.id, token: token)
             }
         } catch {
@@ -400,7 +467,8 @@ final class MirrorSessionStore: ObservableObject {
             sessionStates[deviceID] = .idle
             appendLog("[\(session.device.logLabel)] 投屏窗口已关闭。")
         } else {
-            failDevice(deviceID, message: "连接中断或投屏组件退出（状态码 \(process.terminationStatus)）。请检查 USB 连接后重试。")
+            let advice = session.device.isWireless ? "请检查 Wi-Fi 和手机无线调试，端口变化后需重新无线连接。" : "请检查 USB 连接后重试。"
+            failDevice(deviceID, message: "连接中断或投屏组件退出（状态码 \(process.terminationStatus)）。\(advice)")
         }
     }
 

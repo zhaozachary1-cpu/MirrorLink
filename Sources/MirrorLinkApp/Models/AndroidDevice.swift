@@ -32,12 +32,18 @@ struct AndroidDevice: Identifiable, Hashable, Sendable {
     let transport: String
     let state: DeviceConnectionState
     let adbSocket: String?
+    var hardwareSerial: String? = nil
+    /// Keeps an existing session/selection key stable if hardware identity is
+    /// learned after a Wi-Fi route first appears. Never used as an ADB target.
+    var sessionIdentity: String? = nil
 
     var id: String {
         // The ADB daemon is a route, not a second phone. Keep selection and
         // process ownership stable when discovery finds another route.
-        serial
+        sessionIdentity ?? hardwareSerial ?? serial
     }
+
+    var isWireless: Bool { transport == "Wi-Fi" }
 
     var displayName: String {
         let cleanedModel = model?.replacingOccurrences(of: "_", with: " ")

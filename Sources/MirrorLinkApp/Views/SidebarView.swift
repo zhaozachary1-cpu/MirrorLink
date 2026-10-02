@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SidebarView: View {
     @ObservedObject var store: MirrorSessionStore
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         List {
@@ -10,7 +11,7 @@ struct SidebarView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Label(store.isRefreshing ? "正在扫描设备…" : "还没有发现设备", systemImage: "iphone.slash")
                             .foregroundStyle(.secondary)
-                        Text("使用支持数据传输的 USB 线连接 Android 手机，设备将自动显示。")
+                        Text("用 USB 数据线连接，或点击“无线连接”配对同一 Wi-Fi 下的 Android 手机。")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -43,8 +44,11 @@ struct SidebarView: View {
             }
 
             Section("连接提示") {
-                Label("打开 USB 调试", systemImage: "ladybug.fill")
-                Label("解锁并允许此电脑", systemImage: "checkmark.shield")
+                Button { openWindow(id: "wireless") } label: {
+                    Label("无线连接手机…", systemImage: "wifi")
+                }
+                .buttonStyle(.borderless)
+                Label("USB 连接需允许调试", systemImage: "checkmark.shield")
                 Label("可同时勾选多台手机", systemImage: "square.stack.3d.up")
             }
             .font(.caption)
@@ -88,7 +92,7 @@ private struct DeviceRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(device.displayName)
                         .lineLimit(1)
-                    Text("\(device.state.title) · \(device.serial)")
+                    Text("\(device.transport) · \(device.state.title) · \(device.serial)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)

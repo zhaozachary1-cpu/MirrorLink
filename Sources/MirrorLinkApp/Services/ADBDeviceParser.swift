@@ -10,10 +10,10 @@ enum ADBDeviceParser {
                       let state = DeviceConnectionState(rawValue: String(values[1])) else { return nil }
 
                 let serial = String(values[0])
-                // Unauthorized USB rows often omit all metadata. TCP and emulators are
-                // intentionally excluded from the USB-only first release.
-                guard !serial.contains(":"), !serial.hasPrefix("emulator-"),
-                      !serial.contains("_adb-tls-") else { return nil }
+                guard !serial.hasPrefix("emulator-") else { return nil }
+                let isWireless = serial.contains(":") || serial.contains("._adb-tls-connect._tcp")
+                // Pairing services are discovery targets, never video transports.
+                guard !serial.contains("_adb-tls-pairing") else { return nil }
                 var metadata: [String: String] = [:]
                 for token in values.dropFirst(2) {
                     let pair = token.split(separator: ":", maxSplits: 1).map(String.init)
@@ -24,7 +24,7 @@ enum ADBDeviceParser {
                     serial: serial,
                     model: metadata["model"],
                     product: metadata["product"],
-                    transport: "USB",
+                    transport: isWireless ? "Wi-Fi" : "USB",
                     state: state,
                     adbSocket: adbSocket
                 )

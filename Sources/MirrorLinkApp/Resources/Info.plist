@@ -25,9 +25,9 @@
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.3.1</string>
+	<string>0.4.0</string>
 	<key>CFBundleVersion</key>
-	<string>4</string>
+	<string>5</string>
 	<key>SUFeedURL</key>
 	<string>https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
@@ -48,6 +48,13 @@
 	<string>13.0</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>镜连需要发现并连接同一 Wi-Fi 下、已由你授权无线调试的 Android 手机以进行投屏。</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_adb-tls-pairing._tcp</string>
+		<string>_adb-tls-connect._tcp</string>
+	</array>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 MirrorLink</string>
 	<key>NSPrincipalClass</key>

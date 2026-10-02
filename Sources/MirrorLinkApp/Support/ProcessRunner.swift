@@ -15,6 +15,7 @@ enum ProcessRunner {
         executablePath: String,
         arguments: [String],
         environmentOverrides: [String: String] = [:],
+        standardInput: String? = nil,
         timeout: TimeInterval = 10
     ) -> ProcessResult {
         let process = Process()
@@ -24,6 +25,14 @@ enum ProcessRunner {
         process.arguments = arguments
         process.standardOutput = outputPipe
         process.standardError = errorPipe
+        let inputPipe = standardInput == nil ? nil : Pipe()
+        if let inputPipe {
+            process.standardInput = inputPipe
+            // A child may reject input and exit early. Do not let EPIPE kill the app.
+            _ = fcntl(inputPipe.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)
+        } else {
+            process.standardInput = FileHandle.nullDevice
+        }
 
         var environment = ProcessInfo.processInfo.environment
         for (key, value) in environmentOverrides {
@@ -35,6 +44,12 @@ enum ProcessRunner {
             try process.run()
         } catch {
             return ProcessResult(status: -1, stdout: "", stderr: error.localizedDescription, timedOut: false)
+        }
+
+        if let inputPipe, let standardInput {
+            try? inputPipe.fileHandleForReading.close()
+            try? inputPipe.fileHandleForWriting.write(contentsOf: Data(standardInput.utf8))
+            try? inputPipe.fileHandleForWriting.close()
         }
 
         // Drain both pipes while the child is running: a full pipe must not block

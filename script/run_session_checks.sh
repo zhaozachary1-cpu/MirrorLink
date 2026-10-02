@@ -9,6 +9,7 @@ swiftc -swift-version 5 \
   "$ROOT_DIR/Sources/MirrorLinkApp/Models/AndroidDevice.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Models/MirrorSessionState.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Services/ADBDeviceParser.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Services/ADBDeviceIdentity.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Services/ADBService.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Services/ToolPaths.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Services/ScrcpyCommand.swift" \

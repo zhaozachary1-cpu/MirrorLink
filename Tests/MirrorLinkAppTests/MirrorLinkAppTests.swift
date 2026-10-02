@@ -2,6 +2,37 @@ import XCTest
 @testable import MirrorLinkApp
 
 final class MirrorLinkAppTests: XCTestCase {
+    func testWirelessEndpointValidationAndNormalization() throws {
+        XCTAssertEqual(try WirelessEndpoint("192.168.1.8:37123").address, "192.168.1.8:37123")
+        XCTAssertEqual(try WirelessEndpoint("[fd00:0::8]:37123").address, "[fd00::8]:37123")
+        for address in ["127.0.0.1:30", "192.168.01.8:30", "192.168.1.8:0", "host.local:30", "192.168.1.8:30;echo bad"] {
+            XCTAssertThrowsError(try WirelessEndpoint(address))
+        }
+    }
+
+    func testWirelessDiscoverySeparatesPairingAndConnectionPorts() {
+        let services = ADBMDNSParser.parse("""
+        List of discovered mdns services
+        adb-TEST-one _adb-tls-pairing._tcp 192.168.1.8:37123
+        adb-TEST-one _adb-tls-connect._tcp 192.168.1.8:39847
+        """)
+        XCTAssertEqual(services.count, 2)
+        XCTAssertEqual(services.first(where: { $0.kind == .pairing })?.endpoint.port, 37123)
+        XCTAssertEqual(services.first(where: { $0.kind == .connection })?.endpoint.port, 39847)
+    }
+
+    func testScrcpyTargetsWirelessTransportInsteadOfHardwareOrSessionIdentity() {
+        let root = URL(fileURLWithPath: "/tmp/mirrorlink/tools")
+        let paths = ToolPaths(root: root, adb: root.appendingPathComponent("adb"), scrcpy: root.appendingPathComponent("scrcpy"), server: root.appendingPathComponent("scrcpy-server"))
+        var device = AndroidDevice(serial: "192.168.1.8:39847", model: "Phone", product: nil, transport: "Wi-Fi", state: .ready, adbSocket: nil)
+        device.hardwareSerial = "HARDWARE"
+        device.sessionIdentity = "EXISTING-SESSION"
+        let command = ScrcpyCommand(paths: paths)
+        XCTAssertEqual(Array(command.arguments(for: device).prefix(2)), ["-s", device.serial])
+        XCTAssertEqual(command.environment(for: device)["ANDROID_SERIAL"], device.serial)
+        XCTAssertEqual(device.id, "EXISTING-SESSION")
+    }
+
     func testParsesReadyUnauthorizedAndOfflineDevices() {
         let output = """
         List of devices attached

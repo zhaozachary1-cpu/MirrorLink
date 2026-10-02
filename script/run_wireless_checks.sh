@@ -1,0 +1,18 @@
+#!/bin/zsh
+set -euo pipefail
+ROOT_DIR="${0:A:h:h}"
+CHECK_DIR="$ROOT_DIR/.build/mirrorlink-wireless-checks"
+mkdir -p "$CHECK_DIR"
+swiftc -swift-version 5 \
+  "$ROOT_DIR/script/wireless_checks.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Models/AndroidDevice.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Models/WirelessEndpoint.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Models/WirelessService.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Services/ADBDeviceParser.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Services/ADBDeviceIdentity.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Services/ToolPaths.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Services/WirelessADBService.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Support/ProcessRunner.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Stores/WirelessConnectionStore.swift" \
+  -o "$CHECK_DIR/wireless-checks"
+"$CHECK_DIR/wireless-checks"
