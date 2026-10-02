@@ -16,7 +16,7 @@
 
 ## 下载与首次打开
 
-当前发布状态：0.3.1 社区版已完成本地构建与安装包完整性检查，更新签名仍等待发布者的 macOS 钥匙串授权；尚未发布 GitHub Release，也未完成 0.3.0 → 0.3.1 覆盖更新实测。以下为发布后的使用流程，实时验收状态见 [UPDATE-QA.md](UPDATE-QA.md)。
+当前发布状态：0.3.1 社区版已于 2026-10-02 发布至 GitHub Releases，签名更新源已上线。全部六项公开资产已通过匿名下载与哈希核对；更新清单和更新 ZIP 均通过原有公钥验签及篡改拒绝检查。0.3.0 → 0.3.1 的实际应用内覆盖升级仍待验收，不能将下载和验签通过视为安装成功；完整记录见 [UPDATE-QA.md](UPDATE-QA.md)。
 
 安装包统一使用本仓库的 [GitHub Releases](https://github.com/zhaozachary1-cpu/MirrorLink/releases)。下载 `macOS-universal.zip` 或 `.dmg`，将 `MirrorLink.app` 拖入“应用程序”；无需另装 Homebrew、ADB 或 scrcpy。不要把 `update.zip` 当作常规安装包转发。
 

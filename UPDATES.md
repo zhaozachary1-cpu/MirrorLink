@@ -69,6 +69,20 @@ Release 必须明确“免费社区版、无 Apple 公证”和首次打开说�
 - 备份已安装旧版与设置，然后从旧版实际执行发现、下载、确认安装、覆盖、重启、版本核对、设置保留及再次检查无更新。
 - 另行验证断网重试、投屏中的延后安装、陌生 Mac 首次打开、Intel 实际运行；未执行的项目要单独记录，不以脚本或本机进程代替。
 
+可独立复验已下载的发行文件，不需要私钥或钥匙串授权。可信 `Info.plist` 必须来自发布者已有的本地构建，不要使用与待验证下载同时取得的公钥替换信任根。下面的工具使用该构建的公钥、版本与 Build 验证对应发布；实际应用仍由 Sparkle 自行验签。
+
+```zsh
+mkdir -p .build
+swiftc -swift-version 5 script/verify_update_artifacts.swift \
+  -o .build/verify_update_artifacts
+.build/verify_update_artifacts \
+  "/可信本地发行目录/MirrorLink.app/Contents/Info.plist" \
+  "/公开下载目录/appcast.xml" \
+  "/公开下载目录/MirrorLink-0.3.1-update.zip" --self-test
+```
+
+`--self-test` 在内存中对清单、ZIP、签名和尾部做负面测试，不修改原文件。验签成功不能代替旧版应用中的真实安装和重启测试；每次发布都要记录各自结果。
+
 ## 可选公证路线
 
 发布者未来获得 Developer ID 后可执行 [DISTRIBUTION.md](DISTRIBUTION.md) 中的签名与公证命令，再不带 `--community` 生成更新清单。仍沿用现有更新密钥，不因 Apple 签名方式变化而自动轮换 Ed25519 密钥。

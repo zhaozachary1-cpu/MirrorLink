@@ -12,18 +12,21 @@
 - 源码包中的六份固定版本归档与 `vendor/third-party-sources.tsv` 的 SHA-256 一致；两个架构的六项内置运行时资源与上游官方发行包逐字节一致，ADB 与 Google Platform-Tools 37.0.0 归档一致；八份完整许可/来源文件的哈希在构建与封装时验证通过。
 - 独立临时副本的缺少源码包测试被公开发行门禁拒绝；修改临时应用 Info.plist 后严格签名校验失败。原始发行包未改动。
 - `--community --notarize`、`--community --sign` 均以退出码 2 拒绝；不带社区参数的正式更新源流程拒绝 ad-hoc 社区包。修复了 `grep -q` 提前退出引发的 SIGPIPE，以及 zsh 对以 `--` 开头错误文案的选项误解析。
-- `zsh -n` 与 `git diff --check` 通过；尚未更改本机已安装应用或其更新源配置。
+- `zsh -n` 与 `git diff --check` 通过。
+- 发布者在本机确认钥匙串授权后，`generate_appcast` 成功使用原有密钥签署更新 XML 与 ZIP，Sparkle 官方 `sign_update --verify` 验证通过。未导出或轮换私钥。
+- 新增只使用可信本地应用公钥的 `script/verify_update_artifacts.swift`；验证签名后才解析 XML，禁止外部实体与 DTD，核对版本、Build、版本固定的 ZIP URL 和字节数。六项检查通过：清单及 ZIP 验签、URL/长度核对、清单单字节篡改拒绝、ZIP 单字节篡改拒绝、ZIP 签名篡改拒绝、截断的清单签名尾部拒绝。篡改仅发生在内存副本中；这是独立 QA 工具，不替代应用内 Sparkle 安装验收。
+- `v0.3.1` 已于 2026-10-02 08:47:02（Asia/Shanghai；UTC 00:47:02）公开发布并设为 latest，发行源码提交为 `079d594dbec4ac515cfd2676bedc1e81beb06c1e`。草稿上传期间核对了完整六项资产的状态、长度和 GitHub 返回的 SHA-256；没有上传含本机绝对路径的 `RELEASE-MANIFEST.txt`。
+- 使用不含认证头、禁用用户 curl 配置的匿名 HTTPS 请求，从 latest 地址下载 appcast，并从 `v0.3.1` 固定地址下载其余五项资产，全部返回 HTTP 200。公开 `SHA256SUMS.txt` 与本地产物一致，五项资产逐一校验通过；公开下载的清单和 ZIP 再次通过上述六项验签/篡改检查。匿名 GitHub API 确认 latest 是非草稿、非预发布的 `v0.3.1`。
+- 已将本机已安装的 0.3.0 / Build 3 及偏好设置备份到 `~/Library/Application Support/MirrorLink/Backups/Before-0.3.1-update.K6osi7/`；备份应用严格签名校验和偏好 plist 校验通过。确认无 scrcpy 进程后正常终止旧进程，仅将 `MirrorLinkCustomUpdateFeed` 设置为 canonical HTTPS 地址并重新启动旧应用；未手动替换应用，也未修改自动检查选择。旧版与发布版公钥相同。
 
 ### 未完成与明确边界
 
-- 原有公钥比对已通过，`generate_appcast` 在读取钥匙串中的私钥时等待系统授权；进程采样停在 `SecItemCopyMatching`。没有导出私钥、轮换密钥、绕过安全确认，尚不能声称更新 ZIP 或 appcast 已获得 Ed25519 签名。
-- GitHub Releases 当前仍为空；没有公开发行包，也没有上线可用的默认更新源。签名完成后才上传完整资产并验证匿名 HTTPS 下载与签名。
-- 已安装 `/Applications/MirrorLink.app` 仍为 0.3.0 / Build 3；尚未执行备份后的真实下载、安装、重启、版本提升和设置保留验收。没有手动替换旧应用来冒充更新成功。
-- 原生界面工具选择已安装应用时返回超时，未取得可验证的 UI 状态；没有用进程存在代替界面验收。陌生 Mac 的首次安装、Intel 真机、投屏期间延后安装和多台真机画面均未验收。
+- 已安装 `/Applications/MirrorLink.app` 仍为 0.3.0 / Build 3；备份、更新地址配置与旧版重启已完成，但尚未从旧版真实执行发现更新、下载、确认安装、替换重启、版本提升、设置保留和再次检查无更新的完整验收。没有手动替换旧应用来冒充更新成功。
+- 原生界面工具此前选择应用超时；本次正常重启应用及重建工具会话后仍返回 `Sky Computer Use native pipe closed before response`，无法获得更新窗口状态或点击安装。进程存在不等于 UI 验收通过；需用户操作“检查更新…”后补验。断网重试、陌生 Mac 的首次安装、Intel 真机、投屏期间延后安装和多台真机画面均未验收。
 - Command Line Tools 的搜索路径与 Intel 兼容库警告仍出现，但两次构建退出码为 0。此前 XCTest 模块缺失问题本轮未解决，未宣称 XCTest 通过。
 - 完整来源及许可材料已随包整理，不等于全部第三方依赖已经本机重建或外部法律审计。未进行 Apple 公证，也未更改 Gatekeeper、quarantine 或电脑全局安全设置。
 
-发行目录：`~/Library/Application Support/MirrorLink/Releases/MirrorLink-0.3.1-20261001-160931/`。这是待完成更新签名的本地产物，不是已发布版本。
+发行目录：`~/Library/Application Support/MirrorLink/Releases/MirrorLink-0.3.1-20261001-160931/`。公开版本：[v0.3.1 Release](https://github.com/zhaozachary1-cpu/MirrorLink/releases/tag/v0.3.1)；以下哈希已与公开下载文件核对一致。
 
 | 产物 | SHA-256 |
 | --- | --- |
@@ -31,6 +34,8 @@
 | DMG | `8600d1afde111f70cb77ec9d473bd2aee3db01d7546845e953353fd745c4d063` |
 | 更新专用 ZIP | `08c52ca2b71aaf3f19a496c73d8e7c81d882941c0df05066c80869c5456293f2` |
 | 第三方源码包 | `8b209e37168cf8fd3077e5e8f6ec88adc4173cb9621d0d4ef272ce1fd672f951` |
+| 签名 appcast | `4426c0b4c4bcec254f1052b9d5373289857b1842a7144d16a5800f9f7fea9d10` |
+| SHA256SUMS.txt | `1a466d9112d2c7cbb54eb55ed01879f64c2b55412cd25bac6e63a74f71bf0980` |
 
 ## 历史记录：0.3.0
 
