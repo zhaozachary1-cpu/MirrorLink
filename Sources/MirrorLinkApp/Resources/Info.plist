@@ -25,9 +25,9 @@
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.4.0</string>
+	<string>0.4.1</string>
 	<key>CFBundleVersion</key>
-	<string>5</string>
+	<string>6</string>
 	<key>SUFeedURL</key>
 	<string>https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>

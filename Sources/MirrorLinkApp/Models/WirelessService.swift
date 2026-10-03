@@ -10,7 +10,7 @@ struct WirelessService: Identifiable, Hashable, Sendable {
     let kind: WirelessServiceKind
     let endpoint: WirelessEndpoint
 
-    var id: String { "\(kind.rawValue)|\(endpoint.address)" }
+    var id: String { "\(name)|\(kind.rawValue)|\(endpoint.address)" }
     var adbSerial: String { "\(name).\(kind.rawValue)" }
 }
 

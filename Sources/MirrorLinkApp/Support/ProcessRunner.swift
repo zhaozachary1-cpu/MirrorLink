@@ -16,8 +16,12 @@ enum ProcessRunner {
         arguments: [String],
         environmentOverrides: [String: String] = [:],
         standardInput: String? = nil,
-        timeout: TimeInterval = 10
+        timeout: TimeInterval = 10,
+        cancellation: ProcessCancellation? = nil
     ) -> ProcessResult {
+        guard cancellation?.isCancelled != true else {
+            return ProcessResult(status: -999, stdout: "", stderr: "", timedOut: false)
+        }
         let process = Process()
         let outputPipe = Pipe()
         let errorPipe = Pipe()
@@ -66,13 +70,13 @@ enum ProcessRunner {
         }
 
         let deadline = Date().addingTimeInterval(timeout)
-        while process.isRunning && Date() < deadline {
+        while process.isRunning && Date() < deadline && cancellation?.isCancelled != true {
             Thread.sleep(forTimeInterval: 0.05)
         }
 
         var timedOut = false
         if process.isRunning {
-            timedOut = true
+            timedOut = cancellation?.isCancelled != true
             process.terminate()
             let graceDeadline = Date().addingTimeInterval(1)
             while process.isRunning && Date() < graceDeadline {
@@ -85,7 +89,8 @@ enum ProcessRunner {
         _ = readers.wait(timeout: .now() + 2)
         let stdout = String(decoding: output.read(), as: UTF8.self)
         let stderr = String(decoding: errors.read(), as: UTF8.self)
-        return ProcessResult(status: process.terminationStatus, stdout: stdout, stderr: stderr, timedOut: timedOut)
+        return ProcessResult(status: cancellation?.isCancelled == true ? -999 : process.terminationStatus,
+                             stdout: stdout, stderr: stderr, timedOut: timedOut)
     }
 }
 

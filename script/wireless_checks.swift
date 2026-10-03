@@ -82,6 +82,7 @@ struct WirelessChecks {
     static func main() async {
         do {
             try await run()
+            try await WirelessQRChecks.run()
             print("PASS: \(passed) simulated wireless checks (not real Wi-Fi/video acceptance)")
         } catch {
             print("FAIL: \(error)")
@@ -103,7 +104,7 @@ struct WirelessChecks {
         List of discovered mdns services
         phone-one _adb-tls-pairing._tcp 192.168.1.8:37123
         phone-one _adb-tls-connect._tcp. 192.168.1.8:39847
-        same-address _adb-tls-connect._tcp 192.168.1.8:39847
+        phone-one _adb-tls-connect._tcp. 192.168.1.8:39847
         v6 _adb-tls-connect._tcp [fd00::8]:39847
         legacy _adb._tcp 192.168.1.8:5555
         malicious _adb-tls-connect._tcp --help:12

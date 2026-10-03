@@ -29,6 +29,7 @@ struct MirrorLinkApp: App {
                 .onAppear {
                     appDelegate.store = store
                     appDelegate.updates = updates
+                    appDelegate.wireless = wireless
                 }
         }
         .defaultSize(width: 960, height: 640)
@@ -72,6 +73,7 @@ struct MirrorLinkApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var store: MirrorSessionStore?
     weak var updates: AppUpdateStore?
+    weak var wireless: WirelessConnectionStore?
     private var terminationSignal: DispatchSourceSignal?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -85,6 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        wireless?.close()
         store?.shutdown()
     }
 
