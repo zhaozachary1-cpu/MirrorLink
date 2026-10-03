@@ -80,6 +80,16 @@ https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest/download/appcast.
 
 发行与分享细节见 [`DISTRIBUTION.md`](DISTRIBUTION.md)，内置运行时校验值见 [`vendor/runtime-manifest.sha256`](vendor/runtime-manifest.sha256)。
 
+## 应用图标
+
+图标采用纯蓝底与白色横屏、竖屏轮廓，以两个屏幕的叠放表达手机投屏；不使用文字、屏幕内容、信号线或渐变。原生矢量绘制源为 `script/generate_icon.swift`，构建时生成 1024px PNG，再封装包含 16–1024px 各标准尺寸的 `AppIcon.icns`，无需外部图片或图标字体。
+
+```zsh
+swift script/generate_icon.swift --output outputs/branding/MirrorLinkIcon-minimal.png
+```
+
+图标必须在应用签名前生成。不要直接覆盖已签名应用包内的图标；需重新构建并验证完整签名，替换本机应用前保留旧版备份。
+
 ## GitHub 同步
 
 源码仓库：[zhaozachary1-cpu/MirrorLink](https://github.com/zhaozachary1-cpu/MirrorLink)（公开）。包含应用源码、测试、图标生成器、构建/发行/更新脚本、文档、锁定依赖信息和 vendored scrcpy 运行时。后续源码迭代与经确认的正式发行复用此仓库，不另建发行仓库。
