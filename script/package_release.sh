@@ -2,10 +2,9 @@
 set -euo pipefail
 
 ROOT_DIR="${0:A:h:h}"
-# File Provider may repeatedly attach disallowed FinderInfo to .app bundles.
-# ZIP/DMG can be copied into a synced project after packaging; the signed app
-# itself lives in Application Support by default.
-RELEASE_ROOT="${MIRRORLINK_RELEASE_DIR:-$HOME/Library/Application Support/MirrorLink/Releases}"
+# Keep local release artifacts with this checkout, not in a separate home path.
+# The checkout must stay outside File Provider-synced Documents/Desktop folders.
+RELEASE_ROOT="${MIRRORLINK_RELEASE_DIR:-$ROOT_DIR/artifacts/Releases}"
 SIGN_IDENTITY=""
 NOTARIZE=0
 COMMUNITY=0
@@ -79,6 +78,10 @@ while (( $# > 0 )); do
   esac
 done
 
+# Preserve the caller's interpretation of a relative --output-dir/environment.
+RELEASE_ROOT="${RELEASE_ROOT:A}"
+cd "$ROOT_DIR"
+
 if [[ "$COMMUNITY" == 1 && ( -n "$SIGN_IDENTITY" || "$NOTARIZE" == 1 ) ]]; then
   print -u2 -- '--community 不能与 Developer ID 或公证模式混用。'
   exit 2
@@ -126,9 +129,11 @@ if [[ "$COMMUNITY" == 1 || -n "$SIGN_IDENTITY" ]]; then
 fi
 
 BUILD_ID="$(date -u +%Y%m%d-%H%M%S)"
-TEMP_ROOT="$(mktemp -d /private/tmp/mirrorlink-release.XXXXXX)"
+TEMP_BASE="$ROOT_DIR/work/tmp"
+mkdir -p "$TEMP_BASE"
+TEMP_ROOT="$(mktemp -d "$TEMP_BASE/mirrorlink-release.XXXXXX")"
 cleanup_release_temp() {
-  if [[ -n "${TEMP_ROOT:-}" && -d "$TEMP_ROOT" && "$TEMP_ROOT" == /private/tmp/mirrorlink-release.* ]]; then
+  if [[ -n "${TEMP_ROOT:-}" && -d "$TEMP_ROOT" && ! -L "$TEMP_ROOT" && "$TEMP_ROOT" == "$TEMP_BASE"/mirrorlink-release.* ]]; then
     rm -rf -- "$TEMP_ROOT"
   fi
 }

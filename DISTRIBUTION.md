@@ -33,7 +33,7 @@ Apple 官方说明：[在 Mac 上安全地打开 App](https://support.apple.com/
 - `SHA256SUMS.txt`：可公开的文件校验清单。生成 appcast 后脚本追加其校验值。
 - `RELEASE-MANIFEST.txt`：含本机路径的本地构建记录，**不要原样上传**。
 
-默认目录为 `~/Library/Application Support/MirrorLink/Releases/`。裸 `.app` 不放入 Documents/Desktop 的同步目录，以免同步服务附加 FinderInfo 破坏封装；可复制 ZIP/DMG 分享。只清理本次暂存副本的 FinderInfo，不删除下载隔离或其他安全属性。
+默认目录为项目内的 `artifacts/Releases/`，临时打包文件位于 `work/tmp/` 并在脚本退出时清理。使用 `--output-dir` 或 `MIRRORLINK_RELEASE_DIR` 可指定其他位置。项目及裸 `.app` 不放入 Documents/Desktop 的同步目录，以免同步服务附加 FinderInfo 破坏封装；可复制 ZIP/DMG 分享。只清理本次暂存副本的 FinderInfo，不删除下载隔离或其他安全属性。目录迁移约定见 [PROJECT-LAYOUT.md](PROJECT-LAYOUT.md)。
 
 不带 `--community` 的普通打包仍是 `local-preview`，不能误当社区发行。`--community` 与 `--sign` / `--notarize` 互斥；不使用 `--allow-local-test` 替代社区发布。完整更新源生成、上传和验收流程见 [UPDATES.md](UPDATES.md)。
 

@@ -68,7 +68,9 @@ https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest/download/appcast.
 
 构建脚本会生成 arm64 + x86_64 通用 `.app`，把 ADB、scrcpy、scrcpy-server 及 Sparkle.framework 复制进应用包，对嵌套辅助程序、框架、内置工具和完整应用包依次进行本地 ad-hoc 签名，并通过 macOS `open` 启动应用。`--verify` 会检查包结构、双架构、随包许可声明与完整代码签名。应用包中的官方 scrcpy 运行时来源和哈希见 `vendor/scrcpy/` 与构建日志。仅验证构建且不启动应用时，使用 `./script/build_and_run.sh --debug --verify --no-launch`。
 
-默认构建与发行目录分别为 `~/Library/Application Support/MirrorLink/Builds/` 和 `~/Library/Application Support/MirrorLink/Releases/`。已签名的裸 `.app` 不放在启用文件同步的“文稿”或“桌面”中，避免同步服务反复添加破坏严格签名校验的 Finder 元数据；分享时复制 ZIP/DMG 即可。可用 `--output-dir` 指定其他非同步目录。
+默认构建与发行目录分别为项目内的 `artifacts/Builds/` 和 `artifacts/Releases/`，旧版安装备份集中在 `artifacts/Backups/`，构建、打包及许可整理的临时目录为 `work/tmp/`。脚本按自身所在位置定位项目，可在其他工作目录调用；带空格、中文的路径也须用引号包裹。可用 `--output-dir`（优先）、`MIRRORLINK_OUTPUT_DIR`（构建）或 `MIRRORLINK_RELEASE_DIR`（打包）覆盖默认输出，相对路径按调用时的工作目录解释。
+
+请把项目放在非同步本地目录：启用文件同步的“文稿”或“桌面”可能反复添加破坏裸 `.app` 严格签名校验的 Finder 元数据；分享时只复制 ZIP/DMG。项目文件布局和迁移验证见 [PROJECT-LAYOUT.md](PROJECT-LAYOUT.md)。安装后的应用仍从自身包内读取工具，不依赖开发项目目录；系统偏好、ADB 授权密钥和钥匙串保持标准位置。
 
 `run_session_checks.sh` 使用独立的模拟子进程检查多设备启动、停止、失败、超时、重试及退出清理，不连接真实手机，也不产生真实投屏画面。它不依赖 XCTest；不能用这些模拟检查替代两台以上真机同时显示画面的验收。测试中的模拟程序不会打入应用安装包。
 

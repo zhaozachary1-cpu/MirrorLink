@@ -19,8 +19,14 @@ while read -r kind filename digest url; do
   [[ "$(shasum -a 256 "$CACHE/$filename" | cut -d ' ' -f1)" == "$digest" ]] || { print -u2 "缓存校验失败：$filename"; exit 1; }
 done < "$ROOT_DIR/vendor/third-party-sources.tsv"
 
-STAGE="$(mktemp -d /private/tmp/mirrorlink-licenses.XXXXXX)"
-cleanup() { [[ "$STAGE" == /private/tmp/mirrorlink-licenses.* && -d "$STAGE" ]] && rm -rf -- "$STAGE"; }
+TEMP_BASE="$ROOT_DIR/work/tmp"
+mkdir -p "$TEMP_BASE"
+STAGE="$(mktemp -d "$TEMP_BASE/mirrorlink-licenses.XXXXXX")"
+cleanup() {
+  if [[ "$STAGE" == "$TEMP_BASE"/mirrorlink-licenses.* && -d "$STAGE" && ! -L "$STAGE" ]]; then
+    rm -rf -- "$STAGE"
+  fi
+}
 trap cleanup EXIT
 while read -r kind filename digest url; do
   [[ -z "$kind" || "$kind" == \#* ]] && continue

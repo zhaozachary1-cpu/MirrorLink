@@ -18,6 +18,7 @@
 - 会话脚本使用模拟子进程；不能声称已完成多台真机画面验收。启动进程也不能替代原生 UI 验收。
 - 更新采用锁定版本的 Sparkle。公钥可以入库，私钥仅存钥匙串账户 `com.mirrorlink.desktop.updates`，绝不导出入库。没有公开 HTTPS 更新源时，诚实显示“尚未配置”。
 - Developer ID、公证、完整性校验是三种不同证据。不能将 ad-hoc 当成正式签名，不能绕过 Gatekeeper 或全局移除 quarantine。
-- 裸 `.app` 放 `~/Library/Application Support/MirrorLink/Builds` 或 `Releases`，避免 Documents 的同步服务追加 FinderInfo 破坏签名；分享目录只放 ZIP/DMG。
+- 用户于 2026-10-03 要求全部项目文件统一迁入指定的非同步本地项目根目录。调用路径按脚本实际位置解析；构建、发行、备份分别默认放在项目内 `artifacts/Builds`、`artifacts/Releases`、`artifacts/Backups`，临时打包文件放 `work/tmp`。旧项目和 Application Support 路径只保留兼容符号链接，不在旧位置另建副本。此约定替代先前独立 Application Support 输出位置；具体布局见 `PROJECT-LAYOUT.md`。
+- 项目和裸 `.app` 不放入 Documents/Desktop 等同步目录，避免 FinderInfo 破坏严格签名；分享目录只放 ZIP/DMG。已安装应用、系统偏好、共用 ADB 授权和钥匙串不随项目迁移，应用继续使用自身内置工具，不写死维护者路径。
 - 不上传 `.p12`、`.p8`、`.pem`、`.key`、Apple/GitHub 凭据、`.env`、构建缓存、设备日志或临时 QA 截图。
 - 安装/替换本机应用前备份旧版；仅清理镜连拥有的子进程，不终止其他软件的 ADB/scrcpy。

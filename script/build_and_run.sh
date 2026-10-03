@@ -6,8 +6,9 @@ CONFIGURATION="release"
 VERIFY=0
 SHOW_LOGS=0
 LAUNCH=1
-# Keep unarchived signed apps outside Documents/Desktop File Provider sync.
-OUTPUT_DIR="${MIRRORLINK_OUTPUT_DIR:-$HOME/Library/Application Support/MirrorLink/Builds}"
+# Resolve all default outputs from this checkout, including after relocation.
+# Keep the checkout outside File Provider-synced Documents/Desktop folders.
+OUTPUT_DIR="${MIRRORLINK_OUTPUT_DIR:-$ROOT_DIR/artifacts/Builds}"
 
 while (( $# > 0 )); do
   argument="$1"
@@ -29,6 +30,10 @@ while (( $# > 0 )); do
   esac
 done
 
+# Resolve caller-supplied relative paths before changing the working directory.
+OUTPUT_DIR="${OUTPUT_DIR:A}"
+cd "$ROOT_DIR"
+
 BUILD_ID="$(date -u +%Y%m%d-%H%M%S)"
 if [[ "$CONFIGURATION" == "release" ]]; then
   CONFIGURATION_DIR="Release"
@@ -37,9 +42,11 @@ else
 fi
 SCRATCH_ARM="$ROOT_DIR/.build-mirrorlink-arm64"
 SCRATCH_X86="$ROOT_DIR/.build-mirrorlink-x86_64"
-STAGE_DIR="$(mktemp -d /private/tmp/mirrorlink-stage.XXXXXX)"
+TEMP_BASE="$ROOT_DIR/work/tmp"
+mkdir -p "$TEMP_BASE"
+STAGE_DIR="$(mktemp -d "$TEMP_BASE/mirrorlink-stage.XXXXXX")"
 cleanup_stage() {
-  if [[ -n "${STAGE_DIR:-}" && -d "$STAGE_DIR" && "$STAGE_DIR" == /private/tmp/mirrorlink-stage.* ]]; then
+  if [[ -n "${STAGE_DIR:-}" && -d "$STAGE_DIR" && ! -L "$STAGE_DIR" && "$STAGE_DIR" == "$TEMP_BASE"/mirrorlink-stage.* ]]; then
     rm -rf -- "$STAGE_DIR"
   fi
 }
@@ -118,8 +125,8 @@ SPARKLE_FRAMEWORK="$SPARKLE_ROOT/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.
 test -d "$SPARKLE_FRAMEWORK"
 mkdir -p "$CONTENTS_DIR/Frameworks"
 ditto "$SPARKLE_FRAMEWORK" "$CONTENTS_DIR/Frameworks/Sparkle.framework"
-# The dependency cache also lives in Documents: File Provider adds FinderInfo
-# to nested .xpc/.app bundles. Clean only this metadata on our staged copy.
+# A dependency cache copied from a synced folder can retain FinderInfo on
+# nested .xpc/.app bundles. Clean only this metadata on our staged copy.
 # Keep download quarantine, provenance, and all other attributes untouched.
 xattr -dr com.apple.FinderInfo "$CONTENTS_DIR/Frameworks/Sparkle.framework" 2>/dev/null || true
 cp "$SPARKLE_ROOT/LICENSE" "$RESOURCES_DIR/NOTICE-Sparkle.txt"
