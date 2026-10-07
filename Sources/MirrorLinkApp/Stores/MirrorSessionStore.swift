@@ -344,13 +344,21 @@ final class MirrorSessionStore: ObservableObject {
         let command = ScrcpyCommand(paths: paths)
         let token = UUID()
         let process = Process()
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
+        let output: SessionLogStream
+        let errors: SessionLogStream
+        do {
+            output = try SessionLogStream(lineBuffered: true)
+            errors = try SessionLogStream(lineBuffered: false)
+        } catch {
+            sessionDevices[device.id] = device
+            failDevice(device.id, message: "无法创建投屏日志通道：\(error.localizedDescription)")
+            return
+        }
         let readers = DispatchGroup()
         process.executableURL = paths.scrcpy
         process.arguments = command.arguments(for: device)
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
+        process.standardOutput = output.childWriter
+        process.standardError = errors.childWriter
         process.standardInput = FileHandle.nullDevice
         var environment = ProcessInfo.processInfo.environment
         for (key, value) in command.environment(for: device) { environment[key] = value }
@@ -361,8 +369,7 @@ final class MirrorSessionStore: ObservableObject {
             device: device,
             token: token,
             process: process,
-            outputPipe: outputPipe,
-            errorPipe: errorPipe
+            logStreams: [output, errors]
         )
         runningSessions[device.id] = session
         sessionDevices[device.id] = device
@@ -375,6 +382,8 @@ final class MirrorSessionStore: ObservableObject {
         readers.enter()
 
         process.terminationHandler = { [weak self] process in
+            output.processDidExit()
+            errors.processDidExit()
             readers.notify(queue: .global(qos: .utility)) {
                 DispatchQueue.main.async {
                     self?.handleTermination(process, deviceID: device.id, token: token)
@@ -384,12 +393,12 @@ final class MirrorSessionStore: ObservableObject {
 
         do {
             try process.run()
-            for (pipe, stream) in [(outputPipe, "stdout"), (errorPipe, "stderr")] {
+            output.closeParentWriter()
+            errors.closeParentWriter()
+            for (channel, stream) in [(output, "stdout"), (errors, "stderr")] {
                 DispatchQueue.global(qos: .utility).async { [weak self] in
                     defer { readers.leave() }
-                    while true {
-                        let data = pipe.fileHandleForReading.availableData
-                        guard !data.isEmpty else { break }
+                    channel.readChunks { data in
                         DispatchQueue.main.async {
                             self?.consume(data, stream: stream, deviceID: device.id, token: token)
                         }
@@ -407,6 +416,8 @@ final class MirrorSessionStore: ObservableObject {
                 self.terminateOwnedProcess(deviceID: device.id, token: token)
             }
         } catch {
+            output.closeParentWriter()
+            errors.closeParentWriter()
             readers.leave()
             readers.leave()
             process.terminationHandler = nil
@@ -498,16 +509,14 @@ private final class RunningMirrorSession {
     let device: AndroidDevice
     let token: UUID
     let process: Process
-    let outputPipe: Pipe
-    let errorPipe: Pipe
+    let logStreams: [SessionLogStream]
     var stopRequested = false
     var pendingOutput: [String: Data] = [:]
 
-    init(device: AndroidDevice, token: UUID, process: Process, outputPipe: Pipe, errorPipe: Pipe) {
+    init(device: AndroidDevice, token: UUID, process: Process, logStreams: [SessionLogStream]) {
         self.device = device
         self.token = token
         self.process = process
-        self.outputPipe = outputPipe
-        self.errorPipe = errorPipe
+        self.logStreams = logStreams
     }
 }

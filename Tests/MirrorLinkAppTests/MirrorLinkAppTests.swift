@@ -1,7 +1,24 @@
+import AppKit
 import XCTest
 @testable import MirrorLinkApp
 
 final class MirrorLinkAppTests: XCTestCase {
+    @MainActor
+    func testDockReopenTargetsMainSceneWithOrWithoutOtherWindows() {
+        let delegate = AppDelegate()
+        var opens = 0
+        delegate.openMainWindow = { opens += 1 }
+        XCTAssertFalse(delegate.applicationShouldHandleReopen(NSApplication.shared, hasVisibleWindows: false))
+        XCTAssertFalse(delegate.applicationShouldHandleReopen(NSApplication.shared, hasVisibleWindows: true))
+        XCTAssertEqual(opens, 2)
+        XCTAssertFalse(delegate.applicationShouldTerminateAfterLastWindowClosed(NSApplication.shared))
+    }
+
+    @MainActor
+    func testDockReopenBeforeSceneConnectionFallsBackToSystem() {
+        XCTAssertTrue(AppDelegate().applicationShouldHandleReopen(NSApplication.shared, hasVisibleWindows: false))
+    }
+
     func testWirelessEndpointValidationAndNormalization() throws {
         XCTAssertEqual(try WirelessEndpoint("192.168.1.8:37123").address, "192.168.1.8:37123")
         XCTAssertEqual(try WirelessEndpoint("[fd00:0::8]:37123").address, "[fd00::8]:37123")
@@ -83,7 +100,7 @@ final class MirrorLinkAppTests: XCTestCase {
 
         let command = ScrcpyCommand(paths: paths)
 
-        XCTAssertEqual(command.arguments(for: device), ["-s", "ABC123", "--window-title=镜连 · Pixel 6 · ABC123"])
+        XCTAssertEqual(command.arguments(for: device), ["-s", "ABC123", "--window-title=镜连 · Pixel 6 · ABC123", "--no-terminal-title"])
         XCTAssertEqual(command.environment(for: device)["ADB"], "/tmp/mirrorlink/tools/adb")
         XCTAssertEqual(command.environment(for: device)["SCRCPY_SERVER_PATH"], "/tmp/mirrorlink/tools/scrcpy-server")
         XCTAssertEqual(command.environment(for: device)["ADB_SERVER_SOCKET"], "tcp:127.0.0.1:5038")

@@ -6,7 +6,9 @@ struct ScrcpyCommand {
     func arguments(for device: AndroidDevice) -> [String] {
         [
             "-s", device.serial,
-            "--window-title=\(windowTitle(for: device))"
+            "--window-title=\(windowTitle(for: device))",
+            // stdout is a private log PTY, not an interactive terminal.
+            "--no-terminal-title"
         ]
     }
 

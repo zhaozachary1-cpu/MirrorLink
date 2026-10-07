@@ -15,6 +15,7 @@ swiftc -swift-version 5 \
   "$ROOT_DIR/Sources/MirrorLinkApp/Services/ScrcpyCommand.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Support/ProcessRunner.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Support/ProcessCancellation.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Support/SessionLogStream.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Stores/MirrorSessionStore.swift" \
   -o "$CHECK_DIR/session-checks"
 "$CHECK_DIR/session-checks" "$CHECK_DIR/mock-scrcpy"

@@ -18,7 +18,7 @@ struct MirrorLinkCoreChecks {
         let paths = ToolPaths(root: root, adb: root.appendingPathComponent("adb"), scrcpy: root.appendingPathComponent("scrcpy"), server: root.appendingPathComponent("scrcpy-server"))
         let device = AndroidDevice(serial: "ABC123", model: "Pixel_6", product: "oriole", transport: "USB", state: .ready, adbSocket: "tcp:127.0.0.1:5038")
         let command = ScrcpyCommand(paths: paths)
-        precondition(command.arguments(for: device) == ["-s", "ABC123", "--window-title=镜连 · Pixel 6 · ABC123"], "scrcpy arguments")
+        precondition(command.arguments(for: device) == ["-s", "ABC123", "--window-title=镜连 · Pixel 6 · ABC123", "--no-terminal-title"], "scrcpy arguments")
         precondition(command.environment(for: device)["ADB_SERVER_SOCKET"] == "tcp:127.0.0.1:5038", "alternate ADB socket")
 
         let secondDevice = AndroidDevice(serial: "DEF456789", model: "Pixel_8", product: "shiba", transport: "USB", state: .ready, adbSocket: "tcp:127.0.0.1:5037")

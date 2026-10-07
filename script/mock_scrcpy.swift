@@ -23,13 +23,30 @@ log.seekToEndOfFile()
 log.write(try JSONSerialization.data(withJSONObject: record) + Data([10]))
 try log.close()
 
-func emitReady() { FileHandle.standardOutput.write(Data("INFO: Texture: 1080x2400\n".utf8)) }
+func emitReady() {
+    // Match scrcpy's fprintf(stdout, ...): line-buffered on a terminal, but
+    // block-buffered on a pipe. Do not fflush; that would hide the regression.
+    fputs("INFO: Texture: 1080x2400\n", stdout)
+}
 if mode == "ignore-term" { signal(SIGTERM, SIG_IGN) }
 if mode == "fail" {
     let message = Data("模拟错误：授权失败\n最后一条无换行诊断".utf8)
     FileHandle.standardError.write(message.prefix(5))
     usleep(10_000)
     FileHandle.standardError.write(message.dropFirst(5))
+    exit(23)
+}
+if mode == "inherited-logs" {
+    // Simulate a short-lived descendant retaining both output descriptors.
+    // Session cleanup must not wait for that unrelated lifetime indefinitely.
+    let descendant = Process()
+    descendant.executableURL = URL(fileURLWithPath: "/bin/sleep")
+    descendant.arguments = ["2"]
+    descendant.standardOutput = FileHandle.standardOutput
+    descendant.standardError = FileHandle.standardError
+    try descendant.run()
+    fputs("final buffered stdout\n", stdout)
+    fputs("final stderr\n", stderr)
     exit(23)
 }
 if mode != "silent" { emitReady() }

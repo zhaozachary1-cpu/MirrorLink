@@ -221,6 +221,34 @@ private final class SessionChecks {
         try await wait("fast child failure") { failStore.sessionState(for: failure).isFailure && !failStore.isMirroring }
         try check(failStore.logLines.contains { $0.contains("模拟错误：授权失败") } && failStore.logLines.contains { $0.contains("最后一条无换行诊断") }, "fast-exit logs drain completely including split UTF-8 and unterminated final line")
 
+        let buffered = device("BUFFERED-STDIO")
+        let bufferedSource = SnapshotSource()
+        bufferedSource.set([buffered])
+        let bufferedStore = makeStore(bufferedSource, timeout: 0.5)
+        try await refresh(bufferedStore)
+        bufferedStore.startMirroring()
+        try await wait("C stdio readiness", timeout: 0.45) { bufferedStore.sessionState(for: buffered) == .mirroring }
+        try await Task.sleep(nanoseconds: 650_000_000)
+        try check(bufferedStore.sessionState(for: buffered) == .mirroring, "buffered C stdout is received live and survives the startup watchdog")
+        bufferedStore.stopMirroring()
+        try await wait("PTY EOF") { !bufferedStore.isMirroring }
+        try check(bufferedStore.sessionState(for: buffered) == .idle, "PTY hangup is handled as EOF without crashing the parent")
+
+        let inherited = device("INHERITED-LOGS")
+        let inheritedSource = SnapshotSource()
+        inheritedSource.set([inherited])
+        try write("inherited-logs", serial: inherited.serial, suffix: "mode")
+        let inheritedStore = makeStore(inheritedSource)
+        try await refresh(inheritedStore)
+        inheritedStore.startMirroring()
+        try await wait("bounded inherited log drain", timeout: 1.5) { !inheritedStore.isMirroring }
+        try check(inheritedStore.sessionState(for: inherited).isFailure && inheritedStore.canStart, "child exit cannot leave an unretryable session when descendants retain logs")
+        try check(inheritedStore.logLines.contains { $0.contains("final buffered stdout") } && inheritedStore.logLines.contains { $0.contains("final stderr") }, "bounded exit drain preserves final stdout and stderr")
+        try write("ready", serial: inherited.serial, suffix: "mode")
+        inheritedStore.startMirroring()
+        try await wait("retry before old descendant exits") { inheritedStore.sessionState(for: inherited) == .mirroring }
+        try check(inheritedStore.runningCount == 1, "retry uses fresh log channels while old inherited descriptors finish")
+
         let stubborn = device("IGNORE-TERM")
         let healthy = device("HEALTHY")
         let stopSource = SnapshotSource()

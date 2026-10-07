@@ -24,12 +24,15 @@ struct MirrorLinkApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("镜连", id: "main") {
+        // One control window owns all device sessions; reopening must not
+        // create another timer/selection UI for the same store.
+        Window("镜连", id: "main") {
             ContentView(store: store, updates: updates)
                 .onAppear {
                     appDelegate.store = store
                     appDelegate.updates = updates
                     appDelegate.wireless = wireless
+                    appDelegate.openMainWindow = { openWindow(id: "main") }
                 }
         }
         .defaultSize(width: 960, height: 640)
@@ -41,6 +44,9 @@ struct MirrorLinkApp: App {
                 .disabled(!updates.canCheckForUpdates)
             }
             CommandMenu("投屏") {
+                Button("显示主窗口") { openWindow(id: "main") }
+                    .keyboardShortcut("0", modifiers: [.command])
+                Divider()
                 Button("无线连接…") { openWindow(id: "wireless") }
                     .keyboardShortcut("w", modifiers: [.command, .shift])
                 Button("刷新设备") { store.refresh() }
@@ -74,6 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var store: MirrorSessionStore?
     weak var updates: AppUpdateStore?
     weak var wireless: WirelessConnectionStore?
+    var openMainWindow: (() -> Void)?
     private var terminationSignal: DispatchSourceSignal?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -89,6 +96,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         wireless?.close()
         store?.shutdown()
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // A wireless/settings window may still be visible while the main
+        // control window is closed. Always target the singleton main scene.
+        guard let openMainWindow else { return true }
+        openMainWindow()
+        sender.activate(ignoringOtherApps: true)
+        return false // SwiftUI's openWindow owns creation and restoration.
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        // Closing the control window must not silently stop active mirrors.
+        // Dock click / cmd-0 restores it; Quit still shuts down owned children.
+        false
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
