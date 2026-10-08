@@ -58,6 +58,8 @@
 5. 对应第三方源码 `.tar.gz`。
 6. `SHA256SUMS.txt`。
 
+每次新版本公开并完成下载验证后，同步更新 README 顶部按钮、备用 DMG/ZIP 直链及版本文案。按钮使用明确版本的 `releases/download/v<version>/MirrorLink-<version>-macOS-universal.dmg`，以免把版本化文件名拼到 `latest/download` 后在下一版发布时出现 404。按钮必须直达完整安装包，不得指向 Release 列表、源码包或更新专用 ZIP；浏览器下载后仍须用户自行安装。
+
 Release 必须明确“免费社区版、无 Apple 公证”和首次打开说明。仅发布了完整可用的更新源之后，才为 0.3.0 用户配置此地址。GitHub token 只用于发布者工具认证，不嵌入客户端。
 
 更新归档 URL 固定到版本标签；更新清单使用 `latest/download/appcast.xml`。未来每次发布应保持完整六项，并将已完成校验的 Release 标为 latest。不要让无 appcast 的 Release 意外接管 latest。需要分支版本/兼容性历史时，保留旧版 appcast 条目及仍被引用的归档；不要覆写历史版本的签名 ZIP。

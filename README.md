@@ -1,5 +1,15 @@
 # 镜连 MirrorLink
 
+[![一键下载安装包 — 镜连 macOS DMG](docs/assets/download-macos.svg)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.2/MirrorLink-0.4.2-macOS-universal.dmg)
+
+**点击上方蓝色按钮，直接下载 0.4.2 安装包，无需进入 Assets 查找。**
+
+下载后：**打开 DMG → 将 MirrorLink.app 拖入“应用程序” → 打开镜连**。按钮只负责下载，不会静默安装；浏览器可能按你的设置询问保存位置。
+
+按钮未显示？[直接下载 DMG](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.2/MirrorLink-0.4.2-macOS-universal.dmg) · [下载完整 ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.2/MirrorLink-0.4.2-macOS-universal.zip) · [其他版本](https://github.com/zhaozachary1-cpu/MirrorLink/releases)
+
+> 免费社区版未经 Apple 公证。首次打开可能需要手动允许，具体见[首次打开的 macOS 安全提示](#首次打开的-macos-安全提示)；不要关闭系统安全保护。
+
 镜连是一个原生 macOS Android 投屏工具：它把官方 scrcpy v4.1 与 ADB 作为应用内置运行时，并用 SwiftUI 提供 USB / 同 Wi-Fi 无线连接、多设备选择、授权提示、并行投屏、独立开始/停止和诊断日志。当前版本为 0.4.2（Build 7），修复投屏就绪日志缓冲引发的 25 秒误超时，并补充主窗口重开处理。安装包以 [最新公开发行页](https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest) 为准，源码版本不等于安装包已经发布。
 
 ## 下载、安装与注意事项（请先阅读）
@@ -12,7 +22,7 @@
 
 ### 选对下载文件
 
-打开 [GitHub Releases 最新版](https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest)，展开 **Assets**。普通用户只需选择 **DMG 或完整 ZIP 中的一个**：
+普通用户直接点击本页顶部蓝色按钮下载 DMG 即可；也可选择旁边的完整 ZIP 链接。需要查看全部文件时，再打开 [GitHub Releases 最新版](https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest)，展开 **Assets**。**DMG 与完整 ZIP 任选一个，不需要重复下载**：
 
 | 文件 | 用途 |
 | --- | --- |
