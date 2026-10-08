@@ -1,9 +1,9 @@
 # 应用内更新与 GitHub 发布
 
-## 0.3.1 社区版配置
+## 0.4.2 社区版配置
 
 - 源码、公开安装包、签名更新清单使用现有 `zhaozachary1-cpu/MirrorLink`，不另建仓库。
-- `CFBundleVersion=4`，高于 0.3.0 的 Build 3；Sparkle 固定为 2.10.0。
+- `CFBundleVersion=7`，高于公开 0.3.1 的 Build 4；Sparkle 固定为 2.10.0。同为 Build 7 的本地预览包不视为更低版本，需要时手动安装社区包。
 - 默认源：`https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest/download/appcast.xml`。
 - `SURequireSignedFeed` 与 `SUVerifyUpdateBeforeExtraction` 均为 true，原有 Ed25519 公钥不变。更新来源不能替换信任公钥。
 - 不静默下载或安装、不发送系统配置；自动检查默认关闭，用户可主动开启。
@@ -25,6 +25,7 @@
 ```zsh
 ./script/run_core_checks.sh
 ./script/run_session_checks.sh
+./script/run_wireless_checks.sh
 ./script/run_update_checks.sh
 ./script/package_release.sh --community
 ```
@@ -37,7 +38,7 @@
 
 ```zsh
 ./script/generate_update_feed.sh "/绝对路径/发行目录" \
-  "https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.3.1/" --community
+  "https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.2/" --community
 ```
 
 脚本必须确认社区渠道、ad-hoc 签名完整、对应源码包齐全、公钥与现有钥匙串匹配。它使用账户 `com.mirrorlink.desktop.updates` 内的原有密钥同时签署 XML 和更新 ZIP，并验证 XML。不要手工修改签名后的 XML；重新生成时要更新校验清单。
@@ -78,7 +79,7 @@ swiftc -swift-version 5 script/verify_update_artifacts.swift \
 .build/verify_update_artifacts \
   "/可信本地发行目录/MirrorLink.app/Contents/Info.plist" \
   "/公开下载目录/appcast.xml" \
-  "/公开下载目录/MirrorLink-0.3.1-update.zip" --self-test
+  "/公开下载目录/MirrorLink-0.4.2-update.zip" --self-test
 ```
 
 `--self-test` 在内存中对清单、ZIP、签名和尾部做负面测试，不修改原文件。验签成功不能代替旧版应用中的真实安装和重启测试；每次发布都要记录各自结果。
