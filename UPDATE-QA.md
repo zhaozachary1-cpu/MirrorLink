@@ -1,6 +1,36 @@
 # MirrorLink 更新与分发验证
 
-## 0.3.1 社区版：当前验证状态
+## 0.4.2 社区版：2026-10-08 发布验证
+
+- 已于 **2026-10-08 19:51:09（Asia/Shanghai；UTC 11:51:09）** 公开发布 [v0.4.2](https://github.com/zhaozachary1-cpu/MirrorLink/releases/tag/v0.4.2) 并设为 latest，非草稿、非预发布。版本为 0.4.2 / Build 7；发行标签对应源码 `f7aa677f3c3f1ea35c382fddeb005c03468c5fa9`。
+- README 在打包前已新增醒目的系统要求、Assets 文件选择表、正常安装与旧版覆盖步骤、Apple 安全提示、Android 调试授权、无线扫码入口和已知验收边界。完整 ZIP、DMG 根目录及应用内嵌 README 与该发行提交逐字节一致。
+- 本次重新通过核心检查、40 项会话模拟、127 项无线模拟、28 项更新策略检查。`package_release.sh --community` 完成双架构构建、完整嵌套 ad-hoc 签名与六项发行文件生成；没有使用 Developer ID 或 Apple 公证，没有更改 Gatekeeper/quarantine。
+- 分享 ZIP、更新 ZIP 的解压应用通过 `codesign --verify --deep --strict`。DMG 校验和通过，只读挂载后的应用签名与 README 校验通过，测试结束已卸载。
+- 社区渠道、版本/Build、原有更新公钥检查通过。六份第三方源码归档的 SHA-256 与固定清单一致，内置运行时通过上游逐字节比对；完整许可声明随包携带。
+- `generate_update_feed.sh --community` 使用原有钥匙串账户签署 XML 与更新 ZIP；未导出、替换或轮换私钥。Sparkle 官方验签通过，独立验证工具的清单/ZIP 验签、固定版本 URL、长度以及四项内存篡改拒绝检查均通过。
+- 先上传草稿，核对六项资产的 uploaded 状态、长度和 GitHub SHA-256 与本地一致后公开。上传范围仅为完整 ZIP、DMG、更新 ZIP、签名 appcast、第三方源码包和 SHA256SUMS；没有上传含本机路径的 RELEASE-MANIFEST、原始日志、密钥或 QA 副本。
+- 发布后禁用用户 curl 配置、使用不带认证头的匿名 HTTPS 请求，从 `latest/download/appcast.xml` 下载清单，并从 `v0.4.2` 固定地址下载其余五项资产，均为 HTTP 200。公开校验清单与可信本地清单一致，五项哈希全部通过；公开下载的 XML/ZIP 再次通过全部独立验签与篡改拒绝检查。
+- 匿名 GitHub API 再次确认 latest 为 v0.4.2；远端标签 SHA 与发行源码一致。更新清单为 Build 7，最低 macOS 13.0，更新 ZIP URL 固定到 v0.4.2，旧 v0.3.1 资产未覆盖。
+
+| 公开资产 | SHA-256 |
+| --- | --- |
+| 完整 ZIP | `98a588f4ab1432d77e4143b24aeeb3259f83c9055e297257bf29e71bdafaf1bd` |
+| DMG | `685545e9050d1f13a901fc1fa4c9b817e944a0e2f08f10bd24264bcb63e4dc1e` |
+| 更新 ZIP | `18a44a23d51612c5d2f6288ca31a4b7f26488e7519b69d3f868e031efa3e04c0` |
+| 第三方源码 | `44c2fdab315fd86b096c190a2ac2a837ec74cc83af6e004ec8c346c551c9fa46` |
+| appcast.xml | `79d1a2b9181156b13c4daee268eac7249453a2dd14720974ce5f8bd1543e8e8d` |
+| SHA256SUMS.txt | `4a74b8ee53c14ea098db25ad67b71ef3c4d0b19f2c80cf726781cc08bc774182` |
+
+本地发行目录：项目内 `artifacts/Releases/MirrorLink-0.4.2-20261008-114546/`，匿名回读与验证副本只保留在忽略的 work 目录。
+
+### 未完成的验收（不计为通过）
+
+- 本次原生界面工具启动失败，诊断为旧工作区写入根路径含符号链接，工具运行内核退出；未修改 Codex 安全配置或绕过工具限制。未完成 Dock 点击、旧版通过 Sparkle 的实际发现/确认/安装/覆盖/重启和设置保留验收。签名更新源已经上线，但不能宣称实际覆盖升级已验收。
+- 没有替换本机已安装应用来冒充自动更新成功。同为 0.4.2 / Build 7 的本地预览版需要时应手动安装社区包，不能期待同 Build 更新提示。
+- 无线真机、两台以上真机画面、陌生 Mac 首次打开、Intel 真机、断网重试和投屏时延后安装仍待实测。此前单台 USB 的 75 秒/重启证据见 STABILITY-QA.md，不扩大为所有环境验收。
+- 构建仍出现 Command Line Tools 可选搜索路径/Intel 兼容库警告，但构建与签名校验通过；XCTest 的工具链限制未在本轮解决。配套许可材料不等于外部法律审计。
+
+## 历史：0.3.1 社区版验证状态
 
 验证时间：本机 Asia/Shanghai 2026-10-02；对应 UTC 构建日期 2026-10-01。版本：0.3.1 / Build 4。用户已确认免费社区路线，不申请 Developer ID 或 Apple 公证，仍保留原有 Sparkle Ed25519 密钥与双重验签。
 
