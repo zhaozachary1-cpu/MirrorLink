@@ -1,5 +1,28 @@
 # MirrorLink 更新与分发验证
 
+## 0.4.3 社区版：2026-10-10 发布验证
+
+- 已于 **2026-10-10 15:47:23（Asia/Shanghai；UTC 07:47:23）** 公开发布 [v0.4.3](https://github.com/zhaozachary1-cpu/MirrorLink/releases/tag/v0.4.3) 并设为 latest，非草稿、非预发布；版本 0.4.3 / Build 8。发行标签对应源码 `73ce216fdb0282d951c6fac1b9647d5875969694`。
+- 核心、67 项会话、127 项无线模拟、28 项更新策略检查通过。单台 USB 真机原生档 180 秒及两次画质切换的日志/尺寸证据和限制见 [QUALITY-QA.md](QUALITY-QA.md)。本轮未把尺寸不变当成实际画质永不下降的证明。
+- `package_release.sh --community` 成功生成双架构应用、完整 ZIP/DMG、更新 ZIP 和第三方对应源码。分享 ZIP/更新 ZIP 解包、DMG 只读挂载后的严格嵌套签名通过；许可、六份源码归档、版本、社区渠道和原有公钥均核对通过；挂载已卸载。
+- 打包时发现首次候选 README 与最终说明的两行差异，已重新运行完整打包生成最终候选。正式发布仅使用 `artifacts/Releases/MirrorLink-0.4.3-20261010-073920/`；此包内嵌 README、ZIP 与 DMG 中的 README 与发行提交逐字节一致。
+- 原有 Sparkle Ed25519 密钥签署 XML/ZIP，官方验签通过；独立工具核对版本/Build、固定版本 URL、长度，并拒绝清单、ZIP、签名和签名尾部的内存篡改。没有导出/轮换私钥，也没有申请 Developer ID 或 Apple 公证。
+- 草稿上传六项资产后逐一比对 GitHub 的上传状态、字节长度及 SHA-256；全部一致后才公开为 latest。未覆盖旧版资产，未上传本机路径清单、设备日志或临时 QA 内容。
+- 匿名 HTTPS 读回 latest appcast 与另外五项固定版本资产。首次出现 TLS 超时及更新 ZIP 传输截断，未将 HTTP 200 单独计为完整下载；重新匿名下载后，全部六项文件取得完整结果，公开校验清单与可信本地一致，五项资产哈希及 XML/ZIP 验签、篡改拒绝检查再次通过。
+- 匿名 GitHub API 确认 latest 为 v0.4.3，远端标签 SHA 与发行源码一致；README 顶部按钮/备用链接已经指向 v0.4.3 完整包，GitHub README 已回读比对。
+- 本机 0.4.2 已备份后手动替换为该已验证社区包，安装后为 0.4.3 / Build 8，严格签名、主二进制/Info.plist 比对与启动进程检查通过。共享 ADB 保留。**此操作不代表 Sparkle 实际覆盖升级验收。**
+
+| 公开资产 | SHA-256 |
+| --- | --- |
+| 完整 ZIP | `8f38760b1cdd0a0414f0b41aad09389c33a8b2fdf3c4d31ceabad8f1783cb643` |
+| DMG | `d04fcbb10bbf1ae37e875deb9f2845917944276bb63ab7e9806ab029e5e353c1` |
+| 更新 ZIP | `e0042a00f657b420024c3fa2e60baf8042fbc3cbb175691792daba8a8e4bbfa2` |
+| 第三方源码 | `b3d3b94b2433c228676ce2ee0c5b05f79062f9f778dc249cc44c6c2e5e08e88e` |
+| appcast.xml | `6add014ddcb89118ab94655fea3405a1cf5ba37e937343c3b5357dad8582138b` |
+| SHA256SUMS.txt | `8f296d7d8f51b19b87c6710241adaddc77b901502488105dd9e3eecb922adcb1` |
+
+原生界面工具仍返回 `Sky Computer Use native pipe closed before response`；画质选择器/重新投屏按钮的点击、长期动态清晰度、无线真机、多设备真实画面、Intel/陌生 Mac 及 Sparkle 确认安装/重启仍未完整验收，不以发布成功代替。
+
 ## 0.4.2 社区版：2026-10-08 发布验证
 
 - 已于 **2026-10-08 19:51:09（Asia/Shanghai；UTC 11:51:09）** 公开发布 [v0.4.2](https://github.com/zhaozachary1-cpu/MirrorLink/releases/tag/v0.4.2) 并设为 latest，非草稿、非预发布。版本为 0.4.2 / Build 7；发行标签对应源码 `f7aa677f3c3f1ea35c382fddeb005c03468c5fa9`。
