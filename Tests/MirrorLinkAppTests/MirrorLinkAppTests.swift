@@ -100,7 +100,7 @@ final class MirrorLinkAppTests: XCTestCase {
 
         let command = ScrcpyCommand(paths: paths)
 
-        XCTAssertEqual(command.arguments(for: device), ["-s", "ABC123", "--window-title=镜连 · Pixel 6 · ABC123", "--no-terminal-title"])
+        XCTAssertEqual(command.arguments(for: device), ["-s", "ABC123", "--window-title=镜连 · Pixel 6 · ABC123", "--no-terminal-title", "--video-codec=h264", "--video-bit-rate=24M", "--max-size=0", "--max-fps=30", "--video-buffer=0", "--no-downsize-on-error"])
         XCTAssertEqual(command.environment(for: device)["ADB"], "/tmp/mirrorlink/tools/adb")
         XCTAssertEqual(command.environment(for: device)["SCRCPY_SERVER_PATH"], "/tmp/mirrorlink/tools/scrcpy-server")
         XCTAssertEqual(command.environment(for: device)["ADB_SERVER_SOCKET"], "tcp:127.0.0.1:5038")
@@ -159,5 +159,31 @@ final class MirrorLinkAppTests: XCTestCase {
         )
 
         XCTAssertEqual(first.id, second.id)
+    }
+
+    func testQualityProfilesKeepNativeDetailUntilCompatibilityIsSelected() {
+        XCTAssertEqual(MirrorQualityProfile.restored(from: nil), .nativeClarity)
+        XCTAssertEqual(MirrorQualityProfile.restored(from: "unknown-profile"), .nativeClarity)
+        XCTAssertEqual(MirrorQualityProfile.restored(from: MirrorQualityProfile.nativeSmooth.rawValue), .nativeSmooth)
+        XCTAssertEqual(MirrorQualityProfile.nativeClarity.maxSize, 0)
+        XCTAssertEqual(MirrorQualityProfile.nativeSmooth.maxSize, 0)
+        XCTAssertEqual(MirrorQualityProfile.nativeClarity.videoBitRateMbps, 24)
+        XCTAssertEqual(MirrorQualityProfile.nativeSmooth.maxFPS, 60)
+        XCTAssertEqual(MirrorQualityProfile.compatibility.maxSize, 1920)
+        XCTAssertEqual(MirrorQualityProfile.compatibility.videoBitRateMbps, 12)
+        XCTAssertEqual(MirrorQualityProfile.nativeClarity.videoBufferMilliseconds(isWireless: true), 80)
+        XCTAssertEqual(MirrorQualityProfile.nativeClarity.videoBufferMilliseconds(isWireless: false), 0)
+    }
+
+    func testVideoResolutionParsingRejectsErrorsAndIgnoresRotation() throws {
+        let native = try XCTUnwrap(VideoResolution.parse(logLine: "INFO: Texture: 1080x2400"))
+        let rotated = try XCTUnwrap(VideoResolution.parse(logLine: "  INFO:   Texture: 2400x1080  "))
+        let reduced = try XCTUnwrap(VideoResolution.parse(logLine: "INFO: Texture: 720x1600"))
+        XCTAssertEqual(native.pixelCount, 2_592_000)
+        XCTAssertFalse(rotated.isSmaller(than: native))
+        XCTAssertTrue(reduced.isSmaller(than: native))
+        for line in ["ERROR: Texture: 1080x2400", "INFO: Texture: 0x2400", "INFO: Texture: 99999x2400", "INFO: Texture: 1080x2400 invalid"] {
+            XCTAssertNil(VideoResolution.parse(logLine: line))
+        }
     }
 }

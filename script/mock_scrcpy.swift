@@ -49,19 +49,36 @@ if mode == "inherited-logs" {
     fputs("final stderr\n", stderr)
     exit(23)
 }
-if mode != "silent" { emitReady() }
+if mode == "malformed-texture" {
+    fputs("ERROR: Texture: 1080x2400\nINFO: Texture: 0x2400\nINFO: Texture: 1080x2400 invalid\n", stdout)
+} else if mode != "silent" { emitReady() }
 
 // The bounded lifetime also prevents orphaned fixtures after an interrupted test.
 let deadline = Date().addingTimeInterval(40)
 var emittedOnCommand = false
+var previousCommand: String?
 while Date() < deadline {
     let command = try? String(contentsOf: root.appendingPathComponent("\(serial).command"), encoding: .utf8)
     if command == "exit" { exit(0) }
     if command == "fail" { exit(17) }
+    if command == "disconnect" { exit(2) }
     if command == "ready" && !emittedOnCommand {
         emitReady()
         emittedOnCommand = true
     }
+    if let command, command != previousCommand, command.hasPrefix("log:") {
+        // A complete or deliberately chunked fake scrcpy log, emitted only
+        // once per command change. No media capture or ADB access occurs.
+        fputs(String(command.dropFirst(4)) + "\n", stdout)
+    }
+    if let command, command != previousCommand, command.hasPrefix("split-log:") {
+        let bytes = Data((String(command.dropFirst(10)) + "\n").utf8)
+        let split = min(8, bytes.count)
+        FileHandle.standardOutput.write(bytes.prefix(split))
+        usleep(10_000)
+        FileHandle.standardOutput.write(bytes.dropFirst(split))
+    }
+    previousCommand = command
     usleep(20_000)
 }
 exit(99)

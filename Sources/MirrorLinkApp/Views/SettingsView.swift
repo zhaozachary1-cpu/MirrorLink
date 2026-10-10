@@ -1,8 +1,9 @@
 import SwiftUI
 
 struct SettingsView: View {
-    let paths: ToolPaths?
+    @ObservedObject var store: MirrorSessionStore
     @ObservedObject var updates: AppUpdateStore
+    private var paths: ToolPaths? { store.paths }
     private var distributionNote: String {
         let channel = Bundle.main.object(forInfoDictionaryKey: "MirrorLinkDistributionChannel") as? String
         if channel == "developer-id" {
@@ -16,6 +17,10 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section("画质与稳定性") {
+                MirrorQualityControls(profile: $store.qualityProfile, showsAdditionalGuidance: true)
+            }
+
             UpdateSettingsView(updates: updates)
             Section("投屏组件") {
                 LabeledContent("状态") {
@@ -33,7 +38,7 @@ struct SettingsView: View {
             }
 
             Section("当前版本范围") {
-                Text("支持 macOS 13 或更高版本，可同时投屏多台通过 USB 连接并授权的 Android 手机。每台手机独立显示，可分别开始、重试和停止；退出镜连会停止本应用启动的全部投屏。实际并行能力取决于 Mac 性能与 USB 连接。")
+                Text("支持 macOS 13 或更高版本，可同时投屏多台通过 USB 授权或无线调试配对的 Android 手机。每台手机独立显示，可分别开始、重试、重新投屏和停止；退出镜连会停止本应用启动的全部投屏。实际并行能力取决于手机与 Mac 性能，以及 USB 或 Wi-Fi 连接。")
                     .fixedSize(horizontal: false, vertical: true)
                     .foregroundStyle(.secondary)
             }

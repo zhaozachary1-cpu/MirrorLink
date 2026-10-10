@@ -88,6 +88,8 @@ private struct SelectedDevicesCard: View {
 
                 Divider()
 
+                MirrorQualityControls(profile: $store.qualityProfile)
+
                 HStack(spacing: 12) {
                     Button {
                         store.startMirroring()
@@ -145,6 +147,10 @@ private struct DeviceSessionRow: View {
 
     private var connection: AndroidDevice? { store.connectedDevice(for: device.id) }
 
+    private var videoStatus: MirrorVideoStatus? {
+        state.isActive ? store.videoStatus(for: device.id) : nil
+    }
+
     private var guidance: String? {
         if device.isWireless {
             guard let connection else { return "无线连接已断开。请确认同一 Wi-Fi 和无线调试，点击“无线连接”填写手机当前的连接端口。" }
@@ -175,20 +181,57 @@ private struct DeviceSessionRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(device.displayName)
                         .font(.callout.weight(.medium))
+                        .lineLimit(2)
                     Text("\(device.transport) · \(device.serial)")
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
                 Spacer()
                 Text(statusTitle)
                     .font(.caption)
                     .foregroundStyle(stateTint)
+                    .fixedSize()
+            }
+            if let videoStatus {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("本次画质：\(videoStatus.profile.title)")
+                        .font(.caption.weight(.medium))
+                    Text(videoStatus.resolution.map { "接收画面：\($0.displayText) px" } ?? "等待画面尺寸")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                    Text(videoStatus.configurationSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let warning = videoStatus.warning {
+                        Label(warning, systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            HStack(spacing: 8) {
+                Spacer()
                 if store.isMirroring(for: device.id) {
-                    Button("停止") { store.stopMirroring(for: device.id) }
+                    Button {
+                        store.restartMirroring(for: device.id)
+                    } label: {
+                        Label("重新投屏", systemImage: "arrow.clockwise")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(state == .stopping)
+                    .help("只重启 \(device.logLabel) 的投屏，并应用当前选择的\(store.qualityProfile.title)")
+                    Button(store.isRestartPending(for: device.id) ? "取消重启" : "停止") {
+                        store.stopMirroring(for: device.id)
+                    }
                         .buttonStyle(.bordered)
                         .tint(.red)
-                        .disabled(state == .stopping)
+                        .disabled(state == .stopping && !store.isRestartPending(for: device.id))
                         .help("只停止 \(device.logLabel) 的投屏")
                 } else {
                     Button(state.isFailure ? "重试" : "开始") { store.startMirroring(for: device.id) }

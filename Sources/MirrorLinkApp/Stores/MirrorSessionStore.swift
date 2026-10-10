@@ -13,11 +13,16 @@ final class MirrorSessionStore: ObservableObject {
     @Published private(set) var isRefreshing = false
     @Published private(set) var globalErrorMessage: String?
     @Published var logsExpanded = false
+    @Published var qualityProfile: MirrorQualityProfile {
+        didSet { preferences.set(qualityProfile.rawValue, forKey: MirrorQualityProfile.preferenceKey) }
+    }
 
     let paths: ToolPaths?
 
     @Published private var runningSessions: [AndroidDevice.ID: RunningMirrorSession] = [:]
     @Published private var sessionDevices: [AndroidDevice.ID: AndroidDevice] = [:]
+    @Published private var videoStatuses: [AndroidDevice.ID: MirrorVideoStatus] = [:]
+    private let preferences: UserDefaults
     private let startupTimeout: TimeInterval
     private let snapshotProvider: (ToolPaths) -> ADBSnapshot
     private var shuttingDown = false
@@ -27,9 +32,12 @@ final class MirrorSessionStore: ObservableObject {
     init(
         paths: ToolPaths? = ToolPaths.discover(),
         startupTimeout: TimeInterval = 25,
+        preferences: UserDefaults = .standard,
         snapshotProvider: @escaping (ToolPaths) -> ADBSnapshot = { ADBService(paths: $0).snapshot() }
     ) {
         self.paths = paths
+        self.preferences = preferences
+        self.qualityProfile = .restored(from: preferences.string(forKey: MirrorQualityProfile.preferenceKey))
         self.startupTimeout = startupTimeout
         self.snapshotProvider = snapshotProvider
         self.toolchainAvailable = paths?.isUsable == true
@@ -102,6 +110,14 @@ final class MirrorSessionStore: ObservableObject {
 
     func sessionState(for device: AndroidDevice) -> MirrorSessionState {
         sessionStates[device.id] ?? .idle
+    }
+
+    func videoStatus(for deviceID: AndroidDevice.ID) -> MirrorVideoStatus? {
+        videoStatuses[deviceID]
+    }
+
+    func isRestartPending(for deviceID: AndroidDevice.ID) -> Bool {
+        runningSessions[deviceID]?.restartRequest != nil
     }
 
     func isMirroring(for deviceID: AndroidDevice.ID) -> Bool {
@@ -315,12 +331,27 @@ final class MirrorSessionStore: ObservableObject {
         stopMirroring(for: deviceID, appendingLog: true)
     }
 
+    /// An explicit restart, never an automatic response to a quiet/static
+    /// screen. Reap the old child before starting its replacement.
+    func restartMirroring(for deviceID: AndroidDevice.ID) {
+        guard !shuttingDown, let session = runningSessions[deviceID],
+              !session.stopRequested else { return }
+        guard let device = connectedDevice(for: deviceID), device.state == .ready else {
+            appendLog("\(session.device.logLabel) 当前连接不可用，请刷新后重试。")
+            return
+        }
+        stopMirroring(for: deviceID, appendingLog: false)
+        session.restartRequest = (device, qualityProfile)
+        appendLog("正在重新投屏 \(device.logLabel)，将使用\(qualityProfile.title)；其他设备不受影响。")
+    }
+
     // Called synchronously on application termination, so no child outlives Quit.
     // Never kill an ADB daemon or another app's scrcpy session.
     func shutdown() {
         shuttingDown = true
         let sessions = Array(runningSessions.values)
         for session in sessions {
+            session.restartRequest = nil
             session.stopRequested = true
             sessionStates[session.device.id] = .stopping
             if session.process.isRunning { session.process.terminate() }
@@ -340,7 +371,10 @@ final class MirrorSessionStore: ObservableObject {
         globalErrorMessage = nil
     }
 
-    private func startSession(for device: AndroidDevice, paths: ToolPaths) {
+    private func startSession(for device: AndroidDevice, paths: ToolPaths, quality: MirrorQualityProfile? = nil) {
+        let profile = quality ?? qualityProfile
+        let requestedVideo = MirrorVideoStatus(profile: profile, isWireless: device.isWireless)
+        videoStatuses[device.id] = requestedVideo
         let command = ScrcpyCommand(paths: paths)
         let token = UUID()
         let process = Process()
@@ -356,7 +390,7 @@ final class MirrorSessionStore: ObservableObject {
         }
         let readers = DispatchGroup()
         process.executableURL = paths.scrcpy
-        process.arguments = command.arguments(for: device)
+        process.arguments = command.arguments(for: device, quality: profile)
         process.standardOutput = output.childWriter
         process.standardError = errors.childWriter
         process.standardInput = FileHandle.nullDevice
@@ -375,6 +409,7 @@ final class MirrorSessionStore: ObservableObject {
         sessionDevices[device.id] = device
         sessionStates[device.id] = .starting
         appendLog("正在启动 \(device.logLabel) 的投屏窗口…")
+        appendLog("[\(device.logLabel)] 画质请求：\(requestedVideo.configurationSummary)。禁止出错后自动降低分辨率。")
 
         // Register before run(): even an immediately failing child must drain
         // both output streams before we publish its final state.
@@ -428,6 +463,7 @@ final class MirrorSessionStore: ObservableObject {
 
     private func stopMirroring(for deviceID: AndroidDevice.ID, appendingLog: Bool) {
         guard let session = runningSessions[deviceID] else { return }
+        session.restartRequest = nil
         session.stopRequested = true
         sessionStates[deviceID] = .stopping
         if appendingLog { appendLog("正在停止 \(session.device.logLabel) 的投屏…") }
@@ -456,10 +492,23 @@ final class MirrorSessionStore: ObservableObject {
             appendLog("[\(session.device.logLabel)] \(line)")
             // scrcpy emits this after initializing its video texture, not merely
             // after Process.run(). That distinction prevents a false success UI.
-            if sessionStates[deviceID] == .starting && line.contains("Texture:") {
-                sessionStates[deviceID] = .mirroring
-                appendLog("[\(session.device.logLabel)] 已收到手机画面，投屏窗口已就绪。")
+            if let size = VideoResolution.parse(logLine: line) {
+                session.videoEncoderFailed = false
+                videoStatuses[deviceID]?.receive(size)
+                if sessionStates[deviceID] == .starting {
+                    sessionStates[deviceID] = .mirroring
+                    appendLog("[\(session.device.logLabel)] 已收到手机画面，投屏窗口已就绪。")
+                }
             }
+            if line == "[server] INFO: Applying video encoder constraints"
+                || line.hasPrefix("[server] INFO: Retrying with -m") {
+                videoStatuses[deviceID]?.noteEncoderConstraint()
+            }
+            if line.hasPrefix("[server] ERROR: Could not create default video encoder for ")
+                || line.hasPrefix("[server] ERROR: Capture/encoding error:") {
+                session.videoEncoderFailed = true
+            }
+            if line == "WARN: Device disconnected" { session.reportedDisconnect = true }
         }
         session.pendingOutput[stream] = Data(buffer.suffix(4096))
     }
@@ -471,6 +520,18 @@ final class MirrorSessionStore: ObservableObject {
         }
         runningSessions[deviceID] = nil
 
+        if let restart = session.restartRequest, !shuttingDown {
+            sessionStates[deviceID] = .idle
+            guard let paths, paths.isUsable,
+                  let device = connectedDevice(for: deviceID), device.state == .ready,
+                  device.serial == restart.device.serial, device.adbSocket == restart.device.adbSocket else {
+                failDevice(deviceID, message: "连接已变化，已取消重新投屏。请刷新设备后手动开始。")
+                return
+            }
+            startSession(for: device, paths: paths, quality: restart.profile)
+            return
+        }
+
         if case .failed = sessionStates[deviceID] {
             return
         }
@@ -478,6 +539,13 @@ final class MirrorSessionStore: ObservableObject {
             sessionStates[deviceID] = .idle
             appendLog("[\(session.device.logLabel)] 投屏窗口已关闭。")
         } else {
+            // scrcpy can recover at the same size without another Texture
+            // line. A historical encoder error must not mask a later unplug.
+            if session.videoEncoderFailed, videoStatuses[deviceID]?.initialResolution == nil,
+               process.terminationStatus != 2, !session.reportedDisconnect {
+                failDevice(deviceID, message: "视频采集或编码出错后投屏结束。请检查连接和手机负载，或选择“低负载兼容”后重试；本次未自动降低分辨率。")
+                return
+            }
             let advice = session.device.isWireless ? "请检查 Wi-Fi 和手机无线调试，端口变化后需重新无线连接。" : "请检查 USB 连接后重试。"
             failDevice(deviceID, message: "连接中断或投屏组件退出（状态码 \(process.terminationStatus)）。\(advice)")
         }
@@ -512,6 +580,9 @@ private final class RunningMirrorSession {
     let logStreams: [SessionLogStream]
     var stopRequested = false
     var pendingOutput: [String: Data] = [:]
+    var restartRequest: (device: AndroidDevice, profile: MirrorQualityProfile)?
+    var videoEncoderFailed = false
+    var reportedDisconnect = false
 
     init(device: AndroidDevice, token: UUID, process: Process, logStreams: [SessionLogStream]) {
         self.device = device

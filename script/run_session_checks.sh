@@ -8,6 +8,8 @@ swiftc -swift-version 5 \
   "$ROOT_DIR/script/session_checks.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Models/AndroidDevice.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Models/MirrorSessionState.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Models/MirrorQualityProfile.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Models/MirrorVideoStatus.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Services/ADBDeviceParser.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Services/ADBDeviceIdentity.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Services/ADBService.swift" \

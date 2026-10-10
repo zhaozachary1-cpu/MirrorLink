@@ -1,16 +1,18 @@
 # 镜连 MirrorLink
 
-[![一键下载安装包 — 镜连 macOS DMG](docs/assets/download-macos.svg)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.2/MirrorLink-0.4.2-macOS-universal.dmg)
+[![一键下载安装包 — 镜连 macOS DMG](docs/assets/download-macos.svg)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.3/MirrorLink-0.4.3-macOS-universal.dmg)
 
-**点击上方蓝色按钮，直接下载 0.4.2 安装包，无需进入 Assets 查找。**
+**点击上方蓝色按钮，直接下载 0.4.3 安装包，无需进入 Assets 查找。**
 
 下载后：**打开 DMG → 将 MirrorLink.app 拖入“应用程序” → 打开镜连**。按钮只负责下载，不会静默安装；浏览器可能按你的设置询问保存位置。
 
-按钮未显示？[直接下载 DMG](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.2/MirrorLink-0.4.2-macOS-universal.dmg) · [下载完整 ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.2/MirrorLink-0.4.2-macOS-universal.zip) · [其他版本](https://github.com/zhaozachary1-cpu/MirrorLink/releases)
+按钮未显示？[直接下载 DMG](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.3/MirrorLink-0.4.3-macOS-universal.dmg) · [下载完整 ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.3/MirrorLink-0.4.3-macOS-universal.zip) · [其他版本](https://github.com/zhaozachary1-cpu/MirrorLink/releases)
 
 > 免费社区版未经 Apple 公证。首次打开可能需要手动允许，具体见[首次打开的 macOS 安全提示](#首次打开的-macos-安全提示)；不要关闭系统安全保护。
 
-镜连是一个原生 macOS Android 投屏工具：它把官方 scrcpy v4.1 与 ADB 作为应用内置运行时，并用 SwiftUI 提供 USB / 同 Wi-Fi 无线连接、多设备选择、授权提示、并行投屏、独立开始/停止和诊断日志。当前版本为 0.4.2（Build 7），修复投屏就绪日志缓冲引发的 25 秒误超时，并补充主窗口重开处理。安装包以 [最新公开发行页](https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest) 为准，源码版本不等于安装包已经发布。
+镜连是一个原生 macOS Android 投屏工具：它把官方 scrcpy v4.1 与 ADB 作为应用内置运行时，并用 SwiftUI 提供 USB / 同 Wi-Fi 无线连接、多设备选择、授权提示、并行投屏、独立开始/停止和诊断日志。
+
+当前版本为 **0.4.3（Build 8）**，新增原生超清、原生流畅与低负载兼容三个画质档位，展示每台设备收到的画面尺寸，并支持单台重新投屏应用新画质；保留 0.4.2 的 25 秒误超时修复和主窗口重开处理。实际可下载安装的版本以 [最新公开发行页](https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest) 为准；完整的发布验证记录见 [UPDATE-QA.md](UPDATE-QA.md)。
 
 ## 下载、安装与注意事项（请先阅读）
 
@@ -26,14 +28,14 @@
 
 | 文件 | 用途 |
 | --- | --- |
-| `MirrorLink-0.4.2-macOS-universal.dmg` | 推荐给普通 Mac 用户；打开后拖拽安装 |
-| `MirrorLink-0.4.2-macOS-universal.zip` | 完整安装包；先解压，再拖拽安装 |
-| `MirrorLink-0.4.2-update.zip` / `appcast.xml` | 应用内更新专用；不要当作普通安装包转发 |
+| `MirrorLink-0.4.3-macOS-universal.dmg` | 推荐给普通 Mac 用户；打开后拖拽安装 |
+| `MirrorLink-0.4.3-macOS-universal.zip` | 完整安装包；先解压，再拖拽安装 |
+| `MirrorLink-0.4.3-update.zip` / `appcast.xml` | 应用内更新专用；不要当作普通安装包转发 |
 | `Source code (zip/tar.gz)` | 本项目源码，不是可双击安装的应用 |
-| `MirrorLink-0.4.2-third-party-sources.tar.gz` | 第三方对应源码及许可材料，普通使用不需要下载 |
+| `MirrorLink-0.4.3-third-party-sources.tar.gz` | 第三方对应源码及许可材料，普通使用不需要下载 |
 | `SHA256SUMS.txt` | 下载文件的 SHA-256 校验清单 |
 
-以上文件名对应 0.4.2；将来发布新版时请选择同一 Release 中对应版本的文件。分享时发送官方 Release 链接、DMG 或完整 ZIP，不直接转发裸 `.app` 目录。
+以上文件名对应 0.4.3；将来发布新版时请选择同一 Release 中对应版本的文件。分享时发送官方 Release 链接、DMG 或完整 ZIP，不直接转发裸 `.app` 目录。
 
 ### 正常安装 / 手动覆盖旧版
 
@@ -54,9 +56,29 @@
 ### 旧版升级与使用边界
 
 - 0.3.1 及之后版本可主动点击“检查更新…”；安装需本人确认。网络或验签失败时不要跳过验证，可从官方 Release 下载完整包手动安装。
-- 0.3.0 需按下方“应用更新”配置一次更新地址；0.2.0 及更早需手动安装。**若本机已经是 0.4.2 / Build 7 的本地预览包，同版本社区包不属于更高 Build，不应期待更新器再次提示；需要时手动安装完整社区包。**
+- 0.3.0 需按下方“应用更新”配置一次更新地址；0.2.0 及更早需手动安装。**同 Build 的本地预览包与社区包不构成版本升级**，例如 0.4.2 / Build 7 之间、0.4.3 / Build 8 之间，不应期待更新器再次提示；需要时手动安装对应的完整社区包。0.4.3 的 Build 8 高于 0.4.2 的 Build 7，但须在安装包与签名清单公开后才能通过更新器获取。
 - 无线首次配对必须在手机“开发者选项 → 无线调试”中扫码，不是微信或普通相机。不要转发配对二维码、配对码或含设备标识的诊断日志；同一 Wi-Fi 不代表已经授权。
-- 单台 USB 真机短时测试与模拟多设备/无线检查已有记录，但真实无线、多台手机画面、陌生 Mac 首次安装及旧版经应用内覆盖升级仍有未完成的验收。查看 [STABILITY-QA.md](STABILITY-QA.md)、[WIRELESS-QA.md](WIRELESS-QA.md) 和 [UPDATE-QA.md](UPDATE-QA.md)，不要把构建/验签成功理解为所有设备已验收。
+- 单台 USB 真机短时测试与模拟多设备/无线检查已有记录，但长时间动态画质、真实无线、多台手机画面、陌生 Mac 首次安装及旧版经应用内覆盖升级仍有未完成的验收。查看 [QUALITY-QA.md](QUALITY-QA.md)、[STABILITY-QA.md](STABILITY-QA.md)、[WIRELESS-QA.md](WIRELESS-QA.md) 和 [UPDATE-QA.md](UPDATE-QA.md)，不要把构建/验签成功理解为所有设备已验收。
+
+## 画质与持续投屏（0.4.3）
+
+在主窗口开始按钮上方或“设置 → 画质与稳定性”选择画质。默认使用“原生超清”，以保留手机细节并限制持续编码的帧率负载。三档均使用 H.264：
+
+| 画质档位 | 画面尺寸请求 | 目标码率 | 帧率上限 | 适用场景 |
+| --- | --- | --- | --- | --- |
+| 原生超清（推荐） | 保留手机原生分辨率，不主动缩小 | 24 Mbps | 30 fps | 文字、工作内容和持续投屏 |
+| 原生流畅 | 保留手机原生分辨率，不主动缩小 | 24 Mbps | 60 fps | 滑动和动态内容，手机与网络负载更高 |
+| 低负载兼容 | 长边不超过 1920 px | 12 Mbps | 30 fps | 带宽不足、多设备或原生编码失败时，由用户主动选择 |
+
+“超清”指保留手机输出的原生细节；手机源画面不是 4K 时，不会通过放大制造 4K 细节。码率与帧率是编码目标/上限，**不是实测值或持续达到该值的承诺**。静止页面可能少有新帧，低帧率日志本身不等于投屏卡住，仍需结合内容变化判断。
+
+更改画质在下次开始时生效，正在运行的会话保持自己的配置。要立即应用，点击该设备的“重新投屏”；只重启这一台，其他投屏不受影响。设备列表展示本次配置与实际收到的画面尺寸，画面尺寸尚未到达时显示等待；若尺寸比本次初始画面缩小，会给出提示。正常旋转不被当作清晰度下降。
+
+投屏关闭了 scrcpy 因编码失败而自动降低分辨率的回退，不会为了继续启动而悄悄选择低清尺寸。手机编码失败时请查看错误提示，必要时主动切换“低负载兼容”；手机自身显示设置或编码器仍可能影响实际尺寸。
+
+无线连接使用 **80 ms 视频缓冲**平滑短时抖动，代价是少量额外延迟；USB 不增加该视频缓冲（0 ms）。长时间投屏建议优先使用 USB，以减少 Wi-Fi 波动；增加码率不能消除带宽不足或手机发热导致的卡顿。
+
+本轮单台 USB 真机的原生档 180 秒观察期间，日志中的画面尺寸没有缩小；这尚不能替代数小时动态内容、无线链路及多设备的清晰度验收，也未确证此前“越来越模糊”的唯一原因。结果与待验收项见 [QUALITY-QA.md](QUALITY-QA.md)。
 
 ## 使用
 

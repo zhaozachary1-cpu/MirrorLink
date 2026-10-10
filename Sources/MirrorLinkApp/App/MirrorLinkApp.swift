@@ -70,7 +70,7 @@ struct MirrorLinkApp: App {
         .defaultSize(width: 640, height: 720)
 
         Settings {
-            SettingsView(paths: store.paths, updates: updates)
+            SettingsView(store: store, updates: updates)
         }
     }
 }

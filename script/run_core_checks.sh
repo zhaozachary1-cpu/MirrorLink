@@ -6,6 +6,8 @@ mkdir -p "$ROOT_DIR/.build"
 swiftc -swift-version 5 \
   "$ROOT_DIR/script/core_checks.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Models/AndroidDevice.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Models/MirrorQualityProfile.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Models/MirrorVideoStatus.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Services/ADBDeviceParser.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Services/ToolPaths.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Services/ScrcpyCommand.swift" \
