@@ -1,5 +1,35 @@
 # MirrorLink 更新与分发验证
 
+## 0.4.4 社区版：17/11/2026 发布与真实应用内升级
+
+- 已于 **17/11/2026 22:01:36（Asia/Shanghai；UTC 14:01:36）** 公开发布 [v0.4.4](https://github.com/zhaozachary1-cpu/MirrorLink/releases/tag/v0.4.4) 并设为 latest，非草稿、非预发布；版本 **0.4.4 / Build 9**。发行标签及 Release 的目标提交均为 `9f03d7a47b3da2966d1671550d386078f146bb1b`；后续验证记录提交不移动该标签。
+- 核心、74 项会话模拟、137 项无线模拟、28 项更新策略检查及 1,434 项本地化断言通过。中英文原生窗口切换、重启后偏好持久化、英文排版和无线表单保留等证据见 [LOCALIZATION-QA.md](LOCALIZATION-QA.md)。
+- `package_release.sh --community` 生成双架构应用、完整 ZIP/DMG、更新 ZIP 和第三方源码包。完整 ZIP、更新 ZIP 解包及 DMG 只读挂载后的三份应用均通过严格嵌套签名；版本、社区渠道、原有更新公钥、两种语言资源、内嵌说明与发行源码一致。六份第三方源码归档及八项许可清单校验通过，DMG 已卸载。
+- 使用原有 Sparkle Ed25519 钥匙串密钥签署更新包与清单，没有导出、替换或轮换私钥。应用为 ad-hoc 社区版，未经 Developer ID 签名或 Apple 公证，没有关闭 Gatekeeper 或移除 quarantine。
+- 六项资产先上传草稿；逐一核对 GitHub 返回的 uploaded 状态、长度和 SHA-256 与可信本地结果一致后公开。最终本地产物目录为 `artifacts/Releases/MirrorLink-0.4.4-20261117-135620/`。
+- **22:08:04（UTC 14:08:04）** 完成公开下载回读：禁用用户 curl 配置、无认证头匿名下载全部六项固定版本资产，均为 HTTP 200，且与本地文件逐字节一致；公开 SHA256SUMS 中五项文件全部通过。匿名下载 canonical latest appcast 为 16,779 字节，与固定版本清单一致。公开 XML/ZIP 的独立验签、0.4.4 / Build 9、固定版本 URL 与长度核对通过，清单、ZIP、ZIP 签名、截断清单签名尾部四类内存篡改全部被拒绝。匿名回读副本仅保留在忽略的 `work/tmp/public-release-0.4.4.5RDd97/`。
+
+### 本机真实更新流程：0.4.3 / Build 8 → 0.4.4 / Build 9
+
+1. 升级前将已安装旧版及应用偏好备份到 `artifacts/Backups/before-0.4.4-20261117/`，备份应用严格签名与偏好 plist 格式验证通过；确认无活动投屏。
+2. 在实际安装于 `/Applications/MirrorLink.app` 的 0.4.3 设置中点击“检查更新…”，原生 Sparkle 窗口显示新版本 0.4.4 与当前版本 0.4.3。
+3. 点击“安装更新”，观察下载完成后显示“可以开始安装了”，再点击“安装并重启应用”。应用自动替换并重新启动，未手动复制发行应用来代替更新流程。
+4. 新版原生设置显示 **0.4.4（9）** 及顶部“语言 / Language”。原有“低负载兼容”画质、“跟随系统”语言偏好与关闭的“自动检查更新”均保留。
+5. 在升级后的应用再次点击“检查更新…”，Sparkle 显示“您使用的就是最新版！镜连 0.4.4 是当前的最新版本”。关闭提示后，自有状态显示没有新版本。
+6. 在安装后的正式版选择 English，设置分区、画质说明和已有的“没有新版本”提示即时变为英文；切回“跟随系统”后即时恢复中文。最终保持原有语言、画质和自动检查设置。
+7. 安装后的应用通过 `codesign --verify --deep --strict`；版本与 Build 再次读回正确。使用不跟随框架链接的 rsync 校验和只读比较，文件内容、链接及目录结构与正式发行应用一致。签名仍为 ad-hoc。
+
+上述结果补齐了此前未完成的本机 Sparkle 发现、下载、确认安装、覆盖重启、版本提升、设置保留和再次检查无更新流程。该流程在无活动手机的本机环境完成；投屏期间延后安装、断网重试、陌生 Mac 首次安装、Intel 真机和多台真实手机仍未在本轮验收。没有扩大既有画质或无线真机结论。
+
+| 公开资产 | SHA-256 |
+| --- | --- |
+| 完整 ZIP | `27b628c45560e4438d565df2aa3179dbdeae37a1a91cbfe7de5648be60dacaac` |
+| DMG | `2826ad0e89d3276146d4e2ca4ddeb99f228deaed3cff86a3c3d592a2c407ded6` |
+| 更新 ZIP | `858be826071cf45261405ac07bc74aff5f966310f487d032612877c941d5ad73` |
+| 第三方源码 | `48b907ffd3af452547c25d5cc1398057069e069d70f0cb09e3592d7ada4be7ba` |
+| appcast.xml | `5abf96ac4f19e620d7f06bdc396e804c286fd6fa4e7ecf552eebfc3eada7d7f0` |
+| SHA256SUMS.txt | `b3f318095e8d58b2240ad4ac66de1e96c98ded307fedfb29bea539a8faedd3bf` |
+
 ## 0.4.3 社区版：2026-10-10 发布验证
 
 - 已于 **2026-10-10 15:47:23（Asia/Shanghai；UTC 07:47:23）** 公开发布 [v0.4.3](https://github.com/zhaozachary1-cpu/MirrorLink/releases/tag/v0.4.3) 并设为 latest，非草稿、非预发布；版本 0.4.3 / Build 8。发行标签对应源码 `73ce216fdb0282d951c6fac1b9647d5875969694`。
