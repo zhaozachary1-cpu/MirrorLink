@@ -6,6 +6,8 @@ mkdir -p "$CHECK_DIR"
 swiftc -swift-version 5 \
   "$ROOT_DIR/script/wireless_checks.swift" \
   "$ROOT_DIR/script/wireless_qr_checks.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Models/AppLanguage.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Support/L10n.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Models/AndroidDevice.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Models/WirelessEndpoint.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Models/WirelessService.swift" \
@@ -20,4 +22,4 @@ swiftc -swift-version 5 \
   "$ROOT_DIR/Sources/MirrorLinkApp/Stores/WirelessConnectionStore.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Stores/WirelessQRPairingStore.swift" \
   -o "$CHECK_DIR/wireless-checks"
-"$CHECK_DIR/wireless-checks"
+MIRRORLINK_TEST_LANGUAGE=zh-Hans MIRRORLINK_LOCALIZATION_ROOT="$ROOT_DIR/Sources/MirrorLinkApp/Resources/Localizations" "$CHECK_DIR/wireless-checks"

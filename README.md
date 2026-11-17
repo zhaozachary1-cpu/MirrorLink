@@ -1,18 +1,39 @@
 # 镜连 MirrorLink
 
-[![一键下载安装包 — 镜连 macOS DMG](docs/assets/download-macos.svg)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.3/MirrorLink-0.4.3-macOS-universal.dmg)
+[![一键下载安装包 — 镜连 macOS DMG](docs/assets/download-macos.svg)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.4/MirrorLink-0.4.4-macOS-universal.dmg)
 
-**点击上方蓝色按钮，直接下载 0.4.3 安装包，无需进入 Assets 查找。**
+**点击上方蓝色按钮，直接下载 0.4.4 安装包，无需进入 Assets 查找。**
 
 下载后：**打开 DMG → 将 MirrorLink.app 拖入“应用程序” → 打开镜连**。按钮只负责下载，不会静默安装；浏览器可能按你的设置询问保存位置。
 
-按钮未显示？[直接下载 DMG](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.3/MirrorLink-0.4.3-macOS-universal.dmg) · [下载完整 ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.3/MirrorLink-0.4.3-macOS-universal.zip) · [其他版本](https://github.com/zhaozachary1-cpu/MirrorLink/releases)
+按钮未显示？[直接下载 DMG](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.4/MirrorLink-0.4.4-macOS-universal.dmg) · [下载完整 ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.4/MirrorLink-0.4.4-macOS-universal.zip) · [其他版本](https://github.com/zhaozachary1-cpu/MirrorLink/releases)
 
 > 免费社区版未经 Apple 公证。首次打开可能需要手动允许，具体见[首次打开的 macOS 安全提示](#首次打开的-macos-安全提示)；不要关闭系统安全保护。
 
 镜连是一个原生 macOS Android 投屏工具：它把官方 scrcpy v4.1 与 ADB 作为应用内置运行时，并用 SwiftUI 提供 USB / 同 Wi-Fi 无线连接、多设备选择、授权提示、并行投屏、独立开始/停止和诊断日志。
 
-当前版本为 **0.4.3（Build 8）**，新增原生超清、原生流畅与低负载兼容三个画质档位，展示每台设备收到的画面尺寸，并支持单台重新投屏应用新画质；保留 0.4.2 的 25 秒误超时修复和主窗口重开处理。实际可下载安装的版本以 [最新公开发行页](https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest) 为准；完整的发布验证记录见 [UPDATE-QA.md](UPDATE-QA.md)。
+当前版本为 **0.4.4（Build 9）**，新增简体中文与 English 界面，可跟随系统或在设置中自行切换；保留三档画质、接收画面尺寸、单台重新投屏，以及 0.4.2 的误超时修复。**MirrorLink now supports both English and Simplified Chinese.** 实际可下载安装的版本以 [最新公开发行页](https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest) 为准；完整的发布验证记录见 [UPDATE-QA.md](UPDATE-QA.md)。
+
+## English Quick Start
+
+MirrorLink mirrors Android phones on a Mac over USB or authorized wireless debugging. It includes ADB and scrcpy; no Homebrew or separate tool installation is needed. Requires **macOS 13 or later**. The universal installer includes Apple Silicon and Intel binaries; Intel hardware acceptance testing remains incomplete. It does not support iPhone mirroring or Windows.
+
+1. [Download MirrorLink 0.4.4 for macOS (DMG)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.4/MirrorLink-0.4.4-macOS-universal.dmg), open it, and drag **MirrorLink.app** to **Applications**. An alternative [complete ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.4/MirrorLink-0.4.4-macOS-universal.zip) is available. Do not use “Source code” or the update-only ZIP as an installer. Before replacing an existing copy, stop mirroring, quit with **⌘Q**, and keep a backup.
+2. Launch MirrorLink from Applications. Open **MirrorLink → Settings…** with **⌘,**, find the bilingual **“语言 / Language”** section at the top, and choose **English**. Chinese users can find the same command as **“镜连 → 设置…”**. The other choices are **简体中文** and **跟随系统 / System**.
+3. For USB mirroring, enable **USB debugging** in your Android phone’s Developer options, connect it with a data cable, unlock it, and authorize this Mac on the phone. Click **Refresh Devices**, select the phone, then **Mirror Selected**.
+4. For wireless mirroring, use an **Android 11+** phone with Wireless debugging on the same reachable Wi-Fi network. In MirrorLink, open **Wireless Connection → QR Pairing**. On the phone, open **Developer options → Wireless debugging → Pair device with QR code** and scan there, not with the camera or WeChat. Being on the same network does not grant authorization.
+
+**This is a free community build with an ad-hoc integrity signature, not an Apple Developer ID signature or Apple notarization.** If macOS only says it cannot verify the developer or check the app for malicious software, confirm that you downloaded it from this official repository and choose to trust it, attempt to open it once, then use **System Settings → Privacy & Security → Open Anyway** and confirm locally. If the warning says the app contains malware, will damage your computer, or is damaged, stop and verify the source and file checksums. Keep Gatekeeper enabled and do not remove quarantine attributes. Managed Macs may prohibit installation. See [Apple’s official guidance](https://support.apple.com/102445).
+
+Language changes update MirrorLink’s own interface without stopping active mirroring. Existing scrcpy window titles use the new language when their next session starts. Native window titles, menus, and Sparkle update dialogs may require an app relaunch; macOS and helper-process dialogs can follow the system language. Device names, existing diagnostic logs, and third-party error details remain as reported.
+
+## 界面语言（0.4.4）
+
+打开 **“镜连 → 设置…”（⌘,）→ 顶部“语言 / Language”**，选择 **跟随系统 / System、简体中文或 English**。选择会保存，跟随系统时按系统语言偏好选择已支持的中英文，均不匹配时使用 English。
+
+切换会立即刷新镜连自身的界面文案，保留设备选择、连接输入和正在运行的投屏，不会重启会话。已经打开的 scrcpy 投屏窗口标题在下一次启动该会话时使用新语言。macOS 原生窗口标题、菜单和 Sparkle 更新对话框可能需要下次启动应用后切换；系统及辅助进程对话框可能继续遵循 macOS 的语言设置。
+
+手机/服务名称、序列号、地址、已有诊断日志和第三方返回的原始错误不会被改写。中英文资源分别位于 `Sources/MirrorLinkApp/Resources/Localizations/zh-Hans.lproj/` 与 `en.lproj/`。本地化检查与尚未完成的原生界面验收见 [LOCALIZATION-QA.md](LOCALIZATION-QA.md)。
 
 ## 下载、安装与注意事项（请先阅读）
 
@@ -28,14 +49,14 @@
 
 | 文件 | 用途 |
 | --- | --- |
-| `MirrorLink-0.4.3-macOS-universal.dmg` | 推荐给普通 Mac 用户；打开后拖拽安装 |
-| `MirrorLink-0.4.3-macOS-universal.zip` | 完整安装包；先解压，再拖拽安装 |
-| `MirrorLink-0.4.3-update.zip` / `appcast.xml` | 应用内更新专用；不要当作普通安装包转发 |
+| `MirrorLink-0.4.4-macOS-universal.dmg` | 推荐给普通 Mac 用户；打开后拖拽安装 |
+| `MirrorLink-0.4.4-macOS-universal.zip` | 完整安装包；先解压，再拖拽安装 |
+| `MirrorLink-0.4.4-update.zip` / `appcast.xml` | 应用内更新专用；不要当作普通安装包转发 |
 | `Source code (zip/tar.gz)` | 本项目源码，不是可双击安装的应用 |
-| `MirrorLink-0.4.3-third-party-sources.tar.gz` | 第三方对应源码及许可材料，普通使用不需要下载 |
+| `MirrorLink-0.4.4-third-party-sources.tar.gz` | 第三方对应源码及许可材料，普通使用不需要下载 |
 | `SHA256SUMS.txt` | 下载文件的 SHA-256 校验清单 |
 
-以上文件名对应 0.4.3；将来发布新版时请选择同一 Release 中对应版本的文件。分享时发送官方 Release 链接、DMG 或完整 ZIP，不直接转发裸 `.app` 目录。
+以上文件名对应 0.4.4；将来发布新版时请选择同一 Release 中对应版本的文件。分享时发送官方 Release 链接、DMG 或完整 ZIP，不直接转发裸 `.app` 目录。
 
 ### 正常安装 / 手动覆盖旧版
 
@@ -56,7 +77,7 @@
 ### 旧版升级与使用边界
 
 - 0.3.1 及之后版本可主动点击“检查更新…”；安装需本人确认。网络或验签失败时不要跳过验证，可从官方 Release 下载完整包手动安装。
-- 0.3.0 需按下方“应用更新”配置一次更新地址；0.2.0 及更早需手动安装。**同 Build 的本地预览包与社区包不构成版本升级**，例如 0.4.2 / Build 7 之间、0.4.3 / Build 8 之间，不应期待更新器再次提示；需要时手动安装对应的完整社区包。0.4.3 的 Build 8 高于 0.4.2 的 Build 7，但须在安装包与签名清单公开后才能通过更新器获取。
+- 0.3.0 需按下方“应用更新”配置一次更新地址；0.2.0 及更早需手动安装。**同 Build 的本地预览包与社区包不构成版本升级**，例如同为 0.4.4 / Build 9 时，不应期待更新器再次提示；需要时手动安装对应的完整社区包。0.4.4 的 Build 9 高于 0.4.3 的 Build 8，但须在安装包与签名清单公开后才能通过更新器获取。
 - 无线首次配对必须在手机“开发者选项 → 无线调试”中扫码，不是微信或普通相机。不要转发配对二维码、配对码或含设备标识的诊断日志；同一 Wi-Fi 不代表已经授权。
 - 单台 USB 真机短时测试与模拟多设备/无线检查已有记录，但长时间动态画质、真实无线、多台手机画面、陌生 Mac 首次安装及旧版经应用内覆盖升级仍有未完成的验收。查看 [QUALITY-QA.md](QUALITY-QA.md)、[STABILITY-QA.md](STABILITY-QA.md)、[WIRELESS-QA.md](WIRELESS-QA.md) 和 [UPDATE-QA.md](UPDATE-QA.md)，不要把构建/验签成功理解为所有设备已验收。
 

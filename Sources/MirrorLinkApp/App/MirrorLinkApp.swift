@@ -9,9 +9,11 @@ struct MirrorLinkApp: App {
     @StateObject private var store: MirrorSessionStore
     @StateObject private var updates: AppUpdateStore
     @StateObject private var wireless: WirelessConnectionStore
+    @StateObject private var language: LanguageStore
     @Environment(\.openWindow) private var openWindow
 
     init() {
+        _language = StateObject(wrappedValue: LanguageStore.shared)
         let sessions = MirrorSessionStore()
         _store = StateObject(wrappedValue: sessions)
         _wireless = StateObject(wrappedValue: WirelessConnectionStore(paths: sessions.paths) { [weak sessions] device in
@@ -24,10 +26,12 @@ struct MirrorLinkApp: App {
     }
 
     var body: some Scene {
+        let _ = language.selection
         // One control window owns all device sessions; reopening must not
         // create another timer/selection UI for the same store.
-        Window("镜连", id: "main") {
+        Window(L10n.tr("镜连"), id: "main") {
             ContentView(store: store, updates: updates)
+                .environment(\.locale, language.effectiveLocale)
                 .onAppear {
                     appDelegate.store = store
                     appDelegate.updates = updates
@@ -38,39 +42,41 @@ struct MirrorLinkApp: App {
         .defaultSize(width: 960, height: 640)
         .commands {
             CommandGroup(after: .appInfo) {
-                Button(updates.installationPending ? "安装已下载的更新…" : "检查更新…") {
+                Button(updates.installationPending ? L10n.tr("安装已下载的更新…") : L10n.tr("检查更新…")) {
                     updates.checkForUpdates()
                 }
                 .disabled(!updates.canCheckForUpdates)
             }
-            CommandMenu("投屏") {
-                Button("显示主窗口") { openWindow(id: "main") }
+            CommandMenu(L10n.tr("投屏")) {
+                Button(L10n.tr("显示主窗口")) { openWindow(id: "main") }
                     .keyboardShortcut("0", modifiers: [.command])
                 Divider()
-                Button("无线连接…") { openWindow(id: "wireless") }
+                Button(L10n.tr("无线连接…")) { openWindow(id: "wireless") }
                     .keyboardShortcut("w", modifiers: [.command, .shift])
-                Button("刷新设备") { store.refresh() }
+                Button(L10n.tr("刷新设备")) { store.refresh() }
                     .keyboardShortcut("r", modifiers: [.command])
 
                 Divider()
 
-                Button("开始所选投屏") { store.startMirroring() }
+                Button(L10n.tr("开始所选投屏")) { store.startMirroring() }
                     .keyboardShortcut(.return, modifiers: [.command])
                     .disabled(!store.canStart)
 
-                Button("停止全部投屏") { store.stopMirroring() }
+                Button(L10n.tr("停止全部投屏")) { store.stopMirroring() }
                     .keyboardShortcut(".", modifiers: [.command])
                     .disabled(!store.isMirroring)
             }
         }
 
-        Window("无线连接", id: "wireless") {
+        Window(L10n.tr("无线连接"), id: "wireless") {
             WirelessConnectionView(store: wireless)
+                .environment(\.locale, language.effectiveLocale)
         }
         .defaultSize(width: 640, height: 720)
 
         Settings {
             SettingsView(store: store, updates: updates)
+                .environment(\.locale, language.effectiveLocale)
         }
     }
 }

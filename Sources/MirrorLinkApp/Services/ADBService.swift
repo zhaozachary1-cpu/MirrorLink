@@ -42,7 +42,7 @@ struct ADBService: Sendable {
                     }
                 }
             } else {
-                let error = result.timedOut ? "扫描超时，请检查 USB / Wi-Fi 连接后刷新。" : result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+                let error = result.timedOut ? L10n.tr("扫描超时，请检查 USB / Wi-Fi 连接后刷新。") : result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
                 // An absent optional 5038 daemon is normal. Never hide a primary-daemon failure.
                 if !error.isEmpty && (socket == nil || !error.contains("cannot connect")) {
                     diagnostics.append("\(socket == nil ? "ADB 5037" : "ADB 5038"): \(error)")

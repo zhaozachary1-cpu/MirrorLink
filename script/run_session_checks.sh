@@ -6,6 +6,8 @@ mkdir -p "$CHECK_DIR"
 swiftc -swift-version 5 "$ROOT_DIR/script/mock_scrcpy.swift" -o "$CHECK_DIR/mock-scrcpy"
 swiftc -swift-version 5 \
   "$ROOT_DIR/script/session_checks.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Models/AppLanguage.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Support/L10n.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Models/AndroidDevice.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Models/MirrorSessionState.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Models/MirrorQualityProfile.swift" \
@@ -20,4 +22,4 @@ swiftc -swift-version 5 \
   "$ROOT_DIR/Sources/MirrorLinkApp/Support/SessionLogStream.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Stores/MirrorSessionStore.swift" \
   -o "$CHECK_DIR/session-checks"
-"$CHECK_DIR/session-checks" "$CHECK_DIR/mock-scrcpy"
+MIRRORLINK_TEST_LANGUAGE=zh-Hans MIRRORLINK_LOCALIZATION_ROOT="$ROOT_DIR/Sources/MirrorLinkApp/Resources/Localizations" "$CHECK_DIR/session-checks" "$CHECK_DIR/mock-scrcpy"

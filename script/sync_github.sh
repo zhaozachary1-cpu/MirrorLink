@@ -15,6 +15,7 @@ BRANCH="$(git symbolic-ref --short HEAD)"
 ./script/run_session_checks.sh
 ./script/run_wireless_checks.sh
 ./script/run_update_checks.sh
+./script/run_localization_checks.sh
 git fetch origin
 if git rev-parse --verify origin/main >/dev/null 2>&1; then
   git merge-base --is-ancestor origin/main HEAD || { print -u2 '远端有未整合的提交，停止；请先检查差异'; exit 2; }

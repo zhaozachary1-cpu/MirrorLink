@@ -14,6 +14,7 @@
 
 - 原生 SwiftUI / SwiftPM、最低 macOS 13，保留多设备独立投屏。用户于 2026-10-03 要求应用图标改为极简风；当前实现为纯蓝底、白色横屏与竖屏轮廓，不加屏幕内容、信号线、渐变或装饰，由 `script/generate_icon.swift` 生成全部尺寸。
 - 验证入口：`script/run_core_checks.sh`、`script/run_session_checks.sh`、`script/run_wireless_checks.sh`、`script/run_update_checks.sh`、`script/build_and_run.sh --verify --no-launch`。
+- 0.4.4 起支持简体中文、English 和跟随系统。自有文案统一使用 `L10n` 与 `Resources/Localizations/{zh-Hans,en}.lproj`，显示中的操作状态保留消息键；原始设备信息与历史日志不改写。语言切换不重建视图身份或投屏/配对 Store，不为刷新标题重启 scrcpy。新增文案同时更新双语目录并运行 `script/run_localization_checks.sh`；打包必须携带两个语言目录。应用域语言偏好不得修改系统全局语言。
 - 无线连接面向 Android 11+ 的无线调试配对，默认本机生成二维码并主动发现扫码服务；保留手动配对兜底。二维码密码及配对码仅短暂存在内存/标准输入，不在进程参数、日志、设置或剪贴板中保存；关闭/切换/过期后不得触发迟到的自动投屏。自动连接须匹配本次扫码服务及已认证的 GUID，不得猜测同 IP 或第一台就绪手机。不得自动开启旧式 TCP/5555、修改手机安全设置或将同一 Wi-Fi 当成授权。模拟 ADB 检查不等于真实无线画面验收，记录见 `WIRELESS-QA.md`。
 - 会话脚本使用模拟子进程；不能声称已完成多台真机画面验收。启动进程也不能替代原生 UI 验收。
 - 更新采用锁定版本的 Sparkle。公钥可以入库，私钥仅存钥匙串账户 `com.mirrorlink.desktop.updates`，绝不导出入库。没有公开 HTTPS 更新源时，诚实显示“尚未配置”。

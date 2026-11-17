@@ -75,13 +75,17 @@ enum WirelessConnectionError: Error, LocalizedError, Equatable {
     case invalidPairingCode
     case toolsMissing
     case failed(String)
+    case localizedFailure(LocalizedMessage)
 
-    var errorDescription: String? {
+    var localizedMessage: LocalizedMessage {
         switch self {
-        case .invalidEndpoint: return "请输入手机显示的 IP 地址和端口，例如 192.168.1.8:37123。IPv6 使用 [地址]:端口；不能使用本机地址。"
-        case .invalidPairingCode: return "配对码应为手机当前显示的 6 位数字。"
-        case .toolsMissing: return "应用内置 ADB 不可用，请重新安装完整的镜连应用。"
-        case let .failed(message): return message
+        case .invalidEndpoint: return L10n.message("请输入手机显示的 IP 地址和端口，例如 192.168.1.8:37123。IPv6 使用 [地址]:端口；不能使用本机地址。")
+        case .invalidPairingCode: return L10n.message("配对码应为手机当前显示的 6 位数字。")
+        case .toolsMissing: return L10n.message("应用内置 ADB 不可用，请重新安装完整的镜连应用。")
+        case let .failed(message): return .verbatim(message)
+        case let .localizedFailure(message): return message
         }
     }
+
+    var errorDescription: String? { localizedMessage.resolved }
 }

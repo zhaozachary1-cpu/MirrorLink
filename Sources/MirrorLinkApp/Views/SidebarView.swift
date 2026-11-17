@@ -1,21 +1,26 @@
 import SwiftUI
 
 struct SidebarView: View {
+    @ObservedObject private var language = LanguageStore.shared
     @ObservedObject var store: MirrorSessionStore
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
+        let _ = language.selection
         List {
             Section {
                 if store.devices.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        Label(store.isRefreshing ? "正在扫描设备…" : "还没有发现设备", systemImage: "iphone.slash")
+                        Label(store.isRefreshing ? L10n.tr("正在扫描设备…") : L10n.tr("还没有发现设备"), systemImage: "iphone.slash")
                             .foregroundStyle(.secondary)
-                        Text("用 USB 数据线连接，或点击“无线连接”配对同一 Wi-Fi 下的 Android 手机。")
+                        Text(L10n.tr("用 USB 数据线连接，或点击“无线连接”配对同一 Wi-Fi 下的 Android 手机。"))
                             .font(.caption)
                             .foregroundStyle(.tertiary)
+                            .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.vertical, 8)
                 } else {
                     ForEach(store.devices) { device in
@@ -31,25 +36,25 @@ struct SidebarView: View {
                 }
             } header: {
                 HStack {
-                    Text("设备")
+                    Text(L10n.tr("设备"))
                     Spacer()
                     Text("\(store.devices.count)")
                         .foregroundStyle(.secondary)
                     if !store.readyDevices.isEmpty {
-                        Button("全选") { store.selectAllReadyDevices() }
+                        Button(L10n.tr("全选")) { store.selectAllReadyDevices() }
                             .buttonStyle(.borderless)
                             .font(.caption)
                     }
                 }
             }
 
-            Section("连接提示") {
+            Section(L10n.tr("连接提示")) {
                 Button { openWindow(id: "wireless") } label: {
-                    Label("无线连接手机…", systemImage: "wifi")
+                    Label(L10n.tr("无线连接手机…"), systemImage: "wifi")
                 }
                 .buttonStyle(.borderless)
-                Label("USB 连接需允许调试", systemImage: "checkmark.shield")
-                Label("可同时勾选多台手机", systemImage: "square.stack.3d.up")
+                Label(L10n.tr("USB 连接需允许调试"), systemImage: "checkmark.shield")
+                Label(L10n.tr("可同时勾选多台手机"), systemImage: "square.stack.3d.up")
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -60,12 +65,12 @@ struct SidebarView: View {
                 Circle()
                     .fill(store.toolchainAvailable ? Color.green : Color.orange)
                     .frame(width: 8, height: 8)
-                Text(store.toolchainAvailable ? "投屏组件就绪" : "缺少投屏组件")
+                Text(store.toolchainAvailable ? L10n.tr("投屏组件就绪") : L10n.tr("缺少投屏组件"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
                 if !store.selectedDevices.isEmpty {
-                    Text("已选 \(store.selectedDevices.count) 台")
+                    Text(L10n.tr("已选 %@ 台", String(store.selectedDevices.count)))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -78,12 +83,14 @@ struct SidebarView: View {
 }
 
 private struct DeviceRow: View {
+    @ObservedObject private var language = LanguageStore.shared
     let device: AndroidDevice
     let sessionState: MirrorSessionState
     let isSelected: Bool
     let onSelectionChanged: (Bool) -> Void
 
     var body: some View {
+        let _ = language.selection
         HStack(spacing: 8) {
             Toggle(isOn: Binding(
                 get: { isSelected },

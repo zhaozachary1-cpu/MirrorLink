@@ -6,7 +6,8 @@ import Sparkle
 final class AppUpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
     @Published private(set) var canCheckForUpdates = true
     @Published private(set) var isConfigured = false
-    @Published private(set) var status = "更新服务尚未配置。"
+    @Published private var statusMessage = L10n.message("更新服务尚未配置。")
+    var status: String { statusMessage.resolved }
     @Published private(set) var lastCheckDate: Date?
     @Published private(set) var automaticallyChecks = false
     @Published private(set) var installationPending = false
@@ -63,28 +64,28 @@ final class AppUpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
             return
         }
         guard isConfigured, started else {
-            showNotice("暂时无法检查更新", message: status + " 请在设置的“应用更新”中配置发布者提供的 HTTPS 更新地址。")
+            showNotice(L10n.tr("暂时无法检查更新"), message: L10n.tr("%@ 请在设置的“应用更新”中配置发布者提供的 HTTPS 更新地址。", status))
             return
         }
-        status = "正在检查更新…"
+        statusMessage = L10n.message("正在检查更新…")
         controller.checkForUpdates(nil)
     }
 
     @discardableResult
     func saveFeed(_ address: String) -> Bool {
         guard canConfigureFeed, !controller.updater.sessionInProgress else {
-            showNotice("暂时不能修改", message: "更新过程中不能更换更新地址，请先完成或取消本次更新。")
+            showNotice(L10n.tr("暂时不能修改"), message: L10n.tr("更新过程中不能更换更新地址，请先完成或取消本次更新。"))
             return false
         }
         guard let url = UpdateConfiguration.validatedFeedURL(address) else {
-            showNotice("更新地址无效", message: "请使用完整的 HTTPS 地址，不能包含账号、密码或片段标记。")
+            showNotice(L10n.tr("更新地址无效"), message: L10n.tr("请使用完整的 HTTPS 地址，不能包含账号、密码或片段标记。"))
             return false
         }
         feedAddress = url.absoluteString
         defaults.set(feedAddress, forKey: UpdateConfiguration.customFeedKey)
         if started {
             controller.updater.resetUpdateCycle()
-            status = "更新地址已保存，可以检查更新。"
+            statusMessage = L10n.message("更新地址已保存，可以检查更新。")
         } else {
             startIfConfigured()
         }
@@ -99,21 +100,21 @@ final class AppUpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
 
     private func startIfConfigured() {
         guard UpdateConfiguration.hasValidPublicKey(Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String) else {
-            status = "此构建缺少有效的更新验证公钥，已禁止在线更新。"
+            statusMessage = L10n.message("此构建缺少有效的更新验证公钥，已禁止在线更新。")
             return
         }
         guard UpdateConfiguration.validatedFeedURL(feedAddress) != nil else {
-            status = "更新服务尚未发布；配置更新地址后即可使用，当前未进行联网检查。"
+            statusMessage = L10n.message("更新服务尚未发布；配置更新地址后即可使用，当前未进行联网检查。")
             return
         }
         do {
             try controller.updater.start()
             started = true
             isConfigured = true
-            status = "可检查更新。下载后由你确认安装并重新启动。"
+            statusMessage = L10n.message("可检查更新。下载后由你确认安装并重新启动。")
             lastCheckDate = controller.updater.lastUpdateCheckDate
         } catch {
-            status = "更新器启动失败：\(error.localizedDescription)"
+            statusMessage = L10n.message("更新器启动失败：%@", error.localizedDescription)
         }
     }
 
@@ -122,19 +123,19 @@ final class AppUpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
     func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {
         guard UpdateConfiguration.validatedFeedURL(feedAddress) != nil else {
             throw NSError(domain: "com.mirrorlink.update", code: 1,
-                          userInfo: [NSLocalizedDescriptionKey: "更新地址无效，已取消联网检查。"])
+                          userInfo: [NSLocalizedDescriptionKey: L10n.tr("更新地址无效，已取消联网检查。")])
         }
-        status = "正在检查更新…"
+        statusMessage = L10n.message("正在检查更新…")
     }
 
     func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
-        status = "发现新版本 \(item.displayVersionString)，请在更新窗口确认下载。"
+        statusMessage = L10n.message("发现新版本 %@，请在更新窗口确认下载。", item.displayVersionString)
         lastCheckDate = updater.lastUpdateCheckDate
     }
 
     func updaterDidNotFindUpdate(_ updater: SPUUpdater, error: Error) {
         // This may also mean the newer release does not support this OS.
-        status = "没有适用于此 Mac 的新版本。"
+        statusMessage = L10n.message("没有适用于此 Mac 的新版本。")
         lastCheckDate = updater.lastUpdateCheckDate
     }
 
@@ -142,7 +143,7 @@ final class AppUpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
         terminationApproved = false
         let error = error as NSError
         guard error.domain != SUSparkleErrorDomain || error.code != SUError.noUpdateError.rawValue else { return }
-        status = "更新未完成：\(error.localizedDescription) 原有应用保持可用。"
+        statusMessage = L10n.message("更新未完成：%@ 原有应用保持可用。", error.localizedDescription)
         lastCheckDate = updater.lastUpdateCheckDate
     }
 
@@ -152,7 +153,7 @@ final class AppUpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
         resumeInstallation = installHandler
         installationPending = true
         canCheckForUpdates = true
-        status = "更新已就绪，正在等待结束投屏。点击“安装已下载的更新”继续。"
+        statusMessage = L10n.message("更新已就绪，正在等待结束投屏。点击“安装已下载的更新”继续。")
         // Leave Sparkle's delegate stack before presenting application UI.
         DispatchQueue.main.async { [weak self] in self?.confirmPendingInstallation() }
         return true
@@ -163,17 +164,17 @@ final class AppUpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
         let count = activeSessionCount()
         if count > 0 {
             let alert = NSAlert()
-            alert.messageText = "停止投屏并安装更新？"
-            alert.informativeText = "目前有 \(count) 台手机正在启动或投屏。安装会停止镜连启动的投屏并重启应用，手机数据和应用设置不会被清除。"
-            alert.addButton(withTitle: "稍后安装")
-            alert.addButton(withTitle: "停止投屏并安装")
+            alert.messageText = L10n.tr("停止投屏并安装更新？")
+            alert.informativeText = L10n.tr("目前有 %@ 台手机正在启动或投屏。安装会停止镜连启动的投屏并重启应用，手机数据和应用设置不会被清除。", String(count))
+            alert.addButton(withTitle: L10n.tr("稍后安装"))
+            alert.addButton(withTitle: L10n.tr("停止投屏并安装"))
             guard alert.runModal() == .alertSecondButtonReturn else { return }
             stopSessions()
         }
         resumeInstallation = nil
         installationPending = false
         terminationApproved = true
-        status = "正在安装更新，即将重新启动…"
+        statusMessage = L10n.message("正在安装更新，即将重新启动…")
         handler()
     }
 
@@ -182,10 +183,10 @@ final class AppUpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
     func shouldAllowTermination() -> Bool {
         guard !terminationApproved, activeSessionCount() > 0 else { return true }
         let alert = NSAlert()
-        alert.messageText = "停止投屏并退出镜连？"
-        alert.informativeText = "仍有 \(activeSessionCount()) 台手机正在启动或投屏。退出或安装更新会关闭镜连启动的投屏窗口，不会清除手机数据。"
-        alert.addButton(withTitle: "继续投屏")
-        alert.addButton(withTitle: "停止投屏并退出")
+        alert.messageText = L10n.tr("停止投屏并退出镜连？")
+        alert.informativeText = L10n.tr("仍有 %@ 台手机正在启动或投屏。退出或安装更新会关闭镜连启动的投屏窗口，不会清除手机数据。", String(activeSessionCount()))
+        alert.addButton(withTitle: L10n.tr("继续投屏"))
+        alert.addButton(withTitle: L10n.tr("停止投屏并退出"))
         guard alert.runModal() == .alertSecondButtonReturn else { return false }
         stopSessions()
         return true
@@ -195,7 +196,7 @@ final class AppUpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message
-        alert.addButton(withTitle: "好")
+        alert.addButton(withTitle: L10n.tr("好"))
         alert.runModal()
     }
 }

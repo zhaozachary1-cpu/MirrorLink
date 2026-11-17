@@ -21,7 +21,7 @@ struct ScrcpyCommand {
     }
 
     func windowTitle(for device: AndroidDevice) -> String {
-        "镜连 · \(device.logLabel)"
+        L10n.tr("镜连 · %@", device.logLabel)
     }
 
     func environment(for device: AndroidDevice) -> [String: String] {

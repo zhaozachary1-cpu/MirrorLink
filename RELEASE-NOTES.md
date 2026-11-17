@@ -1,4 +1,38 @@
-# 镜连 0.4.3 — 原生画质与持续投屏优化（免费社区版）
+# 镜连 MirrorLink 0.4.4 — 中英文界面 / English and Chinese（免费社区版）
+
+版本 / Version：**0.4.4 / Build 9**。本次新增应用界面本地化，保留现有画质、无线配对、多设备会话和更新安全机制。
+
+- 支持简体中文与 English，默认跟随系统；在 **“镜连 → 设置…”（⌘,）→“语言 / Language”** 选择“跟随系统 / System”、“简体中文”或“English”，选择会保存。
+- 覆盖主窗口、设备状态、画质控制、设置、无线扫码/发现/手动连接、帮助提示和应用自身更新文案。切换时即时刷新应用界面，保留设备选择、输入内容和活动投屏，不通过重建界面或重启会话实现语言切换。
+- 已有 scrcpy 窗口标题在下次启动对应会话时使用新语言。macOS 原生窗口标题、菜单和 Sparkle 更新弹窗可能需要应用下次启动后切换；系统及辅助进程弹窗可能遵循 macOS 语言。
+- 手机名称、序列号、发现服务、地址、历史日志和第三方原始错误保持原文，便于排查；不将外部文本强制翻译。
+- 将中英文文案分别收纳到 `zh-Hans.lproj` 和 `en.lproj` 资源目录，并在 README 增加 English Quick Start 与语言切换说明。
+
+## English summary
+
+MirrorLink now supports **English and Simplified Chinese**. Open **MirrorLink → Settings…** (**⌘,**), find **“语言 / Language”**, and choose **English**, **简体中文**, or **跟随系统 / System**. The choice is saved. MirrorLink’s interface updates immediately without interrupting active sessions or clearing device selections and connection fields.
+
+Existing scrcpy window titles switch when their next session starts. Native window titles, menus, and Sparkle update dialogs may need an app relaunch; macOS and helper dialogs can follow the system language. Device names, existing logs, and third-party error details remain unchanged. The existing video quality profiles, wireless pairing, multi-device isolation, and signed-update verification are preserved.
+
+## 0.4.4 下载与安装 / Installation
+
+完整安装文件为 `MirrorLink-0.4.4-macOS-universal.dmg` 或 `MirrorLink-0.4.4-macOS-universal.zip`，二选一，打开或解压后将 `MirrorLink.app` 拖入“应用程序”。覆盖旧版前停止投屏、⌘Q 退出并保留备份；不要使用 Source code 或更新专用 ZIP 作为安装包。需要 macOS 13+；支持 Android USB 调试与 Android 11+ 无线调试配对，不支持 iPhone 或 Windows。
+
+Download the complete DMG or ZIP, open it, and move **MirrorLink.app** to **Applications**. Quit the existing app with **⌘Q** and keep a backup before replacing it. Requires **macOS 13+** and an authorized Android phone; wireless pairing requires **Android 11+** with Wireless debugging. This installer is not for Windows or iPhone mirroring.
+
+**免费社区版仍未经 Apple Developer ID 签名或 Apple 公证。** 只有 ad-hoc 完整性签名，更新包与清单继续使用镜连原有 Sparkle Ed25519 签名。首次打开若仅提示无法验证开发者/无法检查恶意软件，确认官方来源并决定信任后，先尝试打开，再到“系统设置 → 隐私与安全 → 仍要打开”在本机确认。若提示包含恶意软件、将损害电脑或已损坏，请停止并核对来源与文件校验值。不要关闭 Gatekeeper 或移除隔离标记；受管理 Mac 可能禁止安装。
+
+**This community build is not Developer ID signed or notarized by Apple.** It uses an ad-hoc integrity signature and MirrorLink’s existing signed-update verification. If macOS only reports an unverified developer or inability to check for malicious software, verify the official source, choose to trust it, attempt to open it once, then use **System Settings → Privacy & Security → Open Anyway**. Stop if macOS reports malware, damage to your computer, or a damaged app, and verify the download. Keep system security checks enabled; do not remove quarantine attributes. Managed Macs may not allow installation.
+
+0.4.4 的 Build 9 高于 0.4.3 的 Build 8，安装包与签名清单公开后可由已有更新器检查获取。同为 Build 9 的本地预览包不构成版本升级，需要时手动安装完整社区包。
+
+## 0.4.4 验证边界 / Validation
+
+本次核心检查、**74 项会话检查、137 项无线检查、28 项更新策略检查及 1,434 项本地化断言**通过，双架构构建与完整签名校验通过。本机原生窗口已验证中英文切换、设置持久化、主窗口与设置排版、手动表单保留和已有无线发现提示更新；修复了英文侧栏说明截断。活动投屏期间的切换由模拟会话覆盖，未作为新增真机验收。记录见 [LOCALIZATION-QA.md](LOCALIZATION-QA.md) 与 [UPDATE-QA.md](UPDATE-QA.md)。此前画质、无线与发行验收限制继续适用。
+
+Core checks, **74 session checks, 137 wireless checks, 28 update-policy checks, and 1,434 localization assertions** passed, as did universal builds and strict code-signature verification. Native-window checks verified language switching, saved preferences after relaunch, English layout, retained manual form input, and existing discovery messages. Active-session preservation was tested with simulated processes; this is not new real-device or full in-app upgrade acceptance.
+
+## 历史：0.4.3 — 原生画质与持续投屏优化（免费社区版）
 
 版本：0.4.3 / Build 8。相较 0.4.2：
 
@@ -11,7 +45,7 @@
 
 “超清”保留手机原生细节，不将低分辨率源画面放大冒充 4K，也不承诺所有设备在任何网络、温度和并行负载下持续达到目标码率/帧率。静止内容少有新帧并不等于程序卡住。
 
-## 0.4.3 下载与安装
+### 0.4.3 下载与安装
 
 本版完整安装文件为 `MirrorLink-0.4.3-macOS-universal.dmg` 与 `MirrorLink-0.4.3-macOS-universal.zip`，二选一，打开或解压后将 `MirrorLink.app` 拖入“应用程序”。覆盖旧版前先停止投屏、⌘Q 退出并保留备份。不要将 Source code 或更新专用 ZIP 当作安装包。
 
@@ -21,7 +55,7 @@
 
 更新仍使用原有 Sparkle Ed25519 密钥。0.3.1 及之后版本可主动检查更新；0.4.2 / Build 7 低于本版 Build 8。同为 0.4.3 / Build 8 的本地预览包不构成版本升级，需要时手动安装本版完整社区包。安装包和签名清单公开后更新器才能提供本版。
 
-## 0.4.3 验证边界
+### 0.4.3 验证边界
 
 核心与会话回归检查已覆盖档位参数、配置保存、会话快照、分辨率提示和单设备重新投屏。各组最终检查数量、构建及发布验证状态以 [QUALITY-QA.md](QUALITY-QA.md) 和 [UPDATE-QA.md](UPDATE-QA.md) 为准，不沿用旧版数字充当本次复验结果。
 

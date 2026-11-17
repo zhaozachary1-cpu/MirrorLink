@@ -8,10 +8,10 @@ enum DeviceConnectionState: String, CaseIterable, Sendable {
 
     var title: String {
         switch self {
-        case .ready: return "已连接"
-        case .unauthorized: return "等待授权"
-        case .offline: return "设备离线"
-        case .unknown: return "未知状态"
+        case .ready: return L10n.tr("已连接")
+        case .unauthorized: return L10n.tr("等待授权")
+        case .offline: return L10n.tr("设备离线")
+        case .unknown: return L10n.tr("未知状态")
         }
     }
 

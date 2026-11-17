@@ -3,10 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>zh_CN</string>
+	<string>en</string>
 	<key>CFBundleLocalizations</key>
 	<array>
-		<string>zh_CN</string>
+		<string>zh-Hans</string>
+		<string>en</string>
 	</array>
 	<key>CFBundleDisplayName</key>
 	<string>镜连</string>
@@ -25,9 +26,9 @@
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.4.3</string>
+	<string>0.4.4</string>
 	<key>CFBundleVersion</key>
-	<string>8</string>
+	<string>9</string>
 	<key>SUFeedURL</key>
 	<string>https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>

@@ -5,7 +5,7 @@ import Darwin
 private struct Failure: Error, CustomStringConvertible { let description: String }
 
 private final class FakeADB: @unchecked Sendable {
-    enum Scenario { case ready, pairFailure, connectFailure, otherPhone, alias, offline, discoveryFailure, timeout }
+    enum Scenario { case ready, pairFailure, connectFailure, otherPhone, alias, offline, discoveryFailure, discoveryEmpty, timeout }
     struct Call { let arguments: [String]; let input: String?; let timeout: TimeInterval }
     private let lock = NSLock()
     private var scenario: Scenario = .ready
@@ -42,6 +42,7 @@ private final class FakeADB: @unchecked Sendable {
         }
         if arguments == ["mdns", "services"] {
             if scenario == .discoveryFailure { return result("", status: 1) }
+            if scenario == .discoveryEmpty { return result("List of discovered mdns services\n") }
             return result("""
             List of discovered mdns services
             adb-PHONE-one _adb-tls-pairing._tcp 192.168.1.8:37123
@@ -195,11 +196,77 @@ struct WirelessChecks {
         missing.discover()
         try check(missing.isError && !missing.isDiscovering, "missing bundled tool fails closed")
 
+        try await checkLocalizedMessages(paths: paths)
+
         let stdin = ProcessRunner.run(executablePath: "/bin/cat", arguments: [], standardInput: "fixture\n", timeout: 2)
         try check(stdin.succeeded && stdin.stdout == "fixture\n", "real subprocess stdin and EOF plumbing works")
         let earlyExit = ProcessRunner.run(executablePath: "/usr/bin/true", arguments: [], standardInput: "fixture\n", timeout: 2)
         try check(earlyExit.succeeded, "child rejecting stdin cannot terminate the host")
         let timeout = ProcessRunner.run(executablePath: "/bin/sleep", arguments: ["2"], timeout: 0.05)
         try check(timeout.timedOut && !timeout.succeeded, "hung process deadline enforced")
+    }
+
+    private static func checkLocalizedMessages(paths: ToolPaths) async throws {
+        let initialLanguage = L10n.language
+        defer { L10n.setLanguage(initialLanguage) }
+        L10n.setLanguage(.english)
+        let fake = FakeADB()
+        let service = WirelessADBService(paths: paths, execute: { fake.run($0, $1, $2) })
+        let endpoint = try WirelessEndpoint("192.168.1.8:39847")
+        fake.set(.discoveryEmpty)
+        let emptyDiscovery = service.discover()
+        let englishEmpty = emptyDiscovery.warning
+        fake.set(.discoveryFailure)
+        let failedDiscovery = service.discover()
+        let englishFailedDiscovery = failedDiscovery.warning
+        fake.set(.pairFailure)
+        guard case let .failure(pairError) = service.pair(endpoint: endpoint, code: "123456") else {
+            throw Failure(description: "expected retained localized pairing failure")
+        }
+        let englishPairError = pairError.localizedDescription
+        fake.set(.timeout)
+        guard case let .failure(timeoutError) = service.connect(endpoint: endpoint) else {
+            throw Failure(description: "expected retained localized connection timeout")
+        }
+        let englishTimeout = timeoutError.localizedDescription
+        let expired = try WirelessQRSession(lifetime: -1)
+        guard case let .failure(expiryError) = service.pairQR(endpoint: endpoint, session: expired) else {
+            throw Failure(description: "expected retained localized QR expiry")
+        }
+        let englishExpiry = expiryError.localizedDescription
+        L10n.setLanguage(.simplifiedChinese)
+        try check(emptyDiscovery.warning != englishEmpty && emptyDiscovery.warning == L10n.tr("暂未发现手机。请开启手机的无线调试，并确认 Mac 与手机在同一 Wi-Fi；访客网络可能禁止设备互访。"), "retained empty discovery warning changes language without rediscovery")
+        try check(failedDiscovery.warning != englishFailedDiscovery && failedDiscovery.warning == L10n.tr("暂时无法发现手机。可手动填写地址；请检查 macOS 的本地网络权限、手机无线调试，以及 Wi-Fi 是否允许设备互访。"), "retained discovery failure warning changes language")
+        try check(pairError.localizedDescription != englishPairError && !pairError.localizedDescription.contains("123456"), "retained pairing failure changes language without exposing secret input")
+        try check(timeoutError.localizedDescription != englishTimeout, "retained connection timeout changes language")
+        try check(expiryError.localizedDescription != englishExpiry && expiryError.localizedDescription == L10n.tr("二维码已过期，请生成新二维码。"), "retained QR expiry changes language")
+        let rawWarning = WirelessDiscoveryResult(services: [], warning: "ADB diagnostic: 100% %@")
+        let rawError = WirelessConnectionError.failed("Upstream diagnostic: 100% %@")
+        try check(rawWarning.warning == "ADB diagnostic: 100% %@" && rawError.localizedDescription == "Upstream diagnostic: 100% %@", "legacy raw warning and failure remain verbatim")
+
+        L10n.setLanguage(.english)
+        fake.set(.discoveryEmpty)
+        var connections = 0
+        let manual = WirelessConnectionStore(paths: nil, service: service) { _ in connections += 1 }
+        defer { manual.close() }
+        manual.selectMode(.manual)
+        try await wait { !manual.isDiscovering && manual.discoveryMessage != nil }
+        let englishManualWarning = manual.discoveryMessage
+        let manualCalls = fake.recordedCalls().count
+        L10n.setLanguage(.simplifiedChinese)
+        try check(manual.discoveryMessage != englishManualWarning && manual.discoveryMessage == emptyDiscovery.warning, "manual tab updates its existing discovery warning immediately")
+        try check(fake.recordedCalls().count == manualCalls && connections == 0 && manual.mode == .manual, "changing discovery warning language does not rescan, connect, or change mode")
+
+        L10n.setLanguage(.english)
+        let qr = WirelessQRPairingStore(service: service, lifetime: 20, pollInterval: 10) { _ in connections += 1 }
+        defer { qr.stop() }
+        qr.start()
+        try await wait { qr.discoveryWarning != nil }
+        let englishQRWarning = qr.discoveryWarning
+        let qrName = qr.session?.serviceName
+        let qrCalls = fake.recordedCalls().count
+        L10n.setLanguage(.simplifiedChinese)
+        try check(qr.discoveryWarning != englishQRWarning && qr.discoveryWarning == emptyDiscovery.warning, "QR tab updates its existing discovery warning immediately")
+        try check(qr.phase == .waitingForScan && qr.session?.serviceName == qrName && fake.recordedCalls().count == qrCalls && connections == 0, "language change keeps the same QR session and issues no extra ADB operation")
     }
 }

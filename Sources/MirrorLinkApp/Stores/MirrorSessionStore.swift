@@ -11,7 +11,7 @@ final class MirrorSessionStore: ObservableObject {
     @Published private(set) var logLines: [String] = []
     @Published private(set) var toolchainAvailable = false
     @Published private(set) var isRefreshing = false
-    @Published private(set) var globalErrorMessage: String?
+    @Published private var globalFailureMessage: LocalizedMessage?
     @Published var logsExpanded = false
     @Published var qualityProfile: MirrorQualityProfile {
         didSet { preferences.set(qualityProfile.rawValue, forKey: MirrorQualityProfile.preferenceKey) }
@@ -22,6 +22,9 @@ final class MirrorSessionStore: ObservableObject {
     @Published private var runningSessions: [AndroidDevice.ID: RunningMirrorSession] = [:]
     @Published private var sessionDevices: [AndroidDevice.ID: AndroidDevice] = [:]
     @Published private var videoStatuses: [AndroidDevice.ID: MirrorVideoStatus] = [:]
+    // Visible failures resolve in the current language. The original String
+    // state and historical log entries remain compatible with diagnostics.
+    @Published private var failureMessages: [AndroidDevice.ID: LocalizedMessage] = [:]
     private let preferences: UserDefaults
     private let startupTimeout: TimeInterval
     private let snapshotProvider: (ToolPaths) -> ADBSnapshot
@@ -41,7 +44,7 @@ final class MirrorSessionStore: ObservableObject {
         self.startupTimeout = startupTimeout
         self.snapshotProvider = snapshotProvider
         self.toolchainAvailable = paths?.isUsable == true
-        appendLog(paths == nil ? "未找到应用内置投屏组件。" : "已加载应用内置 ADB / scrcpy。")
+        appendLog(paths == nil ? L10n.tr("未找到应用内置投屏组件。") : L10n.tr("已加载应用内置 ADB / scrcpy。"))
     }
 
     var selectedDevices: [AndroidDevice] {
@@ -72,16 +75,18 @@ final class MirrorSessionStore: ObservableObject {
 
     var sessionSummary: String {
         let counts: [(MirrorSessionState, String)] = [
-            (.mirroring, "台正在投屏"), (.starting, "台正在启动"), (.stopping, "台正在停止")
+            (.mirroring, "%@ 台正在投屏"), (.starting, "%@ 台正在启动"), (.stopping, "%@ 台正在停止")
         ]
-        var parts = counts.compactMap { state, label -> String? in
+        var parts = counts.compactMap { state, format -> String? in
             let count = sessionStates.values.filter { $0 == state }.count
-            return count == 0 ? nil : "\(count) \(label)"
+            return count == 0 ? nil : L10n.tr(format, String(count))
         }
         let failures = sessionStates.values.filter(\.isFailure).count
-        if failures > 0 { parts.append("\(failures) 台失败") }
-        return parts.isEmpty ? "尚未开始投屏" : parts.joined(separator: " · ")
+        if failures > 0 { parts.append(L10n.tr("%@ 台失败", String(failures))) }
+        return parts.isEmpty ? L10n.tr("尚未开始投屏") : parts.joined(separator: " · ")
     }
+
+    var globalErrorMessage: String? { globalFailureMessage?.resolved }
 
     var isMirroring: Bool {
         !runningSessions.isEmpty
@@ -94,7 +99,7 @@ final class MirrorSessionStore: ObservableObject {
     }
 
     var sessionState: MirrorSessionState {
-        let states = Array(sessionStates.values)
+        let states = sessionStates.keys.map { resolvedSessionState(for: $0) }
         if let globalErrorMessage { return .failed(globalErrorMessage) }
         if let message = states.compactMap({ state -> String? in
             guard case let .failed(message) = state else { return nil }
@@ -109,7 +114,15 @@ final class MirrorSessionStore: ObservableObject {
     }
 
     func sessionState(for device: AndroidDevice) -> MirrorSessionState {
-        sessionStates[device.id] ?? .idle
+        resolvedSessionState(for: device.id)
+    }
+
+    private func resolvedSessionState(for deviceID: AndroidDevice.ID) -> MirrorSessionState {
+        let state = sessionStates[deviceID] ?? .idle
+        if case .failed = state, let message = failureMessages[deviceID] {
+            return .failed(message.resolved)
+        }
+        return state
     }
 
     func videoStatus(for deviceID: AndroidDevice.ID) -> MirrorVideoStatus? {
@@ -160,12 +173,12 @@ final class MirrorSessionStore: ObservableObject {
         }
         guard let paths, paths.isUsable else {
             toolchainAvailable = false
-            if !silent { appendLog("刷新失败：应用内置工具不存在。") }
+            if !silent { appendLog(L10n.tr("刷新失败：应用内置工具不存在。")) }
             return
         }
 
         isRefreshing = true
-        if !silent { appendLog("正在扫描 USB / Wi-Fi 设备…") }
+        if !silent { appendLog(L10n.tr("正在扫描 USB / Wi-Fi 设备…")) }
         let provider = snapshotProvider
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let snapshot = provider(paths)
@@ -194,7 +207,7 @@ final class MirrorSessionStore: ObservableObject {
                 }
 
                 if changed || !silent {
-                    self.appendLog(resolvedDevices.isEmpty ? "没有发现已连接设备。可使用 USB 或“无线连接”。" : "发现 \(resolvedDevices.count) 台设备（USB / Wi-Fi）。")
+                    self.appendLog(resolvedDevices.isEmpty ? L10n.tr("没有发现已连接设备。可使用 USB 或“无线连接”。") : L10n.tr("发现 %@ 台设备（USB / Wi-Fi）。", String(resolvedDevices.count)))
                 }
                 if self.refreshRequested {
                     self.refreshRequested = false
@@ -215,7 +228,7 @@ final class MirrorSessionStore: ObservableObject {
         }
         setDeviceSelected(device.id, isSelected: true)
         if let running = runningSessions[device.id], running.device.serial != device.serial {
-            appendLog("\(device.displayName) 已有投屏窗口，仍使用 \(running.device.transport)。如需切到 Wi-Fi，请先停止该窗口再开始。")
+            appendLog(L10n.tr("%@ 已有投屏窗口，仍使用 %@。如需切到 Wi-Fi，请先停止该窗口再开始。", device.displayName, running.device.transport))
         } else {
             startMirroring(for: device.id)
         }
@@ -263,19 +276,19 @@ final class MirrorSessionStore: ObservableObject {
     func startMirroring() {
         guard !shuttingDown else { return }
         guard let paths, paths.isUsable else {
-            failGlobally("无法启动：应用内置工具不存在。")
+            failGlobally(L10n.message("无法启动：应用内置工具不存在。"))
             return
         }
 
         let selected = selectedDevices
         guard !selected.isEmpty else {
-            failGlobally("请先勾选至少一台设备。")
+            failGlobally(L10n.message("请先勾选至少一台设备。"))
             return
         }
 
-        globalErrorMessage = nil
+        globalFailureMessage = nil
         for device in selected where device.state != .ready {
-            appendLog("跳过 \(device.logLabel)：设备当前不可用（\(device.state.title)）。")
+            appendLog(L10n.tr("跳过 %@：设备当前不可用（%@）。", device.logLabel, device.state.title))
         }
 
         let readyToStart = selected.filter { device in
@@ -283,9 +296,9 @@ final class MirrorSessionStore: ObservableObject {
         }
         guard !readyToStart.isEmpty else {
             if selected.contains(where: { isMirroring(for: $0.id) }) {
-                appendLog("所选设备已经在投屏中。")
+                appendLog(L10n.tr("所选设备已经在投屏中。"))
             } else {
-                failGlobally("所选设备中没有已连接且已授权的手机。")
+                failGlobally(L10n.message("所选设备中没有已连接且已授权的手机。"))
             }
             return
         }
@@ -298,30 +311,36 @@ final class MirrorSessionStore: ObservableObject {
     func startMirroring(for deviceID: AndroidDevice.ID) {
         guard !shuttingDown else { return }
         guard let paths, paths.isUsable else {
-            failGlobally("无法启动：应用内置工具不存在。")
+            failGlobally(L10n.message("无法启动：应用内置工具不存在。"))
             return
         }
         guard let device = devices.first(where: { $0.id == deviceID }) else {
-            failGlobally("找不到要投屏的设备，请刷新设备列表。")
+            failGlobally(L10n.message("找不到要投屏的设备，请刷新设备列表。"))
             return
         }
         guard device.state == .ready else {
-            failGlobally(device.state == .unauthorized ? "请解锁手机并允许调试；无线设备请确认配对授权。" : "设备当前不可用：\(device.state.title)。")
+            if device.state == .unauthorized {
+                failGlobally(L10n.message("请解锁手机并允许调试；无线设备请确认配对授权。"))
+            } else if device.state == .offline {
+                failGlobally(L10n.message("设备处于离线状态，请检查连接后重试。"))
+            } else {
+                failGlobally(L10n.message("无法确认设备状态，请检查连接后重试。"))
+            }
             return
         }
         guard !isMirroring(for: device.id) else {
-            appendLog("\(device.logLabel) 已经在投屏中。")
+            appendLog(L10n.tr("%@ 已经在投屏中。", device.logLabel))
             return
         }
 
-        globalErrorMessage = nil
+        globalFailureMessage = nil
         startSession(for: device, paths: paths)
     }
 
     func stopMirroring() {
         let activeIDs = Array(runningSessions.keys)
         guard !activeIDs.isEmpty else { return }
-        appendLog("正在停止 \(activeIDs.count) 个投屏窗口…")
+        appendLog(L10n.tr("正在停止 %@ 个投屏窗口…", String(activeIDs.count)))
         for deviceID in activeIDs {
             stopMirroring(for: deviceID, appendingLog: false)
         }
@@ -337,12 +356,12 @@ final class MirrorSessionStore: ObservableObject {
         guard !shuttingDown, let session = runningSessions[deviceID],
               !session.stopRequested else { return }
         guard let device = connectedDevice(for: deviceID), device.state == .ready else {
-            appendLog("\(session.device.logLabel) 当前连接不可用，请刷新后重试。")
+            appendLog(L10n.tr("%@ 当前连接不可用，请刷新后重试。", session.device.logLabel))
             return
         }
         stopMirroring(for: deviceID, appendingLog: false)
         session.restartRequest = (device, qualityProfile)
-        appendLog("正在重新投屏 \(device.logLabel)，将使用\(qualityProfile.title)；其他设备不受影响。")
+        appendLog(L10n.tr("正在重新投屏 %@，将使用%@；其他设备不受影响。", device.logLabel, qualityProfile.title))
     }
 
     // Called synchronously on application termination, so no child outlives Quit.
@@ -353,6 +372,7 @@ final class MirrorSessionStore: ObservableObject {
         for session in sessions {
             session.restartRequest = nil
             session.stopRequested = true
+            failureMessages[session.device.id] = nil
             sessionStates[session.device.id] = .stopping
             if session.process.isRunning { session.process.terminate() }
         }
@@ -368,10 +388,11 @@ final class MirrorSessionStore: ObservableObject {
 
     func clearLogs() {
         logLines.removeAll()
-        globalErrorMessage = nil
+        globalFailureMessage = nil
     }
 
     private func startSession(for device: AndroidDevice, paths: ToolPaths, quality: MirrorQualityProfile? = nil) {
+        failureMessages[device.id] = nil
         let profile = quality ?? qualityProfile
         let requestedVideo = MirrorVideoStatus(profile: profile, isWireless: device.isWireless)
         videoStatuses[device.id] = requestedVideo
@@ -385,7 +406,7 @@ final class MirrorSessionStore: ObservableObject {
             errors = try SessionLogStream(lineBuffered: false)
         } catch {
             sessionDevices[device.id] = device
-            failDevice(device.id, message: "无法创建投屏日志通道：\(error.localizedDescription)")
+            failDevice(device.id, message: L10n.message("无法创建投屏日志通道：%@", error.localizedDescription))
             return
         }
         let readers = DispatchGroup()
@@ -408,8 +429,8 @@ final class MirrorSessionStore: ObservableObject {
         runningSessions[device.id] = session
         sessionDevices[device.id] = device
         sessionStates[device.id] = .starting
-        appendLog("正在启动 \(device.logLabel) 的投屏窗口…")
-        appendLog("[\(device.logLabel)] 画质请求：\(requestedVideo.configurationSummary)。禁止出错后自动降低分辨率。")
+        appendLog(L10n.tr("正在启动 %@ 的投屏窗口…", device.logLabel))
+        appendLog(L10n.tr("[%@] 画质请求：%@。禁止出错后自动降低分辨率。", device.logLabel, requestedVideo.configurationSummary))
 
         // Register before run(): even an immediately failing child must drain
         // both output streams before we publish its final state.
@@ -446,8 +467,8 @@ final class MirrorSessionStore: ObservableObject {
                       current.token == token,
                       self.sessionStates[device.id] == .starting else { return }
                 self.failDevice(device.id, message: device.isWireless
-                    ? "启动超时：尚未收到手机画面。请检查 Wi-Fi 和无线调试；如端口变化，请重新无线连接。"
-                    : "启动超时：尚未收到手机画面。请解锁手机、确认 USB 调试授权后重试。")
+                    ? L10n.message("启动超时：尚未收到手机画面。请检查 Wi-Fi 和无线调试；如端口变化，请重新无线连接。")
+                    : L10n.message("启动超时：尚未收到手机画面。请解锁手机、确认 USB 调试授权后重试。"))
                 self.terminateOwnedProcess(deviceID: device.id, token: token)
             }
         } catch {
@@ -457,7 +478,7 @@ final class MirrorSessionStore: ObservableObject {
             readers.leave()
             process.terminationHandler = nil
             runningSessions[device.id] = nil
-            failDevice(device.id, message: "启动失败：\(error.localizedDescription)")
+            failDevice(device.id, message: L10n.message("启动失败：%@", error.localizedDescription))
         }
     }
 
@@ -465,8 +486,9 @@ final class MirrorSessionStore: ObservableObject {
         guard let session = runningSessions[deviceID] else { return }
         session.restartRequest = nil
         session.stopRequested = true
+        failureMessages[deviceID] = nil
         sessionStates[deviceID] = .stopping
-        if appendingLog { appendLog("正在停止 \(session.device.logLabel) 的投屏…") }
+        if appendingLog { appendLog(L10n.tr("正在停止 %@ 的投屏…", session.device.logLabel)) }
         terminateOwnedProcess(deviceID: deviceID, token: session.token)
     }
 
@@ -497,7 +519,7 @@ final class MirrorSessionStore: ObservableObject {
                 videoStatuses[deviceID]?.receive(size)
                 if sessionStates[deviceID] == .starting {
                     sessionStates[deviceID] = .mirroring
-                    appendLog("[\(session.device.logLabel)] 已收到手机画面，投屏窗口已就绪。")
+                    appendLog(L10n.tr("[%@] 已收到手机画面，投屏窗口已就绪。", session.device.logLabel))
                 }
             }
             if line == "[server] INFO: Applying video encoder constraints"
@@ -525,7 +547,7 @@ final class MirrorSessionStore: ObservableObject {
             guard let paths, paths.isUsable,
                   let device = connectedDevice(for: deviceID), device.state == .ready,
                   device.serial == restart.device.serial, device.adbSocket == restart.device.adbSocket else {
-                failDevice(deviceID, message: "连接已变化，已取消重新投屏。请刷新设备后手动开始。")
+                failDevice(deviceID, message: L10n.message("连接已变化，已取消重新投屏。请刷新设备后手动开始。"))
                 return
             }
             startSession(for: device, paths: paths, quality: restart.profile)
@@ -536,32 +558,36 @@ final class MirrorSessionStore: ObservableObject {
             return
         }
         if session.stopRequested || process.terminationStatus == 0 {
+            failureMessages[deviceID] = nil
             sessionStates[deviceID] = .idle
-            appendLog("[\(session.device.logLabel)] 投屏窗口已关闭。")
+            appendLog(L10n.tr("[%@] 投屏窗口已关闭。", session.device.logLabel))
         } else {
             // scrcpy can recover at the same size without another Texture
             // line. A historical encoder error must not mask a later unplug.
             if session.videoEncoderFailed, videoStatuses[deviceID]?.initialResolution == nil,
                process.terminationStatus != 2, !session.reportedDisconnect {
-                failDevice(deviceID, message: "视频采集或编码出错后投屏结束。请检查连接和手机负载，或选择“低负载兼容”后重试；本次未自动降低分辨率。")
+                failDevice(deviceID, message: L10n.message("视频采集或编码出错后投屏结束。请检查连接和手机负载，或选择“低负载兼容”后重试；本次未自动降低分辨率。"))
                 return
             }
-            let advice = session.device.isWireless ? "请检查 Wi-Fi 和手机无线调试，端口变化后需重新无线连接。" : "请检查 USB 连接后重试。"
-            failDevice(deviceID, message: "连接中断或投屏组件退出（状态码 \(process.terminationStatus)）。\(advice)")
+            let message = session.device.isWireless
+                ? L10n.message("连接中断或投屏组件退出（状态码 %@）。请检查 Wi-Fi 和手机无线调试，端口变化后需重新无线连接。", String(process.terminationStatus))
+                : L10n.message("连接中断或投屏组件退出（状态码 %@）。请检查 USB 连接后重试。", String(process.terminationStatus))
+            failDevice(deviceID, message: message)
         }
     }
 
-    private func failDevice(_ deviceID: AndroidDevice.ID, message: String) {
-        sessionStates[deviceID] = .failed(message)
+    private func failDevice(_ deviceID: AndroidDevice.ID, message: LocalizedMessage) {
+        failureMessages[deviceID] = message
+        sessionStates[deviceID] = .failed(message.resolved)
         logsExpanded = true
         let name = sessionDevices[deviceID]?.logLabel ?? deviceID
-        appendLog("[\(name)] \(message)")
+        appendLog("[\(name)] \(message.resolved)")
     }
 
-    private func failGlobally(_ message: String) {
-        globalErrorMessage = message
+    private func failGlobally(_ message: LocalizedMessage) {
+        globalFailureMessage = message
         logsExpanded = true
-        appendLog(message)
+        appendLog(message.resolved)
     }
 
     private func appendLog(_ line: String) {

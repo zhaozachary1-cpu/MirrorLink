@@ -9,11 +9,11 @@ enum MirrorSessionState: Equatable {
 
     var title: String {
         switch self {
-        case .idle: return "未开始投屏"
-        case .starting: return "正在启动投屏…"
-        case .mirroring: return "正在投屏"
-        case .stopping: return "正在停止投屏…"
-        case .failed: return "投屏失败"
+        case .idle: return L10n.tr("未开始投屏")
+        case .starting: return L10n.tr("正在启动投屏…")
+        case .mirroring: return L10n.tr("正在投屏")
+        case .stopping: return L10n.tr("正在停止投屏…")
+        case .failed: return L10n.tr("投屏失败")
         }
     }
 

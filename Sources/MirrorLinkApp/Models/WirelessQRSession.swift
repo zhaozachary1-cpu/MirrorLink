@@ -12,7 +12,7 @@ struct WirelessQRSession: Sendable, CustomStringConvertible, CustomDebugStringCo
         func randomHex(count: Int) throws -> String {
             var bytes = [UInt8](repeating: 0, count: count)
             guard SecRandomCopyBytes(kSecRandomDefault, count, &bytes) == errSecSuccess else {
-                throw WirelessConnectionError.failed("无法安全生成二维码，请重试。")
+                throw WirelessConnectionError.localizedFailure(L10n.message("无法安全生成二维码，请重试。"))
             }
             return bytes.map { String(format: "%02x", $0) }.joined()
         }

@@ -9,6 +9,8 @@ private struct CheckFailure: Error, CustomStringConvertible {
 @MainActor
 private extension SessionChecks {
     func runQualityChecks() async throws {
+        let originalLanguage = L10n.language
+        defer { L10n.setLanguage(originalLanguage) }
         let preferences = makePreferences()
         preferences.set("unknown-old-profile", forKey: MirrorQualityProfile.preferenceKey)
         let preferenceSource = SnapshotSource()
@@ -30,6 +32,14 @@ private extension SessionChecks {
         try await wait("quality frames") { store.sessionState(for: a) == .mirroring && store.sessionState(for: b) == .mirroring }
         try check(store.videoStatus(for: a.id)?.profile == .nativeClarity && store.videoStatus(for: a.id)?.resolution?.pixelCount == 2_592_000, "a session reports its actual first-frame dimensions and starting profile")
         let peerPID = launches(b.serial).last?["pid"] as? Int
+        let firstPID = launches(a.serial).last?["pid"] as? Int
+        let initialArguments = launches(a.serial).last?["arguments"] as? [String]
+        let initialSocket = launches(a.serial).last?["socket"] as? String
+        L10n.setLanguage(.english)
+        try check(DeviceConnectionState.ready.title == "Connected" && store.sessionState(for: a).title == "Mirroring" && store.sessionSummary == "Mirroring: 2" && store.videoStatus(for: a.id)?.profile.title == "Native Clarity (Recommended)", "active device status, aggregate summary, and quality labels resolve in English")
+        try check(store.runningCount == 2 && launches(a.serial).count == 1 && launches(b.serial).count == 1 && launches(a.serial).last?["pid"] as? Int == firstPID && launches(b.serial).last?["pid"] as? Int == peerPID && launches(a.serial).last?["arguments"] as? [String] == initialArguments && launches(a.serial).last?["socket"] as? String == initialSocket && store.videoStatus(for: a.id)?.profile == .nativeClarity, "switching language preserves both child processes, their routes, and active quality configuration")
+        L10n.setLanguage(.simplifiedChinese)
+        try check(store.sessionSummary == "2 台正在投屏" && store.videoStatus(for: a.id)?.profile.title == "原生超清（推荐）", "switching back restores Chinese status without restarting sessions")
         store.qualityProfile = .nativeSmooth
         try check(store.videoStatus(for: a.id)?.profile == .nativeClarity && store.videoStatus(for: b.id)?.profile == .nativeClarity && launches(a.serial).count == 1 && launches(b.serial).count == 1, "changing global quality neither relabels nor restarts active sessions")
 
@@ -45,6 +55,9 @@ private extension SessionChecks {
         try write("log:[server] INFO: Applying video encoder constraints", serial: a.serial, suffix: "command")
         try await wait("encoder constraints surfaced") { store.videoStatus(for: a.id)?.warning != nil }
         try check(store.videoStatus(for: b.id)?.warning == nil, "server encoder adjustments are visible only on the relevant session")
+        L10n.setLanguage(.english)
+        try check(store.videoStatus(for: a.id)?.encoderNotice?.hasPrefix("The phone's encoder adjusted") == true, "an existing encoder notice follows the selected language")
+        L10n.setLanguage(.simplifiedChinese)
         try write("", serial: a.serial, suffix: "command")
 
         store.restartMirroring(for: a.id)
@@ -137,6 +150,23 @@ private extension SessionChecks {
         try write("fail", serial: encoder.serial, suffix: "command")
         try await wait("encoder exit") { !encoderStore.isMirroring }
         try check(encoderStore.sessionState(for: encoder).isFailure && encoderStore.logLines.contains { $0.contains("低负载兼容") } && launches(encoder.serial).count == 1, "a confirmed encoder failure offers explicit compatibility guidance without hidden retries")
+        let originalFailure = encoderStore.sessionState(for: encoder)
+        let historicalLogs = encoderStore.logLines
+        L10n.setLanguage(.english)
+        guard case .failed(let englishFailure) = encoderStore.sessionState(for: encoder) else {
+            throw CheckFailure(description: "localized device failure disappeared")
+        }
+        try check(englishFailure.hasPrefix("Mirroring ended after a video capture or encoding error.") && encoderStore.sessionState == .failed(englishFailure) && encoderStore.logLines == historicalLogs && launches(encoder.serial).count == 1 && encoderStore.runningCount == 0, "stored device failures and aggregate failure resolve in English while historical logs and process ownership remain unchanged")
+        L10n.setLanguage(.simplifiedChinese)
+        try check(encoderStore.sessionState(for: encoder) == originalFailure, "stored device failure restores its original Chinese message")
+
+        let missingTools = MirrorSessionStore(paths: nil, preferences: makePreferences())
+        stores.append(missingTools)
+        missingTools.startMirroring()
+        let missingToolsLogs = missingTools.logLines
+        L10n.setLanguage(.english)
+        try check(missingTools.globalErrorMessage == "Cannot start: the bundled tools are missing." && missingTools.sessionState == .failed("Cannot start: the bundled tools are missing.") && missingTools.logLines == missingToolsLogs && missingTools.runningCount == 0, "an existing global failure follows language changes without repeating the failed operation")
+        L10n.setLanguage(.simplifiedChinese)
         try write("", serial: encoder.serial, suffix: "command")
         encoderStore.clearLogs()
         encoderStore.startMirroring()

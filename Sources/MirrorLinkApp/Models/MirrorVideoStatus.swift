@@ -29,14 +29,20 @@ struct MirrorVideoStatus: Equatable {
     let isWireless: Bool
     private(set) var resolution: VideoResolution?
     private(set) var initialResolution: VideoResolution?
-    private(set) var encoderNotice: String?
+    private(set) var hasEncoderConstraint = false
+
+    var encoderNotice: String? {
+        hasEncoderConstraint
+            ? L10n.tr("手机编码器调整了画面参数，请以实际画面尺寸为准；若清晰度不足，可重新投屏或改用兼容档。")
+            : nil
+    }
 
     var configurationSummary: String {
-        "\(profile.configurationSummary) · H.264 · 缓冲 \(profile.videoBufferMilliseconds(isWireless: isWireless)) ms"
+        L10n.tr("%@ · H.264 · 缓冲 %@ ms", profile.configurationSummary, String(profile.videoBufferMilliseconds(isWireless: isWireless)))
     }
     var warning: String? {
         if let resolution, let initialResolution, resolution.isSmaller(than: initialResolution) {
-            return "收到的画面尺寸已由 \(initialResolution.displayText) 减小为 \(resolution.displayText)。请检查手机显示设置或重新投屏。"
+            return L10n.tr("收到的画面尺寸已由 %@ 减小为 %@。请检查手机显示设置或重新投屏。", initialResolution.displayText, resolution.displayText)
         }
         return encoderNotice
     }
@@ -47,6 +53,6 @@ struct MirrorVideoStatus: Equatable {
     }
 
     mutating func noteEncoderConstraint() {
-        encoderNotice = "手机编码器调整了画面参数，请以实际画面尺寸为准；若清晰度不足，可重新投屏或改用兼容档。"
+        hasEncoderConstraint = true
     }
 }

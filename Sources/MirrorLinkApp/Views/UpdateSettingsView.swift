@@ -5,32 +5,33 @@ import SwiftUI
 private typealias ViewState<Value> = SwiftUI.State<Value>
 
 struct UpdateSettingsView: View {
+    @ObservedObject private var language = LanguageStore.shared
     @ObservedObject var updates: AppUpdateStore
     @ViewState private var draftFeed = ""
 
     var body: some View {
-        Section("应用更新") {
-            LabeledContent("当前版本", value: "\(updates.version)（\(updates.build)）")
+        let _ = language.selection
+        Section(L10n.tr("应用更新")) {
+            LabeledContent(L10n.tr("当前版本"), value: L10n.tr("%@（%@）", updates.version, updates.build))
             if updates.isConfigured {
-                LabeledContent("更新来源") {
+                LabeledContent(L10n.tr("更新来源")) {
                     Text(updates.feedAddress)
                         .font(.caption)
                         .textSelection(.enabled)
                         .lineLimit(2)
                 }
             }
-            HStack {
-                Button(updates.installationPending ? "安装已下载的更新…" : "检查更新…") {
+            VStack(alignment: .leading, spacing: 8) {
+                Button(updates.installationPending ? L10n.tr("安装已下载的更新…") : L10n.tr("检查更新…")) {
                     updates.checkForUpdates()
                 }
                 .disabled(!updates.canCheckForUpdates)
-                Spacer()
                 if let date = updates.lastCheckDate {
-                    Text("上次检查：\(date.formatted(date: .abbreviated, time: .shortened))")
+                    Text(L10n.tr("上次检查：%@", L10n.formattedDate(date)))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
-            Toggle("自动检查更新", isOn: Binding(
+            Toggle(L10n.tr("自动检查更新"), isOn: Binding(
                 get: { updates.automaticallyChecks },
                 set: { updates.setAutomaticallyChecks($0) }
             ))
@@ -39,12 +40,13 @@ struct UpdateSettingsView: View {
                 .font(.callout).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if updates.canConfigureFeed {
-                DisclosureGroup("设置更新地址") {
-                    TextField("发布者提供的 HTTPS appcast.xml 地址", text: $draftFeed)
+                DisclosureGroup(L10n.tr("设置更新地址")) {
+                    TextField(L10n.tr("发布者提供的 HTTPS appcast.xml 地址"), text: $draftFeed)
                         .textFieldStyle(.roundedBorder)
-                    Button("保存更新地址") { updates.saveFeed(draftFeed) }
-                    Text("只接受镜连内置公钥验证通过的更新包；不会将 GitHub 登录凭据写入应用。")
+                    Button(L10n.tr("保存更新地址")) { updates.saveFeed(draftFeed) }
+                    Text(L10n.tr("只接受镜连内置公钥验证通过的更新包；不会将 GitHub 登录凭据写入应用。"))
                         .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .onAppear { draftFeed = updates.feedAddress }
             }

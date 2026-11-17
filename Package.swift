@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "MirrorLink",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v13)
     ],
@@ -17,7 +18,8 @@ let package = Package(
             name: "MirrorLinkApp",
             dependencies: [.product(name: "Sparkle", package: "Sparkle")],
             path: "Sources/MirrorLinkApp",
-            exclude: ["Resources"],
+            exclude: ["Resources/Info.plist"],
+            resources: [.process("Resources/Localizations")],
             linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]
         ),
         .testTarget(

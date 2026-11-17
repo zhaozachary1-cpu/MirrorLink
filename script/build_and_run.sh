@@ -110,6 +110,12 @@ cp "$ARM_TOOLS/LICENSE" "$RESOURCES_DIR/NOTICE-scrcpy.txt"
 chmod +x "$MACOS_DIR/scrcpy" "$MACOS_DIR/adb"
 
 cp "$ROOT_DIR/Sources/MirrorLinkApp/Resources/Info.plist" "$CONTENTS_DIR/Info.plist"
+# Bundle resources explicitly: SwiftPM executables do not automatically embed
+# localizations into our separately assembled .app. The same catalogs are used
+# by Bundle.module during SwiftPM tests and Bundle.main after installation.
+for language in en zh-Hans; do
+  ditto "$ROOT_DIR/Sources/MirrorLinkApp/Resources/Localizations/$language.lproj" "$RESOURCES_DIR/$language.lproj"
+done
 cp "$ROOT_DIR/README.md" "$RESOURCES_DIR/README.md"
 for notice in LICENSE NOTICE THIRD_PARTY_NOTICES.md; do
   cp "$ROOT_DIR/$notice" "$RESOURCES_DIR/$notice"
@@ -159,6 +165,12 @@ if [[ "$VERIFY" == "1" ]]; then
     lipo -verify_arch x86_64 "$binary"
   done
   plutil -lint "$CONTENTS_DIR/Info.plist"
+  for language in en zh-Hans; do
+    for catalog in Localizable InfoPlist; do
+      plutil -lint "$RESOURCES_DIR/$language.lproj/$catalog.strings"
+      cmp "$ROOT_DIR/Sources/MirrorLinkApp/Resources/Localizations/$language.lproj/$catalog.strings" "$RESOURCES_DIR/$language.lproj/$catalog.strings"
+    done
+  done
   test -x "$MACOS_DIR/MirrorLink"
   test -x "$MACOS_DIR/scrcpy"
   test -x "$MACOS_DIR/adb"
