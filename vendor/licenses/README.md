@@ -19,10 +19,33 @@ The scrcpy 4.1 source archive corresponds to upstream commit
 `app/deps/{_init,sdl.sh,dav1d.sh,ffmpeg.sh,libusb.sh,adb_macos.sh}` contain the
 dependency versions, configuration and build commands. The macOS FFmpeg script
 does not enable GPL or nonfree components. scrcpy statically links these
-libraries; the arm64 executable also contains zlib 1.3.2, while x86_64 uses the
-macOS system zlib. Apple system libraries are supplied by macOS, not this package.
+libraries. Starting with MirrorLink 0.5.1, both architectures are rebuilt with
+zlib 1.3.2 and a native Cocoa toolbar. Apple system libraries are supplied by
+macOS, not this package.
 
 ## Rebuild / relink a modified runtime
+
+For MirrorLink 0.5.1 and newer, use the exact MirrorLink release source checkout.
+Install Xcode command-line tools and CMake, Meson, Ninja, pkg-config, NASM,
+Autoconf, Automake and GNU libtool (Homebrew names: cmake meson ninja pkgconf
+nasm autoconf automake libtool). Run `script/prepare_third_party.sh`, followed
+by `script/build_scrcpy.sh`, then `script/build_and_run.sh --verify --no-launch`.
+The source asset includes `mirror-window/` (our complete Apache-2.0 toolbar
+source, integration patch and architecture files) and `build_scrcpy.sh`.
+These correspond to `vendor/mirror-window/` and `script/build_scrcpy.sh` in
+the checkout. Copy supplied archives into `work/community-sources/` for an
+offline build. No publisher signing key is required for local ad-hoc builds.
+
+To modify a library, extract its supplied archive, make your changes, create
+your own source archive and update its SHA-256 in your personal checkout's
+`vendor/third-party-sources.tsv`. Use a clean checkout/build directory so the
+dependency cache is rebuilt. The complete scrcpy source, toolbar source and
+all static-library sources are supplied for recompilation and relinking.
+The official ADB/server remain unchanged. Do not enable the official update
+channel for a custom distribution.
+
+The following upstream procedure is retained as reference for the original
+unmodified runtime used before 0.5.1:
 
 1. Extract the scrcpy source archive and other source archives from the supplied
    source package. Install Apple's command-line development tools and scrcpy's
@@ -47,10 +70,10 @@ macOS system zlib. Apple system libraries are supplied by macOS, not this packag
    build signs your modified bundle ad-hoc; it does not need our update private
    key. Keep custom builds outside the official update channel.
 
-The official prebuilt runtime is byte-for-byte verified against upstream;
-these source instructions are not a claim of byte-reproducible rebuilding on
-every SDK or of having executed every third-party build on this Mac. No scrcpy,
-FFmpeg or libusb source changes were made for the distributed runtime. ADB's
+The checked-in original prebuilt runtime is byte-for-byte verified against
+upstream. Version 0.5.1 instead builds the client with the supplied toolbar
+patch; FFmpeg and libusb source archives remain unmodified. This does not
+claim byte-reproducibility across SDK versions or Intel hardware testing. ADB's
 complete upstream Platform-Tools notice is retained (including notices for
 components not shipped by MirrorLink); only `adb` is bundled, not the rest of
 the SDK tools.

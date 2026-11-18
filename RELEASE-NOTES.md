@@ -1,3 +1,19 @@
+# 镜连 MirrorLink 0.5.1 — 投屏窗口工具栏 / Phone Window Toolbar（免费社区版）
+
+版本 / Version：**0.5.1 / Build 11**。
+
+- 返回桌面、应用列表、截图、录屏、发送文件与安装 APK 统一移到每台投屏窗口顶部；各窗口始终绑定自己的手机，主客户端保留设备设置、自检和反馈。
+- 发送文件：选择后直接发送到该手机的 `Download/MirrorLink`。保留安全可读的文件名并加短编号防止覆盖；选择 APK 会转入安装确认，无需退出重选。
+- 安装 APK：选包后仅需一次确认，明确显示文件名和目标手机；不覆盖已安装应用。演示模式禁用发送与安装。处理中可在窗口内查看状态及取消，完成或失败时显示结果。
+- 录屏选择与确认在手机窗口中完成；启停仍会短暂重启本台投屏，录制时图标变为红色停止按钮。截图/录屏完成后可从“更多投屏操作”打开最近文件。
+- 原生 Cocoa 工具栏直接编译进锁定版本 scrcpy；不依赖悬浮窗或辅助功能权限，不改变视频画质参数。自有按钮提示和状态支持中英文切换。
+
+**English:** Home, App Drawer, Screenshot, Recording, Send File, and Install APK are now in each phone window's native toolbar. File selection sends directly to that phone; APK selection opens one explicit installation confirmation. Readable filenames include a unique prefix to avoid overwrites. Status, cancellation and results stay in the phone window. Presentation mode blocks navigation and device writes. Recording confirmation/save sheets belong to the phone window; starting/stopping recording still restarts only that phone's session briefly.
+
+This remains a free, ad-hoc signed community build, not Apple notarized. Appcast and update archives use the existing Sparkle signing key. See README for installation and TOOLS-QA.md / UPDATE-QA.md for verified evidence and limitations. Some phone launchers do not provide an app drawer; sending the command is not proof that it opened.
+
+---
+
 # 镜连 MirrorLink 0.5.0 — 设备偏好与实用工具 / Device Preferences and Tools（免费社区版）
 
 版本 / Version：**0.5.0 / Build 10**。新增每台设备的设置与工具，保留中英文界面、原生画质档位、无线配对、多设备独立会话和签名更新。

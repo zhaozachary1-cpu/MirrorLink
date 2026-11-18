@@ -300,6 +300,8 @@ if [[ "$DISTRIBUTION" != local-preview ]]; then
   ditto "$ROOT_DIR/vendor/licenses" "$SOURCE_STAGE/licenses"
   cp "$ROOT_DIR/vendor/third-party-sources.tsv" "$SOURCE_STAGE/third-party-sources.tsv"
   cp "$ROOT_DIR/vendor/licenses/README.md" "$SOURCE_STAGE/README.md"
+  ditto "$ROOT_DIR/vendor/mirror-window" "$SOURCE_STAGE/mirror-window"
+  cp "$ROOT_DIR/script/build_scrcpy.sh" "$SOURCE_STAGE/build_scrcpy.sh"
   cp "$ROOT_DIR/THIRD_PARTY_NOTICES.md" "$SOURCE_STAGE/THIRD_PARTY_NOTICES.md"
   SOURCE_ARCHIVE="$PACKAGE_ROOT/$SOURCE_NAME.tar.gz"
   COPYFILE_DISABLE=1 tar -czf "$SOURCE_ARCHIVE" -C "$TEMP_ROOT" "$SOURCE_NAME"

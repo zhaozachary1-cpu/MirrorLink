@@ -22,6 +22,7 @@ swiftc -swift-version 5 \
   "$ROOT_DIR/Sources/MirrorLinkApp/Support/ProcessRunner.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Support/ProcessCancellation.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Support/SessionLogStream.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Support/MirrorWindowChannel.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Stores/MirrorSessionStore.swift" \
   -o "$CHECK_DIR/session-checks"
 MIRRORLINK_TEST_LANGUAGE=zh-Hans MIRRORLINK_LOCALIZATION_ROOT="$ROOT_DIR/Sources/MirrorLinkApp/Resources/Localizations" "$CHECK_DIR/session-checks" "$CHECK_DIR/mock-scrcpy"

@@ -5,6 +5,7 @@ enum DeviceToolsError: Error, LocalizedError, Sendable {
     case toolsMissing, invalidTarget, deviceNotReady, cancelled, timedOut, outputTooLarge
     case commandFailed, invalidPNG, invalidFile, saveFailed, apkRequiresConfirmation
     case apkOnly, drawerUnsupported, invalidScreenSize, invalidAttachment
+    case apkInvalid, apkConflict, apkBlocked, apkIncompatible
     var message: LocalizedMessage {
         switch self {
         case .toolsMissing: return L10n.message("内置工具不可用，请重新安装完整应用。")
@@ -19,6 +20,10 @@ enum DeviceToolsError: Error, LocalizedError, Sendable {
         case .saveFailed: return L10n.message("无法保存文件，请选择可写的文件夹和未使用的文件名。")
         case .apkRequiresConfirmation: return L10n.message("APK 需要使用“安装 APK”并明确确认，普通文件发送不会安装应用。")
         case .apkOnly: return L10n.message("请选择 APK 安装文件。")
+        case .apkInvalid: return L10n.message("这个 APK 已损坏或不是有效安装包，请重新下载后再试。")
+        case .apkConflict: return L10n.message("手机上已有这个应用，镜连没有覆盖它。如需更新，请使用该应用自己的更新方式。")
+        case .apkBlocked: return L10n.message("手机拒绝了安装，请解锁手机并查看手机上的安装授权提示。")
+        case .apkIncompatible: return L10n.message("这个 APK 不兼容当前手机，请选择适用于该手机 Android 版本和处理器的安装包。")
         case .drawerUnsupported: return L10n.message("这台手机不支持标准应用抽屉指令，请使用上滑兼容方式。")
         case .invalidScreenSize: return L10n.message("无法确认屏幕尺寸，请在投屏窗口中手动上滑。")
         case .invalidAttachment: return L10n.message("反馈附件仅支持普通图片或视频文件，最多 8 个，每个不超过 512 MB，总计不超过 1 GB；不支持符号链接。")
@@ -63,8 +68,11 @@ struct DeviceToolsService: Sendable {
         try ready(device, cancellation)
         let directory = try ToolFileSafety.temporaryDirectory(in: temporaryRoot)
         defer { try? FileManager.default.removeItem(at: directory) }
-        // Only a generated basename reaches the Android shell or ADB sync protocol.
-        let name = "MirrorLink-" + UUID().uuidString + ToolFileSafety.safeExtension(file)
+        // Preserve a readable name, allowing only letters, digits, '-' and '_'.
+        // The unique prefix prevents overwrites; shell punctuation is never sent.
+        let stem = String(file.deletingPathExtension().lastPathComponent.unicodeScalars
+            .filter { CharacterSet.alphanumerics.contains($0) || $0 == "-" || $0 == "_" }.prefix(60))
+        let name = "MirrorLink-" + String(UUID().uuidString.prefix(8)) + "-" + (stem.isEmpty ? "file" : stem) + ToolFileSafety.safeExtension(file)
         let staged = directory.appendingPathComponent(name)
         try ToolFileSafety.copyRegularFile(file, to: staged, cancellation: cancellation)
         let remote = "/sdcard/Download/MirrorLink/" + name
@@ -224,7 +232,16 @@ struct DeviceToolsService: Sendable {
         if result.status == -999 { throw DeviceToolsError.cancelled }
         if result.timedOut { throw DeviceToolsError.timedOut }
         if result.outputLimitExceeded { throw DeviceToolsError.outputTooLarge }
-        guard result.succeeded else { throw DeviceToolsError.commandFailed }
+        guard result.succeeded else {
+            if arguments.first == "install" {
+                let failure = String(decoding: result.stdout + result.stderr, as: UTF8.self)
+                if failure.contains("INSTALL_PARSE_FAILED") || failure.contains("INSTALL_FAILED_INVALID_APK") { throw DeviceToolsError.apkInvalid }
+                if failure.contains("INSTALL_FAILED_ALREADY_EXISTS") || failure.contains("INSTALL_FAILED_UPDATE_INCOMPATIBLE") { throw DeviceToolsError.apkConflict }
+                if failure.contains("INSTALL_FAILED_USER_RESTRICTED") || failure.contains("INSTALL_CANCELED_BY_USER") { throw DeviceToolsError.apkBlocked }
+                if failure.contains("INSTALL_FAILED_NO_MATCHING_ABIS") || failure.contains("INSTALL_FAILED_OLDER_SDK") { throw DeviceToolsError.apkIncompatible }
+            }
+            throw DeviceToolsError.commandFailed
+        }
         return result
     }
 }

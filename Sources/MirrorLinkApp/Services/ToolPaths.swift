@@ -19,7 +19,7 @@ struct ToolPaths: Sendable {
         let paths = ToolPaths(
             root: root,
             adb: root.appendingPathComponent("adb"),
-            scrcpy: root.appendingPathComponent("scrcpy"),
+            scrcpy: root.appendingPathComponent("scrcpy").resolvingSymlinksInPath(),
             server: bundleURL.appendingPathComponent("Contents/Resources/scrcpy-server")
         )
         return paths.isUsable ? paths : nil

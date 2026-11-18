@@ -21,6 +21,7 @@ final class DeviceToolsStore: ObservableObject {
     private let workers = DispatchGroup()
     private var tokens: [String: ProcessCancellation] = [:]
     private var operations: [String: UUID] = [:]
+    private var statusVersions: [String: UUID] = [:]
     private var cancellationMessages: [String: LocalizedMessage] = [:]
     private var feedbackToken: ProcessCancellation?
     private var hasShutdown = false
@@ -60,6 +61,11 @@ final class DeviceToolsStore: ObservableObject {
     func isError(for id: String) -> Bool { errors.contains(id) }
     func lastScreenshotURL(for id: String) -> URL? { screenshots[id] }
     func healthReport(for id: String) -> DeviceHealthReport? { healthReports[id] }
+    func windowState(for device: AndroidDevice) -> [String: Any] {
+        ["busy": isBusy(for: device.id), "status": status(for: device.id) ?? "",
+         "isError": isError(for: device.id), "resultID": statusVersions[device.id]?.uuidString ?? "initial",
+         "screenshotPath": screenshots[device.id]?.path ?? "", "directory": outputDirectory.path]
+    }
 
     func captureScreenshot(for device: AndroidDevice) {
         let directory = outputDirectory
@@ -163,6 +169,7 @@ final class DeviceToolsStore: ObservableObject {
         guard !hasShutdown, !busy.contains(id) else { return }
         guard let service else { statuses[id] = DeviceToolsError.toolsMissing.message; errors.insert(id); return }
         let token = ProcessCancellation(), generation = UUID()
+        statusVersions[id] = generation
         tokens[id] = token; operations[id] = generation; cancellationMessages[id] = cancellationMessage
         busy.insert(id); errors.remove(id); statuses[id] = message
         let workers = workers

@@ -33,6 +33,11 @@ final class MirrorSessionStore: ObservableObject {
     private static let selectionKey = "MirrorLinkSelectedDevices"
 
     let paths: ToolPaths?
+    var windowToolState: ((AndroidDevice) -> [String: Any])?
+    var onWindowToolAction: ((MirrorWindowAction, AndroidDevice) -> Void)?
+    var onWindowFileAction: ((MirrorWindowAction, URL, AndroidDevice) -> Void)?
+    private var windowControlTimer: DispatchSourceTimer?
+    private var windowRecordingFeedback: [String: String] = [:]
 
     @Published private var runningSessions: [AndroidDevice.ID: RunningMirrorSession] = [:]
     @Published private var sessionDevices: [AndroidDevice.ID: AndroidDevice] = [:]
@@ -552,7 +557,7 @@ final class MirrorSessionStore: ObservableObject {
 
     func startRecording(for deviceID: String, to destination: URL) {
         guard !shuttingDown, let paths, paths.isUsable,
-              let device = connectedDevice(for: deviceID), device.state == .ready,
+              let device = runningSessions[deviceID]?.device ?? connectedDevice(for: deviceID), device.state == .ready,
               !isRecording(for: deviceID), runningSessions[deviceID]?.stopRequested != true else { return }
         do {
             let recording = try RecordingJob(destination: destination)
@@ -578,7 +583,7 @@ final class MirrorSessionStore: ObservableObject {
         guard let session = runningSessions[deviceID], session.recording != nil || session.restartRequest?.recording != nil else { return }
         recordingMessages[deviceID] = L10n.message("正在保存录屏，完成后重新打开本台投屏。")
         if let pending = session.restartRequest?.recording { pending.cancelBeforeStart() }
-        let device = connectedDevice(for: deviceID)
+        let device: AndroidDevice? = session.device
         stopMirroring(for: deviceID, appendingLog: false)
         if let device, device.state == .ready {
             cancelledRecoveryDevices.remove(deviceID)
@@ -592,9 +597,11 @@ final class MirrorSessionStore: ObservableObject {
     // Never kill an ADB daemon or another app's scrcpy session.
     func shutdown() {
         shuttingDown = true
+        windowControlTimer?.cancel(); windowControlTimer = nil
         reconnectRequests.removeAll()
         let sessions = Array(runningSessions.values)
         for session in sessions {
+            session.controls?.close()
             session.restartRequest?.recording?.cancelBeforeStart()
             session.restartRequest = nil
             session.stopRequested = true
@@ -635,9 +642,11 @@ final class MirrorSessionStore: ObservableObject {
         let command = ScrcpyCommand(paths: paths)
         let token = UUID()
         let process = Process()
+        let controls: MirrorWindowChannel
         let output: SessionLogStream
         let errors: SessionLogStream
         do {
+            controls = try MirrorWindowChannel()
             output = try SessionLogStream(lineBuffered: true)
             errors = try SessionLogStream(lineBuffered: false)
         } catch {
@@ -654,9 +663,10 @@ final class MirrorSessionStore: ObservableObject {
         process.arguments = command.arguments(for: device, quality: profile, preferences: options, placement: placement, recordingURL: recording?.temporaryURL)
         process.standardOutput = output.childWriter
         process.standardError = errors.childWriter
-        process.standardInput = FileHandle.nullDevice
+        process.standardInput = controls.input
         var environment = ProcessInfo.processInfo.environment
         for (key, value) in command.environment(for: device) { environment[key] = value }
+        environment["MIRRORLINK_WINDOW_CONTROLS"] = "1"
         process.environment = environment
         process.currentDirectoryURL = paths.root
 
@@ -665,9 +675,13 @@ final class MirrorSessionStore: ObservableObject {
             token: token,
             process: process,
             logStreams: [output, errors], readers: readers, options: options, placement: placement,
-            recording: recording, reconnect: reconnect
+            recording: recording, reconnect: reconnect, controls: controls
         )
         runningSessions[device.id] = session
+        controls.onRequest = { [weak self] request in
+            self?.handleWindowRequest(request, deviceID: device.id, token: token)
+        }
+        startWindowControlUpdates()
         sessionDevices[device.id] = device
         sessionStates[device.id] = .starting
         appendLog(L10n.tr("正在启动 %@ 的投屏窗口…", device.logLabel))
@@ -690,6 +704,7 @@ final class MirrorSessionStore: ObservableObject {
 
         do {
             try process.run()
+            controls.childDidLaunch()
             output.closeParentWriter()
             errors.closeParentWriter()
             for (channel, stream) in [(output, "stdout"), (errors, "stderr")] {
@@ -719,6 +734,7 @@ final class MirrorSessionStore: ObservableObject {
             readers.leave()
             readers.leave()
             process.terminationHandler = nil
+            controls.close()
             runningSessions[device.id] = nil
             recording?.cancelBeforeStart()
             if recording != nil { recordingMessages[device.id] = L10n.message("录屏未开始，未生成完成文件。") }
@@ -736,6 +752,7 @@ final class MirrorSessionStore: ObservableObject {
         }
         session.restartRequest = nil
         session.stopRequested = true
+        updateWindowControls(session)
         failureMessages[deviceID] = nil
         sessionStates[deviceID] = .stopping
         if appendingLog { appendLog(L10n.tr("正在停止 %@ 的投屏…", session.device.logLabel)) }
@@ -792,6 +809,7 @@ final class MirrorSessionStore: ObservableObject {
 
     private func handleTermination(_ process: Process, deviceID: AndroidDevice.ID, token: UUID) {
         guard let session = runningSessions[deviceID], session.token == token else { return }
+        session.controls?.close()
         for data in session.pendingOutput.values where !data.isEmpty {
             appendLog("[\(session.device.logLabel)] \(String(decoding: data, as: UTF8.self))")
         }
@@ -945,8 +963,107 @@ final class MirrorSessionStore: ObservableObject {
         if logLines.count > 300 { logLines.removeFirst(logLines.count - 300) }
     }
 
+    private func startWindowControlUpdates() {
+        guard windowControlTimer == nil else { return }
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(250), leeway: .milliseconds(50))
+        timer.setEventHandler { [weak self] in
+            guard let self else { return }
+            if self.runningSessions.isEmpty {
+                self.windowControlTimer?.cancel(); self.windowControlTimer = nil
+                return
+            }
+            for session in self.runningSessions.values { self.updateWindowControls(session) }
+        }
+        windowControlTimer = timer
+        timer.resume()
+    }
+
+    private func updateWindowControls(_ session: RunningMirrorSession, force: Bool = false) {
+        let id = session.device.id
+        let ready = !shuttingDown && !session.stopRequested && sessionStates[id] == .mirroring
+        var state = windowToolState?(session.device) ?? [:]
+        state["type"] = "state"
+        state["ready"] = ready
+        state["controlAllowed"] = ready && !isPresentationMode(for: session.device)
+        state["recording"] = session.recording != nil
+        state["recordAllowed"] = ready && session.restartRequest == nil
+        state["recordingPath"] = completedRecordings[id]?.path ?? ""
+        state["homeTitle"] = L10n.tr("返回桌面")
+        state["drawerTitle"] = L10n.tr("应用列表")
+        state["screenshotTitle"] = L10n.tr("保存截图")
+        state["recordTitle"] = session.recording != nil ? L10n.tr("结束录屏") : L10n.tr("开始录屏…")
+        state["moreTitle"] = L10n.tr("更多投屏操作")
+        state["sendFileTitle"] = L10n.tr("发送文件…")
+        state["installAPKTitle"] = L10n.tr("安装 APK…")
+        state["chooseFileTitle"] = L10n.tr("选择要发送的文件")
+        state["chooseAPKTitle"] = L10n.tr("选择要安装的 APK")
+        state["installTitle"] = L10n.tr("确认安装所选 APK？")
+        state["installExplanation"] = L10n.tr("将所选 APK 安装到 %@。不会覆盖已有应用；请确认文件来源。", displayName(for: session.device))
+        state["installConfirm"] = L10n.tr("安装到这台设备")
+        state["sendPrompt"] = L10n.tr("发送到手机")
+        state["sendExplanation"] = L10n.tr("选择后直接发送到这台手机的 Download/MirrorLink 文件夹（最大 2 GB）。选择 APK 时将进入安装确认。")
+        state["cancelOperationTitle"] = L10n.tr("取消操作")
+        state["swipeTitle"] = L10n.tr("尝试上滑打开应用列表")
+        state["showScreenshotTitle"] = L10n.tr("显示最近截图")
+        state["showRecordingTitle"] = L10n.tr("显示最近录屏")
+        state["statusTitle"] = L10n.tr("查看操作结果")
+        state["startTitle"] = L10n.tr("开始这台设备的录屏？")
+        state["startExplanation"] = L10n.tr("将启动或重新启动这台设备的投屏并开始录制，当前画面会短暂中断；其他手机不受影响。录屏可能包含手机上的私人内容。")
+        state["startConfirm"] = L10n.tr("选择保存位置并录屏…")
+        state["stopTitle"] = L10n.tr("结束录屏并继续投屏？")
+        state["stopExplanation"] = L10n.tr("镜连将保存本次录屏，并重新打开这台设备的普通投屏窗口；其他手机不受影响。")
+        state["stopConfirm"] = L10n.tr("保存并继续投屏")
+        state["cancelTitle"] = L10n.tr("取消")
+        state["saveRecordingTitle"] = L10n.tr("保存录屏")
+        if let baseline = windowRecordingFeedback[id], baseline == (state["resultID"] as? String ?? ""),
+           let message = recordingMessages[id] {
+            state["status"] = message.resolved
+            state["resultID"] = "recording-" + message.resolved
+        }
+        if let status = state["status"] as? String { state["status"] = String(status.prefix(700)) }
+        session.controls?.sendState(state, force: force)
+    }
+
+    private func handleWindowRequest(_ request: MirrorWindowRequest, deviceID: String, token: UUID) {
+        guard !shuttingDown, let session = runningSessions[deviceID], session.token == token,
+              session.process.isRunning, !session.stopRequested else { return }
+        if request.action == .ready { updateWindowControls(session, force: true); return }
+        guard sessionStates[deviceID] == .mirroring, session.restartRequest == nil else { return }
+        let state = windowToolState?(session.device) ?? [:]
+        switch request.action {
+        case .home, .drawer, .swipe:
+            guard !isPresentationMode(for: session.device), !(state["busy"] as? Bool ?? false) else { return }
+            onWindowToolAction?(request.action, session.device)
+        case .screenshot:
+            guard !(state["busy"] as? Bool ?? false) else { return }
+            onWindowToolAction?(.screenshot, session.device)
+        case .sendFile, .installAPK:
+            guard !isPresentationMode(for: session.device), !(state["busy"] as? Bool ?? false),
+                  let path = request.path, path.hasPrefix("/"), path.utf8.count < 4096,
+                  !path.contains("\0") else { return }
+            let url = URL(fileURLWithPath: path)
+            guard (request.action == .installAPK) == (url.pathExtension.lowercased() == "apk") else { return }
+            onWindowFileAction?(request.action, url, session.device)
+        case .cancel:
+            onWindowToolAction?(.cancel, session.device)
+        case .recordStart:
+            guard session.recording == nil, let path = request.path, path.hasPrefix("/"),
+                  path.utf8.count < 4096, !path.contains("\0") else { return }
+            windowRecordingFeedback[deviceID] = state["resultID"] as? String ?? ""
+            startRecording(for: deviceID, to: URL(fileURLWithPath: path))
+        case .recordStop:
+            guard session.recording != nil else { return }
+            windowRecordingFeedback[deviceID] = state["resultID"] as? String ?? ""
+            stopRecording(for: deviceID)
+        case .ready: break
+        }
+        updateWindowControls(session)
+    }
+
 }
 
+@MainActor
 private final class RunningMirrorSession {
     let device: AndroidDevice
     let token: UUID
@@ -957,6 +1074,7 @@ private final class RunningMirrorSession {
     let placement: MirrorWindowPlacement?
     let recording: RecordingJob?
     let reconnect: ReconnectRequest?
+    let controls: MirrorWindowChannel?
     var stopRequested = false
     var pendingOutput: [String: Data] = [:]
     var restartRequest: SessionRestart?
@@ -964,7 +1082,7 @@ private final class RunningMirrorSession {
     var reportedDisconnect = false
 
     init(device: AndroidDevice, token: UUID, process: Process, logStreams: [SessionLogStream], readers: DispatchGroup,
-         options: DevicePreferences, placement: MirrorWindowPlacement?, recording: RecordingJob?, reconnect: ReconnectRequest?) {
+         options: DevicePreferences, placement: MirrorWindowPlacement?, recording: RecordingJob?, reconnect: ReconnectRequest?, controls: MirrorWindowChannel?) {
         self.device = device
         self.token = token
         self.process = process
@@ -974,6 +1092,7 @@ private final class RunningMirrorSession {
         self.placement = placement
         self.recording = recording
         self.reconnect = reconnect
+        self.controls = controls
     }
 }
 

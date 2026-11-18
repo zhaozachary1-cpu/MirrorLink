@@ -1,0 +1,48 @@
+--- a/meson.build
++++ b/meson.build
+@@ -1,4 +1,4 @@
+-project('scrcpy', 'c',
++project('scrcpy', 'c', 'objc',
+         version: '4.1',
+         meson_version: '>= 0.49',
+         default_options: [
+--- a/app/meson.build
++++ b/app/meson.build
+@@ -1,4 +1,5 @@
+ src = [
++    'src/mirrorlink_toolbar.m',
+     'src/main.c',
+     'src/adb/adb.c',
+     'src/adb/adb_device.c',
+@@ -193,6 +194,7 @@
+ executable('scrcpy', src,
+            dependencies: dependencies,
+            include_directories: src_dir,
+            install: true,
+-           c_args: [])
++           c_args: [],
++           objc_args: ['-fobjc-arc'])
+ 
+--- a/app/src/screen.c
++++ b/app/src/screen.c
+@@ -1,3 +1,4 @@
++#include "mirrorlink_toolbar.h"
+ #include "screen.h"
+ 
+ #include <assert.h>
+@@ -579,6 +580,7 @@
+         goto error_destroy_fps_counter;
+     }
+ 
++    mirrorlink_toolbar_install(screen->window);
+     screen->renderer = SDL_CreateRenderer(screen->window, NULL);
+     if (!screen->renderer) {
+         LOGE("Could not create renderer: %s", SDL_GetError());
+@@ -815,6 +817,7 @@
+     SDL_GL_DestroyContext(screen->gl_context);
+ #endif
+     SDL_DestroyRenderer(screen->renderer);
++    mirrorlink_toolbar_remove(screen->window);
+     SDL_DestroyWindow(screen->window);
+     sc_fps_counter_destroy(&screen->fps_counter);
+     sc_frame_buffer_destroy(&screen->fb);

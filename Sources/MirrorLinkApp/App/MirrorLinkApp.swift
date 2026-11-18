@@ -17,7 +17,23 @@ struct MirrorLinkApp: App {
         _language = StateObject(wrappedValue: LanguageStore.shared)
         let sessions = MirrorSessionStore()
         _store = StateObject(wrappedValue: sessions)
-        _tools = StateObject(wrappedValue: DeviceToolsStore(paths: sessions.paths))
+        let deviceTools = DeviceToolsStore(paths: sessions.paths)
+        _tools = StateObject(wrappedValue: deviceTools)
+        sessions.windowToolState = { [weak deviceTools] device in deviceTools?.windowState(for: device) ?? [:] }
+        sessions.onWindowToolAction = { [weak deviceTools] action, device in
+            switch action {
+            case .home: deviceTools?.home(for: device)
+            case .drawer: deviceTools?.openAppDrawer(for: device)
+            case .swipe: deviceTools?.swipeUpForDrawer(for: device)
+            case .screenshot: deviceTools?.captureScreenshot(for: device)
+            case .cancel: deviceTools?.cancel(for: device.id)
+            default: break
+            }
+        }
+        sessions.onWindowFileAction = { [weak deviceTools] action, url, device in
+            if action == .installAPK { deviceTools?.installAPK(url, to: device, confirmed: true) }
+            else if action == .sendFile { deviceTools?.sendFile(url, to: device) }
+        }
         _wireless = StateObject(wrappedValue: WirelessConnectionStore(paths: sessions.paths) { [weak sessions] device in
             sessions?.connectAndMirror(device)
         })

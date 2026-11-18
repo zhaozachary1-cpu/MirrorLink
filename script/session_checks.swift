@@ -571,11 +571,87 @@ private final class SessionChecks {
         try check(identityStore.devices[0].id == originalID && !identityStore.canStart(for: originalID), "USB rediscovery after Wi-Fi loss retains live session ownership")
         try await runQualityChecks()
         try await runProductivityChecks()
+        try await runWindowControlChecks()
     }
 }
 
 @MainActor
 private extension SessionChecks {
+    func runWindowControlChecks() async throws {
+        let channel = try MirrorWindowChannel()
+        let payload: [String: Any] = ["type": "state", "status": String(repeating: "测试", count: 1000)]
+        channel.sendState(payload)
+        var buffer = [UInt8](repeating: 0, count: 8192)
+        let received = recv(channel.input.fileDescriptor, &buffer, buffer.count, MSG_DONTWAIT)
+        try check(received > 6000, "large bilingual state and media paths exceed Darwin defaults without losing toolbar state")
+        channel.close()
+        let source = SnapshotSource()
+        let a = device("WINDOW-A", socket: "tcp:127.0.0.1:5038")
+        let b = device("WINDOW-B")
+        source.set([a, b])
+        let store = makeStore(source)
+        var events: [(MirrorWindowAction, AndroidDevice)] = []
+        var files: [(MirrorWindowAction, URL, AndroidDevice)] = []
+        var busy = false
+        store.windowToolState = { _ in ["busy": busy, "resultID": "initial"] }
+        store.onWindowToolAction = { events.append(($0, $1)) }
+        store.onWindowFileAction = { files.append(($0, $1, $2)) }
+        try await refresh(store)
+        store.selectAllReadyDevices()
+        store.startMirroring()
+        try await wait("window controls ready") { store.runningCount == 2 && store.sessionState(for: a) == .mirroring && store.sessionState(for: b) == .mirroring }
+        try write("window:{\"action\":\"home\"}", serial: a.serial, suffix: "command")
+        try await wait("home from first window") { events.count == 1 }
+        try check(events[0].0 == .home && events[0].1 == a, "window action preserves exact first device and ADB route")
+        try write("window:{\"action\":\"drawer\"}", serial: b.serial, suffix: "command")
+        try await wait("drawer from second window") { events.count == 2 }
+        try check(events[1].0 == .drawer && events[1].1 == b, "second private window channel cannot target first phone")
+        for invalid in ["{", "{\"action\":\"shell\"}", "{\"action\":\"screenshot\",\"path\":42}", String(repeating: "x", count: 9000)] {
+            try write("window:" + invalid, serial: a.serial, suffix: "command")
+            try await Task.sleep(nanoseconds: 90_000_000)
+        }
+        try check(events.count == 2, "malformed unknown and oversized window requests are rejected")
+        busy = true
+        try write("window:{\"action\":\"screenshot\"}", serial: a.serial, suffix: "command")
+        try await Task.sleep(nanoseconds: 100_000_000)
+        try check(events.count == 2, "parent independently blocks capture while device tool is busy")
+        busy = false
+        var options = store.preferences(for: a)
+        options.presentationMode = true
+        store.updatePreferences(for: a, preferences: options)
+        try write("window:{\"action\":\"swipe\"}", serial: a.serial, suffix: "command")
+        try await Task.sleep(nanoseconds: 100_000_000)
+        try check(events.count == 2, "presentation mode rejects navigation in the parent")
+        try write("window:{\"action\":\"screenshot\"}", serial: a.serial, suffix: "command")
+        try await wait("capture still allowed") { events.count == 3 }
+        try check(events.last?.0 == .screenshot, "presentation mode retains screenshot availability")
+        try write("window:{\"action\":\"sendFile\",\"path\":\"/tmp/example.txt\"}", serial: a.serial, suffix: "command")
+        try await Task.sleep(nanoseconds: 100_000_000)
+        try check(files.isEmpty, "presentation mode blocks file writes independently of child UI")
+        for invalid in ["{\"action\":\"sendFile\",\"path\":\"/tmp/app.apk\"}", "{\"action\":\"installAPK\",\"path\":\"/tmp/file.txt\"}", "{\"action\":\"installAPK\",\"path\":\"relative.apk\"}"] {
+            try write("window:" + invalid, serial: b.serial, suffix: "command")
+            try await Task.sleep(nanoseconds: 90_000_000)
+        }
+        try check(files.isEmpty, "APK installation requires the separate install action and an absolute APK path")
+        try write("window:{\"action\":\"sendFile\",\"path\":\"/tmp/example.txt\"}", serial: b.serial, suffix: "command")
+        try await wait("file route") { files.count == 1 }
+        try check(files[0].0 == .sendFile && files[0].2 == b, "file picker request stays bound to its own phone")
+        try write("window:{\"action\":\"installAPK\",\"path\":\"/tmp/example.apk\"}", serial: b.serial, suffix: "command")
+        try await wait("apk route") { files.count == 2 }
+        try check(files[1].0 == .installAPK && files[1].2 == b, "confirmed APK request stays bound to its own phone")
+        try write("window:{\"action\":\"recordStart\",\"path\":\"relative.mp4\"}", serial: b.serial, suffix: "command")
+        try await Task.sleep(nanoseconds: 100_000_000)
+        try check(!store.isRecording(for: b.id) && launches(b.serial).count == 1, "relative recording destinations cannot restart a session")
+        let peerPID = launches(b.serial).last?["pid"] as? Int
+        store.stopMirroring(for: a.id)
+        try await wait("first toolbar closes") { !store.isMirroring(for: a.id) }
+        try write("window:{\"action\":\"home\"}", serial: b.serial, suffix: "command")
+        try await wait("peer toolbar survives") { events.count == 4 }
+        try check(launches(b.serial).last?["pid"] as? Int == peerPID && events.last?.1 == b, "closing one window preserves peer process and action channel")
+        store.stopMirroring()
+        try await wait("toolbar sessions stopped") { !store.isMirroring }
+    }
+
     func recoveryStore(_ source: SnapshotSource, preferences: UserDefaults? = nil) -> MirrorSessionStore {
         let store = MirrorSessionStore(paths: paths, startupTimeout: 0.8, preferences: preferences ?? makePreferences(),
             reconnectDelays: [0.12, 0.16, 0.2], layoutBounds: { CGRect(x: 0, y: 25, width: 1440, height: 850) },

@@ -25,7 +25,14 @@ for component in \
   "$FRAMEWORK"; do
   codesign "${SIGN_ARGS[@]}" --preserve-metadata=entitlements "$component"
 done
-for executable in adb scrcpy MirrorLink; do
+PHONE_APP="$APP_PATH/Contents/Helpers/MirrorLinkWindow.app"
+if [[ -d "$PHONE_APP" ]]; then
+  codesign "${SIGN_ARGS[@]}" "$PHONE_APP/Contents/MacOS/scrcpy"
+  codesign "${SIGN_ARGS[@]}" "$PHONE_APP"
+else
+  codesign "${SIGN_ARGS[@]}" "$APP_PATH/Contents/MacOS/scrcpy"
+fi
+for executable in adb MirrorLink; do
   codesign "${SIGN_ARGS[@]}" "$APP_PATH/Contents/MacOS/$executable"
 done
 codesign "${SIGN_ARGS[@]}" "$APP_PATH"

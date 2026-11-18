@@ -116,10 +116,15 @@ if [[ "$CONFIGURATION" == "release" ]]; then
   fi
 fi
 
-echo "==> 准备官方 scrcpy v4.1 运行时"
+echo "==> 构建 scrcpy v4.1 与投屏窗口原生工具栏"
+"$ROOT_DIR/script/build_scrcpy.sh"
 ARM_TOOLS="$ROOT_DIR/vendor/scrcpy/arm64"
 X86_TOOLS="$ROOT_DIR/vendor/scrcpy/x86_64"
-lipo -create "$ARM_TOOLS/scrcpy" "$X86_TOOLS/scrcpy" -output "$MACOS_DIR/scrcpy"
+PHONE_APP="$CONTENTS_DIR/Helpers/MirrorLinkWindow.app"
+mkdir -p "$PHONE_APP/Contents/MacOS" "$PHONE_APP/Contents/Resources"
+cp "$ROOT_DIR/vendor/mirror-window/Info.plist" "$PHONE_APP/Contents/Info.plist"
+lipo -create "$ROOT_DIR/work/native-runtime/bin/scrcpy-arm64" "$ROOT_DIR/work/native-runtime/bin/scrcpy-x86_64" -output "$PHONE_APP/Contents/MacOS/scrcpy"
+ln -s ../Helpers/MirrorLinkWindow.app/Contents/MacOS/scrcpy "$MACOS_DIR/scrcpy"
 cp "$ARM_TOOLS/adb" "$MACOS_DIR/adb"
 cp "$ARM_TOOLS/scrcpy-server" "$RESOURCES_DIR/scrcpy-server"
 cp "$ARM_TOOLS/scrcpy.png" "$RESOURCES_DIR/scrcpy.png"
@@ -167,6 +172,7 @@ for size in 16 32 128 256 512; do
   sips -z "$doubled" "$doubled" "$ICON_SOURCE" --out "$ICONSET_DIR/icon_${size}x${size}@2x.png" >/dev/null
 done
 iconutil -c icns "$ICONSET_DIR" -o "$RESOURCES_DIR/AppIcon.icns"
+cp "$RESOURCES_DIR/AppIcon.icns" "$PHONE_APP/Contents/Resources/AppIcon.icns"
 
 echo "==> 为内置工具及完整应用包添加本地 ad-hoc 签名"
 # Sign inside out, after every resource is in place. A linker signature on the

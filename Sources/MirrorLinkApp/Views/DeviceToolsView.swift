@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 private typealias ToolViewState<Value> = SwiftUI.State<Value>
 
@@ -10,10 +9,6 @@ struct DeviceToolsView: View {
     @EnvironmentObject private var tools: DeviceToolsStore
     let device: AndroidDevice
     @ToolViewState private var expanded = false
-    @ToolViewState private var confirmsRecording = false
-    @ToolViewState private var confirmsStopRecording = false
-    @ToolViewState private var pendingAPK: URL?
-    @ToolViewState private var confirmsAPK = false
     @ToolViewState private var showsFeedback = false
     @ToolViewState private var localMessage: LocalizedMessage?
 
@@ -23,50 +18,19 @@ struct DeviceToolsView: View {
     private var presentation: Bool {
         store.isPresentationMode(for: device)
     }
-    private var navigationDisabled: Bool { !ready || busy || presentation }
-    private var recordingDisabled: Bool {
-        (!ready && !store.isRecording(for: device.id))
-            || store.isRestartPending(for: device.id) || store.sessionState(for: device) == .stopping
-    }
 
     var body: some View {
         let _ = language.selection
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Button { tools.home(for: actionDevice) } label: {
-                    Label(L10n.tr("返回桌面"), systemImage: "house")
-                }
-                .disabled(navigationDisabled)
-                .help(L10n.tr("向这台手机发送 Home 操作"))
-                Button { tools.openAppDrawer(for: actionDevice) } label: {
-                    Label(L10n.tr("应用列表"), systemImage: "square.grid.3x3")
-                }
-                .disabled(navigationDisabled)
-                .help(L10n.tr("请求手机启动器显示全部应用；部分启动器不支持。"))
-                Spacer(minLength: 0)
-            }
-            .buttonStyle(.bordered)
+            Text(L10n.tr("开始投屏后，可在画面窗口顶部进行手机导航、截图、录屏、发送文件和安装 APK。"))
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             if presentation {
                 Text(L10n.tr("演示模式已禁用手机导航与写入操作。"))
                     .font(.caption).foregroundStyle(.secondary)
             }
             DisclosureGroup(isExpanded: $expanded) {
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 8) {
-                        Button { tools.captureScreenshot(for: actionDevice) } label: {
-                            Label(L10n.tr("保存截图"), systemImage: "camera")
-                        }.disabled(!ready || busy)
-                        if store.isRecording(for: device.id) {
-                            Button { confirmsStopRecording = true } label: {
-                                Label(L10n.tr("结束录屏"), systemImage: "stop.circle.fill")
-                            }.tint(.red).disabled(recordingDisabled)
-                        } else {
-                            Button { confirmsRecording = true } label: {
-                                Label(L10n.tr("开始录屏…"), systemImage: "record.circle")
-                            }.disabled(recordingDisabled)
-                        }
-                        Spacer(minLength: 0)
-                    }
                     if let screenshot = tools.lastScreenshotURL(for: device.id) {
                         HStack {
                             Text(L10n.tr("最近截图")).font(.caption).foregroundStyle(.secondary)
@@ -86,24 +50,6 @@ struct DeviceToolsView: View {
                     }
                     Divider()
                     HStack(spacing: 8) {
-                        Button { chooseFile() } label: {
-                            Label(L10n.tr("发送文件…"), systemImage: "paperplane")
-                        }.disabled(!ready || busy || presentation)
-                        Button { chooseAPK() } label: {
-                            Label(L10n.tr("安装 APK…"), systemImage: "shippingbox")
-                        }.disabled(!ready || busy || presentation)
-                        Spacer(minLength: 0)
-                    }
-                    Text(L10n.tr("文件发送到手机 Download 文件夹；APK 必须通过“安装 APK”单独确认。"))
-                        .font(.caption).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Button(L10n.tr("尝试上滑打开应用列表")) { tools.swipeUpForDrawer(for: actionDevice) }
-                        .disabled(navigationDisabled)
-                    Text(L10n.tr("如果应用列表指令无效果，可先返回桌面，再尝试上滑。部分桌面没有独立应用抽屉，两种方式都可能无效果，可在手机桌面查找应用。镜连不会更改手机桌面设置，结果以实际画面为准。"))
-                        .font(.caption).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Divider()
-                    HStack(spacing: 8) {
                         Button { tools.runHealthCheck(for: actionDevice) } label: {
                             Label(L10n.tr("检查连接与环境"), systemImage: "stethoscope")
                         }.disabled(busy || !store.toolchainAvailable)
@@ -119,7 +65,7 @@ struct DeviceToolsView: View {
                 .buttonStyle(.bordered)
                 .padding(.top, 10)
             } label: {
-                Label(L10n.tr("截图、录屏与更多工具"), systemImage: "wrench.and.screwdriver")
+                Label(L10n.tr("自检与反馈"), systemImage: "wrench.and.screwdriver")
                     .font(.callout)
             }
             if busy {
@@ -140,71 +86,9 @@ struct DeviceToolsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .confirmationDialog(L10n.tr("开始这台设备的录屏？"), isPresented: $confirmsRecording, titleVisibility: .visible) {
-            Button(L10n.tr("选择保存位置并录屏…")) { chooseRecordingDestination() }
-            Button(L10n.tr("取消"), role: .cancel) {}
-        } message: {
-            Text(L10n.tr("将启动或重新启动这台设备的投屏并开始录制，当前画面会短暂中断；其他手机不受影响。录屏可能包含手机上的私人内容。"))
-        }
-        .confirmationDialog(L10n.tr("结束录屏并继续投屏？"), isPresented: $confirmsStopRecording, titleVisibility: .visible) {
-            Button(L10n.tr("保存并继续投屏")) { store.stopRecording(for: device.id) }
-            Button(L10n.tr("取消"), role: .cancel) {}
-        } message: {
-            Text(L10n.tr("镜连将保存本次录屏，并重新打开这台设备的普通投屏窗口；其他手机不受影响。"))
-        }
-        .confirmationDialog(L10n.tr("确认安装所选 APK？"), isPresented: $confirmsAPK, titleVisibility: .visible) {
-            Button(L10n.tr("安装到这台设备")) {
-                if let pendingAPK, !presentation { tools.installAPK(pendingAPK, to: actionDevice, confirmed: true) }
-                pendingAPK = nil
-            }
-            Button(L10n.tr("取消"), role: .cancel) { pendingAPK = nil }
-        } message: {
-            Text(L10n.tr("将 %@ 安装到 %@。请确认文件来源；不会覆盖已安装的应用，存在冲突时安装会失败。", pendingAPK?.lastPathComponent ?? "", store.displayName(for: device)))
-        }
         .sheet(isPresented: $showsFeedback) {
             FeedbackExportSheet(device: device, store: store).environmentObject(tools)
         }
-    }
-
-    private func chooseFile() {
-        let panel = NSOpenPanel()
-        panel.title = L10n.tr("选择要发送的文件")
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        guard url.pathExtension.lowercased() != "apk" else {
-            localMessage = L10n.message("要安装 APK，请使用“安装 APK”按钮并确认安装。")
-            return
-        }
-        localMessage = nil
-        guard !presentation else { return }
-        tools.sendFile(url, to: actionDevice)
-    }
-
-    private func chooseAPK() {
-        let panel = NSOpenPanel()
-        panel.title = L10n.tr("选择要安装的 APK")
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        if let apkType = UTType(filenameExtension: "apk") { panel.allowedContentTypes = [apkType] }
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        guard url.pathExtension.lowercased() == "apk" else {
-            localMessage = L10n.message("请选择扩展名为 .apk 的安装文件。")
-            return
-        }
-        pendingAPK = url
-        confirmsAPK = true
-    }
-
-    private func chooseRecordingDestination() {
-        let panel = NSSavePanel()
-        panel.title = L10n.tr("保存录屏")
-        panel.directoryURL = tools.outputDirectory
-        panel.nameFieldStringValue = "MirrorLink-Recording-\(Int(Date().timeIntervalSince1970)).mp4"
-        panel.allowedContentTypes = [.mpeg4Movie]
-        panel.canCreateDirectories = true
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        store.startRecording(for: device.id, to: url)
     }
 
     private func copyScreenshot(_ url: URL) {

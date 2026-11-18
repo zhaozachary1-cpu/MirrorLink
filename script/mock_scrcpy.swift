@@ -85,6 +85,10 @@ while Date() < deadline {
     if command == "exit" { finishRecording(0) }
     if command == "fail" { finishRecording(17) }
     if command == "disconnect" { finishRecording(2) }
+    if let command, command != previousCommand, command.hasPrefix("window:") {
+        let data = Data(command.dropFirst(7).utf8)
+        _ = data.withUnsafeBytes { send(STDIN_FILENO, $0.baseAddress, $0.count, MSG_DONTWAIT) }
+    }
     if command == "ready" && !emittedOnCommand {
         emitReady()
         emittedOnCommand = true

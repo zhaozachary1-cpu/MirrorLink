@@ -41,7 +41,10 @@ private final class MockADB: @unchecked Sendable {
         if command.last == "ro.product.model" { return result("Mock Phone") }
         if command == ["shell", "wm", "size"] { return result("Physical size: 1080x2400\nOverride size: 720x1600") }
         if command.first == "push" { stagedBytes = try? Data(contentsOf: URL(fileURLWithPath: command[1])) }
-        if command.first == "install" { return result("Success\n") }
+        if command.first == "install" {
+            if mode.hasPrefix("INSTALL_") { return result("Failure [\(mode)] PRIVATE /Users/person/file", status: 1) }
+            return result("Success\n")
+        }
         return result("")
     }
 }
@@ -128,6 +131,10 @@ struct DeviceToolsChecks {
         expect(!mock.calls.flatMap(\.arguments).contains(hostile.path), "original untrusted local basename never enters ADB arguments")
         let another = try service.sendFile(hostile, to: device, cancellation: nil)
         expect(remote != another, "repeated sends cannot overwrite each other")
+        let readable = root.appendingPathComponent("会议资料-2026.txt")
+        try Data("readable filename".utf8).write(to: readable)
+        let readableRemote = try service.sendFile(readable, to: device, cancellation: nil)
+        expect(readableRemote.hasSuffix("-会议资料-2026.txt"), "safe original filename remains readable on the phone")
         let apk = root.appendingPathComponent("chosen.apk"); try payload.write(to: apk)
         mock.clear()
         rejects("ordinary send cannot silently install APK") { _ = try service.sendFile(apk, to: device, cancellation: nil) }
@@ -136,6 +143,14 @@ struct DeviceToolsChecks {
         try service.installAPK(apk, to: device, confirmed: true, cancellation: nil)
         expect(mock.calls.contains { $0.arguments.dropFirst(2).first == "install" }, "confirmed APK uses dedicated install command")
         expect(!mock.calls.contains { $0.arguments.contains("-r") }, "APK install does not silently replace an existing app")
+        for (code, expected) in [("INSTALL_PARSE_FAILED_NOT_APK", DeviceToolsError.apkInvalid),
+            ("INSTALL_FAILED_ALREADY_EXISTS", .apkConflict), ("INSTALL_FAILED_USER_RESTRICTED", .apkBlocked),
+            ("INSTALL_FAILED_NO_MATCHING_ABIS", .apkIncompatible)] {
+            mock.mode = code
+            do { try service.installAPK(apk, to: device, confirmed: true, cancellation: nil); fatalError("expected install rejection") }
+            catch let error as DeviceToolsError { expect(error.localizedDescription == expected.localizedDescription && !error.localizedDescription.contains("PRIVATE"), "APK failure \(code) gives actionable localized guidance without raw private output") }
+        }
+        mock.mode = "normal"
         let link = root.appendingPathComponent("linked.png")
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: fixture)
         rejects("sending a symbolic link is rejected") { _ = try service.sendFile(link, to: device, cancellation: nil) }
