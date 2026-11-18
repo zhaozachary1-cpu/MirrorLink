@@ -115,10 +115,18 @@
         NSString *previous = [self text:@"resultID"];
         NSString *previousStatus = [self text:@"status"];
         BOOL wasBusy = [self flag:@"busy"];
+        BOOL wasError = [self flag:@"isError"];
         self.state = message;
         [self update];
         NSString *current = [self text:@"resultID"];
-        if (previous.length && current.length && (![current isEqual:previous] || wasBusy != [self flag:@"busy"] || ![previousStatus isEqual:[self text:@"status"]]) && [self text:@"status"].length && !self.dialogOpen) {
+        BOOL resultChanged = ![current isEqual:previous];
+        BOOL statusChanged = resultChanged || wasBusy != [self flag:@"busy"] ||
+            ![previousStatus isEqual:[self text:@"status"]] || wasError != [self flag:@"isError"];
+        // Routine actions should leave the phone picture unobstructed. Progress
+        // and results remain available in More; only a new failure opens it.
+        BOOL newFailure = [self flag:@"isError"] && ![self flag:@"busy"] && (resultChanged || !wasError);
+        if (previous.length && current.length && statusChanged &&
+            (self.result.shown || newFailure) && [self text:@"status"].length && !self.dialogOpen) {
             [self showResult];
         }
     }
@@ -139,6 +147,9 @@
 - (void)pressed:(NSButton *)sender {
     if (!sender.enabled || self.closed) return;
     [self.result close];
+    // Closing is animated: isShown may remain true until AppKit finishes.
+    // Forget it immediately so the next action cannot reopen the old popover.
+    self.result = nil;
     NSString *action = sender.identifier;
     if ([action isEqual:@"record"]) { [self confirmRecording]; return; }
     if ([action isEqual:@"more"]) { [self showMenu:sender]; return; }

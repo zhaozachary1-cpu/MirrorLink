@@ -1,3 +1,18 @@
+# 镜连 MirrorLink 0.5.2 — 安静的操作反馈 / Quiet Toolbar Feedback（免费社区版）
+
+版本 / Version：**0.5.2 / Build 12**。
+
+- 返回桌面、应用列表、截图、发送文件等普通操作不再自动弹出进度或成功提示，投屏画面保持无遮挡。
+- 操作状态仍可在投屏窗口“更多 → 查看操作结果”主动查看；处理中保留忙碌图标和取消入口。已打开的状态面板继续更新。
+- 修复错误提示关闭动画期间继续点击按钮，旧气泡被新操作状态重新打开的问题。
+- 新的失败仍显示具体原因；APK 安装和录屏启停的必要确认保持不变。
+
+**English:** Routine toolbar progress and successful results no longer open popovers automatically. Inspect status or cancel an operation from More. An already-open status panel continues to update. New failures still show their explanation; APK installation and recording confirmations are retained.
+
+免费社区版，ad-hoc 签名，未经 Apple 公证；更新继续使用原有 Sparkle Ed25519 签名。
+
+---
+
 # 镜连 MirrorLink 0.5.1 — 投屏窗口工具栏 / Phone Window Toolbar（免费社区版）
 
 版本 / Version：**0.5.1 / Build 11**。

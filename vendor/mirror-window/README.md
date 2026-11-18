@@ -13,6 +13,9 @@ There is no network listener, authentication secret, or filesystem socket.
 
 Toolbar buttons, native file panels, installation and recording confirmations,
 operation status and cancellation all belong to the actual SDL Cocoa window.
+Routine progress and successful results do not open a popover automatically.
+More retains status and cancellation; a new failure can still open its details.
+An already-open status popover refreshes as the operation changes.
 AppKit confirmation buttons resolve explicitly because SDL owns its event loop.
 State is bilingual, bounded, nonblocking and deduplicated. Socket buffers are
 configured above Darwin's default 2 KB to fit localized states and media paths.
