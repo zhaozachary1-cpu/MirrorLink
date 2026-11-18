@@ -1,5 +1,35 @@
 # MirrorLink 更新与分发验证
 
+## 0.5.0 社区版：18/11/2026 发布与真实应用内升级
+
+- 已于 **18/11/2026 10:00:20（Asia/Shanghai；UTC 02:00:20）** 公开发布 [v0.5.0](https://github.com/zhaozachary1-cpu/MirrorLink/releases/tag/v0.5.0) 并设为 latest，非草稿、非预发布；版本 **0.5.0 / Build 10**。发行标签及 Release 目标提交均为 `7504aca0d66a396a1d41bae3ee713a450f16c155`；后续补充验证记录不移动该标签。
+- 本次核心检查、111 项会话模拟、72 项工具模拟/本地子进程检查、137 项无线模拟、28 项更新策略检查和 2471 项本地化断言全部通过；双语各 451 条。单台 USB 的原生功能、AAC 录像及退出收尾、英文切换和当前限制见 [TOOLS-QA.md](TOOLS-QA.md)。模拟检查不替代多台手机或真实无线验收。
+- 最终社区发行目录为 `artifacts/Releases/MirrorLink-0.5.0-20261118-015045/`。完整 ZIP、更新 ZIP、只读 DMG 内的三份应用均通过严格嵌套 ad-hoc 签名，189 项文件/符号链接一致，主程序、ADB 和 scrcpy 均含 arm64/x86_64。6 份第三方源码、8 项许可证及公开哈希核对通过；DMG 已卸载。
+- Release 主程序去除调试符号后重新签名；主程序无绝对个人目录路径，整个应用无维护者个人或项目路径。没有混入 QA 媒体、原始日志、凭据、密钥或含本机路径的 `RELEASE-MANIFEST.txt`。
+- 原有 Sparkle Ed25519 钥匙串密钥签署更新包和含中英发布说明的清单，未导出或轮换私钥。六项资产在草稿阶段逐一核对 uploaded 状态、大小和 GitHub SHA-256 与本地一致后公开。社区应用没有 Developer ID 签名或 Apple 公证，未更改 Gatekeeper 或移除 quarantine。
+- 公开后禁用 curl 用户配置、无认证头匿名下载全部六项固定版本资产，大小与 SHA-256 均与可信本地文件一致。公开 tag ref 直接指向上述发行提交，匿名 API 确认 latest 为 v0.5.0。
+- 单独匿名下载 canonical `latest/download/appcast.xml`，2845 字节且与本地最终清单一致；公开更新 ZIP 为 20,481,238 字节。以可信本地应用公钥对下载文件运行独立验证：清单/归档签名、版本 0.5.0 / Build 10、固定版本 URL 和长度通过，清单/归档单字节修改、错误归档签名及截断清单签名尾部均被拒绝。公开回读副本仅保存于忽略的 `work/tmp/public-update-verification-0.5.0.nstHzC/`。
+
+### 本机真实更新流程：0.4.4 / Build 9 → 0.5.0 / Build 10
+
+1. 旧版应用和偏好已备份至 `artifacts/Backups/before-0.5.0-20261117.eyXeow/`；升级前再次验证旧版严格签名、主程序与备份相同，并保存 `preferences-before-sparkle.plist`。所有候选版退出，升级时没有活动投屏或录制。
+2. 原生打开 `/Applications/MirrorLink.app`，设置中确认当前 0.4.4（9），点击“检查更新…”。Sparkle 显示当前版本 0.4.4、新版 0.5.0 和本次中英文发布说明。
+3. 点击“安装更新”，观察下载完成及“可以开始安装了”，随后点击“安装并重启应用”。应用自动覆盖并重启；没有手动复制新包到 Applications 代替更新器流程。
+4. 安装后读取为 0.5.0 / Build 10，严格签名通过，主程序与 Info.plist 均与公开候选逐字节一致；观察到自动重启后的 `/Applications/MirrorLink.app/Contents/MacOS/MirrorLink` 进程及新版原生主窗口。
+5. 设置界面确认 0.5.0（10）、自动检查更新关闭、跟随系统语言、低负载兼容画质、自动窗口位置及原保存目录保留。偏好文件比较确认设备选择、已知设备身份/昵称/独立设置及更新偏好未变（排除正常变化的 lastSeen）；已保存 MP4 与反馈 ZIP 仍可读取。
+6. 再次点击“检查更新…”显示“您使用的就是最新版！镜连 0.5.0 是当前的最新版本”。升级后从新版原生界面启动同一 USB 手机，收到兼容档 858 × 1920 画面，再正常停止；主窗口留在已连接状态并展开新工具。
+
+| 公开资产 | SHA-256 |
+| --- | --- |
+| 完整 ZIP | `9c461fb8933297fcf90ba2b3cc938ca541df9fbd8d68f374c43c8ddd21acc730` |
+| DMG | `9fd099ed3dc15aa276b6b089dff5b6ff0f63e350becbf9d83b9f4caa7250e27b` |
+| 更新 ZIP | `a28b535b0710447f8a73771bb0bf723e4312f1de14d1d8bb7ba5f50d4f144917` |
+| 第三方源码 | `b701fca6815237eb262473b1f6005cec2c641de01d4e0267ac55477ae0880c53` |
+| appcast.xml | `7b76604616a9c9a25ff8970b297a79860df772353b712e43df9005f7b75958c0` |
+| SHA256SUMS.txt | `b3373b8901bad08567fcec29e21a8de90483a8cda72561ca7a810dd2ce80eb40` |
+
+本机真实应用内覆盖更新已验收。陌生 Mac 的首次打开、Intel/macOS 13 硬件、更新中断/断网重试、录制期间延后安装以及多台真机仍未验收；不扩大本次结论。工具链仍出现可选搜索路径与 Intel 兼容库警告，但双架构编译和校验退出码为 0。
+
 ## 0.4.4 社区版：17/11/2026 发布与真实应用内升级
 
 - 已于 **17/11/2026 22:01:36（Asia/Shanghai；UTC 14:01:36）** 公开发布 [v0.4.4](https://github.com/zhaozachary1-cpu/MirrorLink/releases/tag/v0.4.4) 并设为 latest，非草稿、非预发布；版本 **0.4.4 / Build 9**。发行标签及 Release 的目标提交均为 `9f03d7a47b3da2966d1671550d386078f146bb1b`；后续验证记录提交不移动该标签。
