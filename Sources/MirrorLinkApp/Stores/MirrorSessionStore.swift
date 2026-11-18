@@ -1020,6 +1020,7 @@ final class MirrorSessionStore: ObservableObject {
            let message = recordingMessages[id] {
             state["status"] = message.resolved
             state["resultID"] = "recording-" + message.resolved
+            state["isError"] = completedRecordings[id] == nil && session.recording == nil && session.restartRequest == nil
         }
         if let status = state["status"] as? String { state["status"] = String(status.prefix(700)) }
         session.controls?.sendState(state, force: force)

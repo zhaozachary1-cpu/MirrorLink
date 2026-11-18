@@ -123,6 +123,9 @@ X86_TOOLS="$ROOT_DIR/vendor/scrcpy/x86_64"
 PHONE_APP="$CONTENTS_DIR/Helpers/MirrorLinkWindow.app"
 mkdir -p "$PHONE_APP/Contents/MacOS" "$PHONE_APP/Contents/Resources"
 cp "$ROOT_DIR/vendor/mirror-window/Info.plist" "$PHONE_APP/Contents/Info.plist"
+for version_key in CFBundleVersion CFBundleShortVersionString; do
+  plutil -replace "$version_key" -string "$(plutil -extract "$version_key" raw "$ROOT_DIR/Sources/MirrorLinkApp/Resources/Info.plist")" "$PHONE_APP/Contents/Info.plist"
+done
 lipo -create "$ROOT_DIR/work/native-runtime/bin/scrcpy-arm64" "$ROOT_DIR/work/native-runtime/bin/scrcpy-x86_64" -output "$PHONE_APP/Contents/MacOS/scrcpy"
 ln -s ../Helpers/MirrorLinkWindow.app/Contents/MacOS/scrcpy "$MACOS_DIR/scrcpy"
 cp "$ARM_TOOLS/adb" "$MACOS_DIR/adb"
