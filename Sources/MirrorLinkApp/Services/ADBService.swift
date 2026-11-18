@@ -3,6 +3,15 @@ import Foundation
 struct ADBSnapshot: Sendable {
     let devices: [AndroidDevice]
     let diagnostics: [String]
+    /// UI rows may merge one phone's transports; recovery must still see every
+    /// independently authenticated route rather than inheriting that UI choice.
+    let rawRoutes: [AndroidDevice]
+
+    init(devices: [AndroidDevice], diagnostics: [String], rawRoutes: [AndroidDevice]? = nil) {
+        self.devices = devices
+        self.diagnostics = diagnostics
+        self.rawRoutes = rawRoutes ?? devices
+    }
 }
 
 struct ADBService: Sendable {
@@ -10,6 +19,7 @@ struct ADBService: Sendable {
 
     func snapshot() -> ADBSnapshot {
         var allDevices: [AndroidDevice] = []
+        var rawRoutes: [AndroidDevice] = []
         var diagnostics: [String] = []
 
         for socket in [String?(nil), "tcp:127.0.0.1:5038"] {
@@ -35,6 +45,7 @@ struct ADBService: Sendable {
                             timeout: 2
                         ))
                     }
+                    rawRoutes.append(device)
                     if let existing = allDevices.firstIndex(where: { $0.id == device.id }) {
                         allDevices[existing] = ADBDeviceIdentity.preferred(allDevices[existing], device)
                     } else {
@@ -54,7 +65,7 @@ struct ADBService: Sendable {
             if $0.state == $1.state { return $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
             return stateRank($0.state) < stateRank($1.state)
         }
-        return ADBSnapshot(devices: allDevices, diagnostics: diagnostics)
+        return ADBSnapshot(devices: allDevices, diagnostics: diagnostics, rawRoutes: rawRoutes)
     }
 
     private func stateRank(_ state: DeviceConnectionState) -> Int {

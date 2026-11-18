@@ -216,17 +216,28 @@ private extension SessionChecks {
 private final class SnapshotSource: @unchecked Sendable {
     private let lock = NSLock()
     private var value: [AndroidDevice] = []
+    private var rawRoutes: [AndroidDevice]?
+    private var reads = 0
+    private var delay: TimeInterval = 0
+    var readCount: Int { lock.lock(); defer { lock.unlock() }; return reads }
+    func setDelay(_ delay: TimeInterval) { lock.lock(); self.delay = delay; lock.unlock() }
 
-    func set(_ devices: [AndroidDevice]) {
+    func set(_ devices: [AndroidDevice], rawRoutes: [AndroidDevice]? = nil) {
         lock.lock()
         defer { lock.unlock() }
         value = devices
+        self.rawRoutes = rawRoutes
     }
 
     func snapshot() -> ADBSnapshot {
         lock.lock()
-        defer { lock.unlock() }
-        return ADBSnapshot(devices: value, diagnostics: [])
+        reads += 1
+        let result = value
+        let routes = rawRoutes
+        let pause = delay
+        lock.unlock()
+        if pause > 0 { Thread.sleep(forTimeInterval: pause) }
+        return ADBSnapshot(devices: result, diagnostics: [], rawRoutes: routes)
     }
 }
 
@@ -559,5 +570,276 @@ private final class SessionChecks {
         try await refresh(identityStore)
         try check(identityStore.devices[0].id == originalID && !identityStore.canStart(for: originalID), "USB rediscovery after Wi-Fi loss retains live session ownership")
         try await runQualityChecks()
+        try await runProductivityChecks()
+    }
+}
+
+@MainActor
+private extension SessionChecks {
+    func recoveryStore(_ source: SnapshotSource, preferences: UserDefaults? = nil) -> MirrorSessionStore {
+        let store = MirrorSessionStore(paths: paths, startupTimeout: 0.8, preferences: preferences ?? makePreferences(),
+            reconnectDelays: [0.12, 0.16, 0.2], layoutBounds: { CGRect(x: 0, y: 25, width: 1440, height: 850) },
+            snapshotProvider: { _ in source.snapshot() })
+        stores.append(store)
+        return store
+    }
+
+    func runProductivityChecks() async throws {
+        let source = SnapshotSource()
+        let a = device("PRODUCTIVITY-A")
+        let b = device("PRODUCTIVITY-B", socket: "tcp:127.0.0.1:5038")
+        source.set([a, b])
+        let prefs = makePreferences()
+        let store = recoveryStore(source, preferences: prefs)
+        try await refresh(store)
+        var settings = DevicePreferences()
+        settings.nickname = "  演示\n手机  "
+        settings.favorite = true
+        settings.qualityProfile = .compatibility
+        settings.audioEnabled = false
+        settings.presentationMode = true
+        settings.alwaysOnTop = true
+        store.updatePreferences(for: a, preferences: settings)
+        store.setDeviceSelected(a.id, isSelected: true)
+        store.windowLayout = .grid
+        let restored = recoveryStore(source, preferences: prefs)
+        try await refresh(restored)
+        try check(restored.displayName(for: a) == "演示手机" && restored.preferences(for: a).favorite && restored.preferences(for: a).qualityProfile == .compatibility && restored.displaySerial(for: a) == nil, "device nickname, favorite, presentation and quality survive a new store")
+        try check(restored.selectedDeviceIDs == [a.id] && !restored.isMirroring && restored.windowLayout == .grid, "saved selection and layout restore without automatically starting a phone")
+        var wifi = AndroidDevice(serial: "192.0.2.17:41111", model: "Changed_Model", product: nil, transport: "Wi-Fi", state: .ready, adbSocket: nil)
+        wifi.hardwareSerial = a.serial
+        try check(restored.preferences(for: wifi).nickname == "演示手机", "verified hardware identity shares preferences across USB and changed wireless routes")
+        var unidentified = wifi
+        unidentified.hardwareSerial = nil
+        var unsafeSettings = settings
+        unsafeSettings.autoReconnect = true
+        restored.updatePreferences(for: unidentified, preferences: unsafeSettings)
+        try check(!restored.preferences(for: unidentified).autoReconnect && !restored.preferences(for: unidentified).favorite && !restored.knownDevices.contains { $0.id.contains("192.0.2") }, "an unverified wireless endpoint cannot persist IP-based favorites or automatic recovery")
+        let clean = recoveryStore(source, preferences: prefs)
+        try check(clean.preferences(for: unidentified).nickname.isEmpty, "unverified wireless options are session-only")
+        restored.clearDeviceSelection()
+        let cleared = recoveryStore(source, preferences: prefs)
+        try await refresh(cleared)
+        try check(cleared.selectedDeviceIDs.isEmpty, "an explicitly empty saved selection is not replaced by discovery")
+        restored.forgetKnownDevice(DevicePreferences.identity(for: a)!)
+        try check(restored.preferences(for: a).nickname.isEmpty && restored.knownDevices.allSatisfy { $0.id != DevicePreferences.identity(for: a) }, "forgetting a device resets this app's saved preferences")
+
+        store.selectAllReadyDevices()
+        store.startMirroring()
+        try await wait("per-device preferences") { store.sessionState(for: a) == .mirroring && store.sessionState(for: b) == .mirroring }
+        let argsA = launches(a.serial).last?["arguments"] as? [String] ?? []
+        let argsB = launches(b.serial).last?["arguments"] as? [String] ?? []
+        try check(argsA.contains("--window-title=镜连 · 演示手机") && !argsA.contains(where: { $0.hasPrefix("--window-title=") && $0.contains(a.serial) }) && argsA.contains("--no-control") && argsA.contains("--no-clipboard-autosync") && argsA.contains("--no-audio"), "presentation removes serial from the title and applies read-only, clipboard and audio isolation")
+        try check(argsA.contains("--max-size=1920") && argsB.contains("--max-size=0") && !argsB.contains("--no-audio") && !argsB.contains("--no-control") && !argsB.contains(where: { $0.hasPrefix("--audio-codec=") }), "per-device overrides do not change a peer's quality, audio or control, and ordinary mirroring keeps its default audio codec")
+        try check(argsA.first { $0.hasPrefix("--window-x=") } != argsB.first { $0.hasPrefix("--window-x=") }, "batch layout assigns separate initial window cells")
+        let peerPID = launches(b.serial).last?["pid"] as? Int
+        let originalPID = launches(a.serial).last?["pid"] as? Int
+        settings.fullscreen = true
+        store.updatePreferences(for: a, preferences: settings)
+        try check(launches(a.serial).last?["pid"] as? Int == originalPID, "editing device preferences does not silently restart an active session")
+        var toggled = settings; toggled.presentationMode = false
+        store.updatePreferences(for: a, preferences: toggled)
+        try check(store.isPresentationMode(for: a) && store.isReadOnlySession(for: a.id) && store.displaySerial(for: a) == nil, "turning off a next-session preference cannot bypass an active read-only presentation")
+        store.updatePreferences(for: a, preferences: settings)
+        store.restartMirroring(for: a.id)
+        try await wait("apply fullscreen") { launches(a.serial).count == 2 && store.sessionState(for: a) == .mirroring }
+        let fullscreenArgs = launches(a.serial).last?["arguments"] as? [String] ?? []
+        try check(fullscreenArgs.contains("--fullscreen") && !fullscreenArgs.contains(where: { $0.hasPrefix("--window-x=") }) && launches(b.serial).last?["pid"] as? Int == peerPID, "explicit restart applies fullscreen without conflicting placement or restarting a peer")
+
+        let movie = root.appendingPathComponent("演示 movie.mp4")
+        store.startRecording(for: a.id, to: movie)
+        store.startRecording(for: a.id, to: root.appendingPathComponent("duplicate.mp4"))
+        try await wait("recording restarted") { launches(a.serial).count == 3 && store.sessionState(for: a) == .mirroring }
+        let silentRecordArguments = launches(a.serial).last?["arguments"] as? [String] ?? []
+        try check(store.isRecording(for: a.id) && store.recordingURL(for: a.id) == movie && !FileManager.default.fileExists(atPath: movie.path) && silentRecordArguments.contains("--no-audio") && !silentRecordArguments.contains(where: { $0.hasPrefix("--audio-codec=") }), "silent recording reserves a private temporary output, rejects duplicate requests and never initializes an audio encoder")
+        store.stopRecording(for: a.id)
+        try await wait("recording finalized and mirror resumes") { launches(a.serial).count == 4 && store.sessionState(for: a) == .mirroring }
+        try check(store.lastRecordingURL(for: a.id) == movie && FileManager.default.fileExists(atPath: movie.path) && !store.isRecording(for: a.id), "graceful recording stop publishes a finalized MP4 and resumes only its mirror")
+        try check(launches(b.serial).last?["pid"] as? Int == peerPID && !(launches(a.serial).last?["arguments"] as? [String] ?? []).contains(where: { $0.hasPrefix("--record=") }), "record-stop preserves its peer and the replacement session has no recording flag")
+        let existing = try Data(contentsOf: movie)
+        store.startRecording(for: a.id, to: movie)
+        let afterExisting = try Data(contentsOf: movie)
+        try check(afterExisting == existing && launches(a.serial).count == 4 && !store.isRecording(for: a.id), "choosing an existing file cannot overwrite it or restart the session")
+
+        for mode in ["record-incomplete", "record-bad-container", "record-final-no-newline", "record-failed"] {
+            let device = device("RECORD-\(mode)")
+            let source = SnapshotSource()
+            source.set([device])
+            let store = recoveryStore(source)
+            try write(mode, serial: device.serial, suffix: "mode")
+            try await refresh(store)
+            let target = root.appendingPathComponent("\(mode).mp4")
+            store.startRecording(for: device.id, to: target)
+            try await wait("recording mode \(mode)") { store.sessionState(for: device) == .mirroring }
+            store.stopMirroring(for: device.id)
+            try await wait("finalize \(mode)") { !store.isMirroring }
+            if mode == "record-final-no-newline" {
+                try check(store.lastRecordingURL(for: device.id) == target, "an unterminated final completion log is drained before deciding recording success")
+            } else {
+                try check(store.lastRecordingURL(for: device.id) == nil && !FileManager.default.fileExists(atPath: target.path) && store.recordingMessage(for: device.id)?.contains("未完整") == true, "\(mode) cannot publish or claim a completed recording")
+            }
+        }
+
+        let race = device("RECORD-PUBLISH-RACE")
+        let raceSource = SnapshotSource(); raceSource.set([race])
+        let raceStore = recoveryStore(raceSource)
+        try await refresh(raceStore)
+        let raceURL = root.appendingPathComponent("racing-destination.mp4")
+        raceStore.startRecording(for: race.id, to: raceURL)
+        try await wait("race recording ready") { raceStore.sessionState(for: race) == .mirroring }
+        try Data("other user's file".utf8).write(to: raceURL)
+        raceStore.stopMirroring()
+        try await wait("race recording stops") { !raceStore.isMirroring }
+        let afterRace = try String(contentsOf: raceURL, encoding: .utf8)
+        try check(afterRace == "other user's file" && raceStore.lastRecordingURL(for: race.id) == nil, "a destination created during recording is never overwritten at finalization")
+
+        let quit = device("RECORD-QUIT")
+        let quitSource = SnapshotSource(); quitSource.set([quit])
+        let quitStore = recoveryStore(quitSource)
+        try await refresh(quitStore)
+        let quitURL = root.appendingPathComponent("quit.mp4")
+        quitStore.startRecording(for: quit.id, to: quitURL)
+        try await wait("quit recording ready") { quitStore.sessionState(for: quit) == .mirroring }
+        let audibleRecordArguments = launches(quit.serial).last?["arguments"] as? [String] ?? []
+        try check(audibleRecordArguments.contains("--audio-codec=aac") && audibleRecordArguments.contains("--record-format=mp4") && !audibleRecordArguments.contains("--no-audio"), "recording with audio starts the child with AAC in an MP4 container")
+        quitStore.shutdown()
+        try check(FileManager.default.fileExists(atPath: quitURL.path) && quitStore.lastRecordingURL(for: quit.id) == quitURL, "synchronous Quit drains recording evidence and finalizes the file before returning")
+
+        let recovery = device("AUTO-RECOVER")
+        let recoverySource = SnapshotSource(); recoverySource.set([recovery])
+        let recoveryStore = recoveryStore(recoverySource)
+        try await refresh(recoveryStore)
+        var recoveryOptions = DevicePreferences(); recoveryOptions.autoReconnect = true
+        recoveryStore.updatePreferences(for: recovery, preferences: recoveryOptions)
+        recoveryStore.startMirroring()
+        try await wait("recovery origin ready") { recoveryStore.sessionState(for: recovery) == .mirroring }
+        try await Task.sleep(nanoseconds: 180_000_000)
+        try check(launches(recovery.serial).count == 1 && !recoveryStore.hasPendingReconnect, "a quiet static session never triggers automatic recovery")
+        try write("disconnect", serial: recovery.serial, suffix: "command")
+        try await wait("pending recovery") { recoveryStore.hasPendingReconnect }
+        try write("", serial: recovery.serial, suffix: "command")
+        try await wait("recovery frame") { launches(recovery.serial).count == 2 && recoveryStore.sessionState(for: recovery) == .mirroring }
+        try check(!recoveryStore.hasPendingReconnect && recoveryStore.runningCount == 1, "a confirmed disconnect recovers exactly the authorized hardware without duplicate sessions")
+        try write("disconnect", serial: recovery.serial, suffix: "command")
+        try await wait("bounded repeated disconnects", timeout: 3) { launches(recovery.serial).count == 4 && !recoveryStore.isMirroring && !recoveryStore.hasPendingReconnect }
+        try check(recoveryStore.logLines.contains { $0.contains("已尝试恢复连接 3 次") }, "automatic recovery is bounded to three launches across repeated immediate disconnections")
+        try write("", serial: recovery.serial, suffix: "command")
+        recoveryStore.startMirroring()
+        try await wait("manual reset retry budget") { recoveryStore.sessionState(for: recovery) == .mirroring }
+        try write("disconnect", serial: recovery.serial, suffix: "command")
+        try await wait("recovery pending for cancellation") { recoveryStore.hasPendingReconnect }
+        recoveryStore.cancelReconnect(for: recovery.id)
+        let count = launches(recovery.serial).count
+        try await Task.sleep(nanoseconds: 550_000_000)
+        try check(!recoveryStore.hasPendingReconnect && launches(recovery.serial).count == count, "cancel invalidates a delayed recovery callback")
+        try write("", serial: recovery.serial, suffix: "command")
+        recoveryStore.startMirroring()
+        try await wait("manual window-close fixture") { recoveryStore.sessionState(for: recovery) == .mirroring }
+        try write("log:WARN: Device disconnected", serial: recovery.serial, suffix: "command")
+        try await wait("historical disconnect warning before manual close") { recoveryStore.logLines.contains { $0.contains("WARN: Device disconnected") } }
+        try write("exit", serial: recovery.serial, suffix: "command")
+        try await wait("manual window closed") { !recoveryStore.isMirroring }
+        try await Task.sleep(nanoseconds: 250_000_000)
+        try check(!recoveryStore.hasPendingReconnect && recoveryStore.sessionState(for: recovery) == .idle, "a normal window close overrides historical disconnect warnings and never triggers recovery")
+
+        try write("", serial: recovery.serial, suffix: "command")
+        recoveryStore.startMirroring()
+        try await wait("generic failure origin") { recoveryStore.sessionState(for: recovery) == .mirroring }
+        try write("fail", serial: recovery.serial, suffix: "command")
+        try await wait("generic failure exit") { !recoveryStore.isMirroring }
+        try await Task.sleep(nanoseconds: 250_000_000)
+        try check(!recoveryStore.hasPendingReconnect && recoveryStore.sessionState(for: recovery).isFailure, "a generic component failure without disconnect evidence is not silently retried")
+
+        let stale = device("RECOVERY-INFLIGHT")
+        let staleSource = SnapshotSource(); staleSource.set([stale])
+        let staleStore = self.recoveryStore(staleSource)
+        try await refresh(staleStore)
+        staleStore.updatePreferences(for: stale, preferences: recoveryOptions)
+        staleStore.startMirroring()
+        try await wait("inflight recovery origin") { staleStore.sessionState(for: stale) == .mirroring }
+        staleSource.setDelay(0.25)
+        let initialReads = staleSource.readCount
+        try write("disconnect", serial: stale.serial, suffix: "command")
+        try await wait("recovery discovery is in flight") { staleSource.readCount > initialReads }
+        staleStore.cancelReconnect(for: stale.id)
+        try write("", serial: stale.serial, suffix: "command")
+        try await Task.sleep(nanoseconds: 400_000_000)
+        try check(launches(stale.serial).count == 1 && !staleStore.hasPendingReconnect && !staleStore.isMirroring, "a late discovery response after cancellation cannot launch a replacement session")
+
+        var wifiTarget = AndroidDevice(serial: "192.0.2.77:42222", model: "Mock", product: nil, transport: "Wi-Fi", state: .ready, adbSocket: nil)
+        wifiTarget.hardwareSerial = "EXPECTED-HARDWARE"
+        let wifiSource = SnapshotSource(); wifiSource.set([wifiTarget])
+        let wifiStore = self.recoveryStore(wifiSource)
+        try await refresh(wifiStore)
+        wifiStore.updatePreferences(for: wifiTarget, preferences: recoveryOptions)
+        wifiStore.startMirroring()
+        try await wait("wireless identity origin") { wifiStore.sessionState(for: wifiTarget) == .mirroring }
+        var impostor = wifiTarget; impostor.hardwareSerial = "OTHER-HARDWARE"
+        wifiSource.set([impostor])
+        try write("disconnect", serial: wifiTarget.serial, suffix: "command")
+        try await wait("wireless recovery pending") { wifiStore.hasPendingReconnect }
+        try await wait("wireless identity rejection") { !wifiStore.hasPendingReconnect }
+        try check(launches(wifiTarget.serial).count == 1 && !wifiStore.isMirroring, "a different phone reusing the same IP and port is never accepted by recovery")
+
+        let missing = device("AUTO-MISSING")
+        let missingSource = SnapshotSource(); missingSource.set([missing])
+        let missingStore = self.recoveryStore(missingSource)
+        try await refresh(missingStore)
+        missingStore.updatePreferences(for: missing, preferences: recoveryOptions)
+        missingStore.startMirroring()
+        try await wait("missing origin ready") { missingStore.sessionState(for: missing) == .mirroring }
+        let reads = missingSource.readCount
+        missingSource.set([device("DIFFERENT-PHONE")])
+        try write("disconnect", serial: missing.serial, suffix: "command")
+        try await wait("missing waits") { missingStore.hasPendingReconnect }
+        try await wait("missing retries exhausted") { !missingStore.hasPendingReconnect }
+        try check(missingSource.readCount - reads == 3 && launches("DIFFERENT-PHONE").isEmpty && launches(missing.serial).count == 1, "three bounded discovery retries never substitute a different connected phone")
+        missingSource.set([missing])
+        try write("", serial: missing.serial, suffix: "command")
+        try await refresh(missingStore)
+        missingStore.startMirroring()
+        try await wait("stop-all recovery origin") { missingStore.sessionState(for: missing) == .mirroring }
+        try write("disconnect", serial: missing.serial, suffix: "command")
+        try await wait("stop-all recovery queued") { missingStore.hasPendingReconnect }
+        missingStore.stopMirroring()
+        let beforeStopAll = launches(missing.serial).count
+        try await Task.sleep(nanoseconds: 550_000_000)
+        try check(!missingStore.hasPendingReconnect && launches(missing.serial).count == beforeStopAll, "Stop All cancels recovery even when no child is currently alive")
+
+        let routedUSB = device("RECOVERY-RAW-ROUTES")
+        var routedWiFi = AndroidDevice(serial: "192.0.2.99:43333", model: "Mock", product: nil, transport: "Wi-Fi", state: .ready, adbSocket: nil)
+        routedWiFi.hardwareSerial = routedUSB.serial
+        let otherDaemon = device(routedUSB.serial, socket: "tcp:127.0.0.1:5038")
+        let routeSource = SnapshotSource(); routeSource.set([routedUSB])
+        let routeStore = self.recoveryStore(routeSource)
+        try await refresh(routeStore)
+        routeStore.updatePreferences(for: routedUSB, preferences: recoveryOptions)
+        routeStore.startMirroring()
+        try await wait("raw route origin") { routeStore.sessionState(for: routedUSB) == .mirroring }
+        // The UI chooses the same phone's Wi-Fi row, while both USB daemons
+        // remain discoverable. Recovery must use the exact original USB route.
+        routeSource.set([routedWiFi], rawRoutes: [routedWiFi, otherDaemon, routedUSB])
+        try await refresh(routeStore)
+        routeSource.setDelay(0.18)
+        let routeReads = routeSource.readCount
+        try write("disconnect", serial: routedUSB.serial, suffix: "command")
+        try await wait("raw route discovery in flight") { routeSource.readCount > routeReads }
+        var latestOptions = recoveryOptions
+        latestOptions.nickname = "最新演示设置"
+        latestOptions.presentationMode = true
+        latestOptions.audioEnabled = false
+        latestOptions.qualityProfile = .compatibility
+        routeStore.updatePreferences(forKnownDeviceID: DevicePreferences.identity(for: routedUSB)!, preferences: latestOptions)
+        try write("", serial: routedUSB.serial, suffix: "command")
+        try await wait("original raw route recovered") { launches(routedUSB.serial).count == 2 && routeStore.sessionState(for: routedUSB) == .mirroring }
+        let recoveredRequest = launches(routedUSB.serial).last!
+        let recoveredArguments = recoveredRequest["arguments"] as? [String] ?? []
+        try check(recoveredRequest["socket"] as? String == "tcp:5037" && launches(routedWiFi.serial).isEmpty && routeStore.runningCount == 1, "UI route deduplication cannot hide the original USB route or switch recovery to Wi-Fi or another daemon")
+        try check(recoveredArguments.contains("--no-control") && recoveredArguments.contains("--no-clipboard-autosync") && recoveredArguments.contains("--no-audio") && recoveredArguments.contains("--max-size=1920") && recoveredArguments.contains("--window-title=镜连 · 最新演示设置"), "a recovered process adopts preferences saved while discovery was in flight, including read-only, sound and quality")
+        try check(routeStore.activePreferences(for: routedUSB.id)?.presentationMode == true && routeStore.displaySerial(for: routedUSB) == nil, "recovered-session snapshot agrees with the newly applied presentation restrictions")
+        routeStore.stopMirroring()
+        try await wait("raw route fixture stopped") { !routeStore.isMirroring }
+        store.stopMirroring()
+        try await wait("productivity peers stopped") { !store.isMirroring }
     }
 }

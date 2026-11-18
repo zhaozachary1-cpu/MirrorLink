@@ -1,5 +1,7 @@
 import SwiftUI
 
+private typealias DetailViewState<Value> = SwiftUI.State<Value>
+
 struct DetailView: View {
     @ObservedObject private var language = LanguageStore.shared
     @ObservedObject var store: MirrorSessionStore
@@ -100,6 +102,16 @@ private struct SelectedDevicesCard: View {
 
                 MirrorQualityControls(profile: $store.qualityProfile)
 
+                Picker(L10n.tr("启动时排列"), selection: $store.windowLayout) {
+                    ForEach(MirrorWindowLayout.allCases) { layout in
+                        Text(layout.title).tag(layout)
+                    }
+                }
+                .pickerStyle(.menu)
+                Text(L10n.tr("仅用于下次启动所选设备的投屏窗口，不会重新排列当前窗口。"))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 HStack(spacing: 12) {
                     Button {
                         store.startMirroring()
@@ -118,7 +130,7 @@ private struct SelectedDevicesCard: View {
                             .frame(minWidth: 100)
                     }
                     .buttonStyle(.bordered)
-                    .disabled(!store.isMirroring)
+                    .disabled(!store.isMirroring && !store.hasPendingReconnect)
                 }
                 Text(L10n.tr("取消勾选不会停止投屏"))
                     .font(.caption)
@@ -152,6 +164,7 @@ private struct DeviceSessionRow: View {
     @ObservedObject private var language = LanguageStore.shared
     let device: AndroidDevice
     @ObservedObject var store: MirrorSessionStore
+    @DetailViewState private var showsPreferences = false
 
     private var state: MirrorSessionState {
         store.sessionState(for: device)
@@ -192,10 +205,16 @@ private struct DeviceSessionRow: View {
                     .foregroundStyle(stateTint)
                     .frame(width: 20)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(device.displayName)
-                        .font(.callout.weight(.medium))
-                        .lineLimit(2)
-                    Text("\(device.transport) · \(device.serial)")
+                    HStack(spacing: 5) {
+                        Text(store.displayName(for: device))
+                            .font(.callout.weight(.medium))
+                            .lineLimit(2)
+                        if store.preferences(for: device).favorite {
+                            Image(systemName: "star.fill").font(.caption).foregroundStyle(.orange)
+                                .accessibilityLabel(L10n.tr("常用设备"))
+                        }
+                    }
+                    Text(store.displaySerial(for: device).map { "\(device.transport) · \($0)" } ?? device.transport)
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
@@ -207,6 +226,22 @@ private struct DeviceSessionRow: View {
                     .font(.caption)
                     .foregroundStyle(stateTint)
                     .fixedSize()
+                Button { showsPreferences = true } label: {
+                    Image(systemName: "slider.horizontal.3")
+                }
+                .buttonStyle(.borderless)
+                .help(L10n.tr("设备设置"))
+                .accessibilityLabel(L10n.tr("设备设置"))
+            }
+            if let reconnect = store.reconnectStatus(for: device.id) {
+                HStack(alignment: .top) {
+                    Label(reconnect, systemImage: "arrow.triangle.2.circlepath")
+                        .font(.caption).foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer()
+                    Button(L10n.tr("取消恢复")) { store.cancelReconnect(for: device.id) }
+                        .buttonStyle(.bordered).fixedSize()
+                }
             }
             if let videoStatus {
                 VStack(alignment: .leading, spacing: 4) {
@@ -238,14 +273,14 @@ private struct DeviceSessionRow: View {
                     }
                     .buttonStyle(.bordered)
                     .disabled(state == .stopping)
-                    .help(L10n.tr("只重启 %@ 的投屏，并应用当前选择的%@", device.logLabel, store.qualityProfile.title))
+                    .help(L10n.tr("只重启 %@ 的投屏，并应用当前选择的%@", store.displayName(for: device), (store.preferences(for: device).qualityProfile ?? store.qualityProfile).title))
                     Button(store.isRestartPending(for: device.id) ? L10n.tr("取消重启") : L10n.tr("停止")) {
                         store.stopMirroring(for: device.id)
                     }
                         .buttonStyle(.bordered)
                         .tint(.red)
                         .disabled(state == .stopping && !store.isRestartPending(for: device.id))
-                        .help(L10n.tr("只停止 %@ 的投屏", device.logLabel))
+                        .help(L10n.tr("只停止 %@ 的投屏", store.displayName(for: device)))
                 } else {
                     Button(state.isFailure ? L10n.tr("重试") : L10n.tr("开始")) { store.startMirroring(for: device.id) }
                         .buttonStyle(.bordered)
@@ -253,7 +288,7 @@ private struct DeviceSessionRow: View {
                 }
             }
             if case let .failed(message) = state {
-                Text(message)
+                Text(store.isPresentationMode(for: device) ? L10n.tr("这台设备的投屏发生错误。可关闭演示模式查看详细诊断，或导出脱敏反馈。") : message)
                     .font(.caption)
                     .foregroundStyle(.red)
             }
@@ -262,8 +297,10 @@ private struct DeviceSessionRow: View {
                     .font(.caption)
                     .foregroundStyle(.orange)
             }
+            DeviceToolsView(store: store, device: device)
         }
         .padding(.vertical, 2)
+        .sheet(isPresented: $showsPreferences) { DevicePreferencesSheet(store: store, device: device) }
     }
 
     private var stateTint: Color {
@@ -292,7 +329,7 @@ private struct StatusCard: View {
                     Text(store.sessionSummary)
                         .font(.headline)
                     if let message = store.globalErrorMessage {
-                        Text(message)
+                        Text(store.displayedDevices.contains(where: { store.isPresentationMode(for: $0) }) ? L10n.tr("检测到连接或投屏问题，可使用设备工具导出脱敏反馈。") : message)
                             .font(.callout)
                             .foregroundStyle(.red)
                     }
@@ -302,7 +339,7 @@ private struct StatusCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
-                if store.isMirroring {
+                if store.isMirroring || store.hasPendingReconnect {
                     Button(L10n.tr("停止全部"), role: .destructive) { store.stopMirroring() }
                         .fixedSize()
                 }
@@ -358,6 +395,10 @@ private struct ToolchainMissingCard: View {
 private struct LogCard: View {
     @ObservedObject private var language = LanguageStore.shared
     @ObservedObject var store: MirrorSessionStore
+    private var hasPresentationMode: Bool {
+        store.displayedDevices.contains { store.isPresentationMode(for: $0) }
+            || store.knownDevices.contains { $0.preferences.presentationMode }
+    }
 
     var body: some View {
         let _ = language.selection
@@ -377,7 +418,7 @@ private struct LogCard: View {
                         .font(.caption)
                 }
                 ScrollView {
-                    Text(store.logLines.isEmpty ? L10n.tr("暂无日志") : store.logLines.joined(separator: "\n"))
+                    Text(hasPresentationMode ? L10n.tr("演示模式下已隐藏诊断日志，避免显示设备标识。需要反馈时可使用设备工具中的脱敏导出。") : (store.logLines.isEmpty ? L10n.tr("暂无日志") : store.logLines.joined(separator: "\n")))
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)

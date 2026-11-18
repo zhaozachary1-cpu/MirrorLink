@@ -1,24 +1,24 @@
 # 镜连 MirrorLink
 
-[![一键下载安装包 — 镜连 macOS DMG](docs/assets/download-macos.svg)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.4/MirrorLink-0.4.4-macOS-universal.dmg)
+[![一键下载安装包 — 镜连 macOS DMG](docs/assets/download-macos.svg)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.0/MirrorLink-0.5.0-macOS-universal.dmg)
 
-**点击上方蓝色按钮，直接下载 0.4.4 安装包，无需进入 Assets 查找。**
+**点击上方蓝色按钮，直接下载 0.5.0 安装包，无需进入 Assets 查找。**
 
 下载后：**打开 DMG → 将 MirrorLink.app 拖入“应用程序” → 打开镜连**。按钮只负责下载，不会静默安装；浏览器可能按你的设置询问保存位置。
 
-按钮未显示？[直接下载 DMG](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.4/MirrorLink-0.4.4-macOS-universal.dmg) · [下载完整 ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.4/MirrorLink-0.4.4-macOS-universal.zip) · [其他版本](https://github.com/zhaozachary1-cpu/MirrorLink/releases)
+按钮未显示？[直接下载 DMG](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.0/MirrorLink-0.5.0-macOS-universal.dmg) · [下载完整 ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.0/MirrorLink-0.5.0-macOS-universal.zip) · [其他版本](https://github.com/zhaozachary1-cpu/MirrorLink/releases)
 
 > 免费社区版未经 Apple 公证。首次打开可能需要手动允许，具体见[首次打开的 macOS 安全提示](#首次打开的-macos-安全提示)；不要关闭系统安全保护。
 
 镜连是一个原生 macOS Android 投屏工具：它把官方 scrcpy v4.1 与 ADB 作为应用内置运行时，并用 SwiftUI 提供 USB / 同 Wi-Fi 无线连接、多设备选择、授权提示、并行投屏、独立开始/停止和诊断日志。
 
-当前版本为 **0.4.4（Build 9）**，新增简体中文与 English 界面，可跟随系统或在设置中自行切换；保留三档画质、接收画面尺寸、单台重新投屏，以及 0.4.2 的误超时修复。**MirrorLink now supports both English and Simplified Chinese.** 实际可下载安装的版本以 [最新公开发行页](https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest) 为准；完整的发布验证记录见 [UPDATE-QA.md](UPDATE-QA.md)。
+当前版本为 **0.5.0（Build 10）**：新增常用设备与独立设置、截图录屏、连接自检、受控断线恢复、启动时窗口布局、演示模式、文件工具和本地问题反馈包，以及手机“返回桌面 / 打开应用抽屉”快捷操作。保留简体中文与 English、三档画质、无线配对、多设备隔离和签名更新。实际可下载安装的版本以 [最新公开发行页](https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest) 为准；功能与真机证据见 [TOOLS-QA.md](TOOLS-QA.md)，完整发布记录见 [UPDATE-QA.md](UPDATE-QA.md)。
 
 ## English Quick Start
 
 MirrorLink mirrors Android phones on a Mac over USB or authorized wireless debugging. It includes ADB and scrcpy; no Homebrew or separate tool installation is needed. Requires **macOS 13 or later**. The universal installer includes Apple Silicon and Intel binaries; Intel hardware acceptance testing remains incomplete. It does not support iPhone mirroring or Windows.
 
-1. [Download MirrorLink 0.4.4 for macOS (DMG)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.4/MirrorLink-0.4.4-macOS-universal.dmg), open it, and drag **MirrorLink.app** to **Applications**. An alternative [complete ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.4.4/MirrorLink-0.4.4-macOS-universal.zip) is available. Do not use “Source code” or the update-only ZIP as an installer. Before replacing an existing copy, stop mirroring, quit with **⌘Q**, and keep a backup.
+1. [Download MirrorLink 0.5.0 for macOS (DMG)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.0/MirrorLink-0.5.0-macOS-universal.dmg), open it, and drag **MirrorLink.app** to **Applications**. An alternative [complete ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.0/MirrorLink-0.5.0-macOS-universal.zip) is available. Do not use “Source code” or the update-only ZIP as an installer. Before replacing an existing copy, stop mirroring, quit with **⌘Q**, and keep a backup.
 2. Launch MirrorLink from Applications. Open **MirrorLink → Settings…** with **⌘,**, find the bilingual **“语言 / Language”** section at the top, and choose **English**. Chinese users can find the same command as **“镜连 → 设置…”**. The other choices are **简体中文** and **跟随系统 / System**.
 3. For USB mirroring, enable **USB debugging** in your Android phone’s Developer options, connect it with a data cable, unlock it, and authorize this Mac on the phone. Click **Refresh Devices**, select the phone, then **Mirror Selected**.
 4. For wireless mirroring, use an **Android 11+** phone with Wireless debugging on the same reachable Wi-Fi network. In MirrorLink, open **Wireless Connection → QR Pairing**. On the phone, open **Developer options → Wireless debugging → Pair device with QR code** and scan there, not with the camera or WeChat. Being on the same network does not grant authorization.
@@ -35,6 +35,29 @@ Language changes update MirrorLink’s own interface without stopping active mir
 
 手机/服务名称、序列号、地址、已有诊断日志和第三方返回的原始错误不会被改写。中英文资源分别位于 `Sources/MirrorLinkApp/Resources/Localizations/zh-Hans.lproj/` 与 `en.lproj/`。本地化检查与尚未完成的原生界面验收见 [LOCALIZATION-QA.md](LOCALIZATION-QA.md)。
 
+## 常用设备、演示与设备工具（0.5.0）
+
+每台手机有独立的设置和工具，操作前请确认设备名称。常用操作在该设备的投屏卡片中，更多选项收纳在设备设置和工具区域，无需在终端输入命令。
+
+| 功能 | 使用方式与边界 |
+| --- | --- |
+| 常用设备 | 设置昵称并收藏，保留每台设备的画质、声音、演示和自动恢复偏好。独立画质可选择继承全局。记忆设置不等于获得新授权，未确认身份的无线地址不能充当永久设备身份。 |
+| 返回桌面 / 应用列表 | 对当前手机发送返回桌面或应用列表指令，也可明确选择上滑兼容方式。部分手机桌面没有独立应用抽屉，标准指令与上滑都可能无效果，可直接在手机桌面查找应用。发送成功不等于抽屉已打开；镜连不会更改手机桌面设置，演示只读模式不允许发送控制指令。 |
+| 截图 | 从选定手机取得 PNG，保存后可复制或在 Finder 中显示。手机不需要先生成临时截图文件；截图不会自动上传。受系统保护的内容仍可能无法捕获。 |
+| 录屏 | 使用手机传来的原视频流保存 MP4。开始或停止录制可能会重新打开该手机的投屏，界面会先说明；其他设备不受影响。正常收尾后才显示完成，异常中断的文件明确区分为未完成。 |
+| 连接自检 | 检查本机工具、设备授权/在线状态、Android 版本和屏幕尺寸，结合会话状态查看处理建议。不把目标码率或帧率上限当作实测值。 |
+| 自动恢复 | 主动开启后，意外断线时最多检查 3 次；仅当原已授权硬件身份、原连接方式（USB/Wi-Fi）和原 ADB socket 同时匹配，并重新出现在 ready 列表中，才重启投屏。可取消；主动停止、正常关闭投屏窗口或退出应用后不恢复。不会主动重新连接网络、重新配对、切换连接方式或猜测另一台手机。 |
+| 窗口布局 | 自动位置、并排排列、网格排列，在下一次开始投屏时生效。现有投屏仍是独立窗口，不申请辅助功能权限来强制移动其他应用窗口。 |
+| 演示模式 | 使用昵称或型号代替窗口标题中的设备编号，并禁用手机控制和剪贴板自动同步；可选择置顶或全屏。它不会自动遮挡手机通知、密码或最后一帧敏感内容。 |
+| 声音与文件 | 每台设备可单独选择是否转发声音，修改在该台下一次启动时生效。选择文件后发送至该手机的下载目录；安装 APK 是独立操作，须先明确确认。 |
+| 问题反馈包 | 先查看脱敏后的结构化设备、应用和会话信息，再选择是否加入截图/录像，导出本地 ZIP。默认不附带画面或原始日志，不自动发送给任何人。 |
+
+截图和录像的保存位置可在设置中更改，也可打开文件夹查看。发送文件、截图、自检和导出期间会显示状态，并提供取消或明确结果。首次使用建议先连接一台手机确认操作，之后再扩展至多台。
+
+**English:** Device settings now remember nicknames, favorites and individual quality/audio/presentation/reconnect preferences. Per-device tools include **Home**, **App Drawer**, screenshots, recording, connection checks, file transfer, explicit APK installation and local feedback export. Recording changes may restart only the affected mirroring session after confirmation. Window layouts apply when sessions start. Some launchers have no separate app drawer, so both the standard command and the upward-swipe alternative may have no effect; look for apps on the phone's home screen instead. Sending a command does not prove the drawer opened, and MirrorLink does not change launcher settings. Presentation mode disables device control and clipboard synchronization, but does not conceal phone notifications. Feedback exports contain a previewable, redacted report by default; screenshots and videos are included only when explicitly selected.
+
+Optional recovery checks at most three times after an unexpected disconnect. Mirroring resumes only when the same authorized hardware identity reappears as **ready**, using the original USB/Wi-Fi transport and ADB socket. It does not actively reconnect a network endpoint, re-pair, switch transports, or choose another phone. Canceling recovery, manually stopping, normally closing the mirror window, or quitting the app prevents further recovery.
+
 ## 下载、安装与注意事项（请先阅读）
 
 ### 系统与设备要求
@@ -49,14 +72,14 @@ Language changes update MirrorLink’s own interface without stopping active mir
 
 | 文件 | 用途 |
 | --- | --- |
-| `MirrorLink-0.4.4-macOS-universal.dmg` | 推荐给普通 Mac 用户；打开后拖拽安装 |
-| `MirrorLink-0.4.4-macOS-universal.zip` | 完整安装包；先解压，再拖拽安装 |
-| `MirrorLink-0.4.4-update.zip` / `appcast.xml` | 应用内更新专用；不要当作普通安装包转发 |
+| `MirrorLink-0.5.0-macOS-universal.dmg` | 推荐给普通 Mac 用户；打开后拖拽安装 |
+| `MirrorLink-0.5.0-macOS-universal.zip` | 完整安装包；先解压，再拖拽安装 |
+| `MirrorLink-0.5.0-update.zip` / `appcast.xml` | 应用内更新专用；不要当作普通安装包转发 |
 | `Source code (zip/tar.gz)` | 本项目源码，不是可双击安装的应用 |
-| `MirrorLink-0.4.4-third-party-sources.tar.gz` | 第三方对应源码及许可材料，普通使用不需要下载 |
+| `MirrorLink-0.5.0-third-party-sources.tar.gz` | 第三方对应源码及许可材料，普通使用不需要下载 |
 | `SHA256SUMS.txt` | 下载文件的 SHA-256 校验清单 |
 
-以上文件名对应 0.4.4；将来发布新版时请选择同一 Release 中对应版本的文件。分享时发送官方 Release 链接、DMG 或完整 ZIP，不直接转发裸 `.app` 目录。
+以上文件名对应 0.5.0；将来发布新版时请选择同一 Release 中对应版本的文件。分享时发送官方 Release 链接、DMG 或完整 ZIP，不直接转发裸 `.app` 目录。
 
 ### 正常安装 / 手动覆盖旧版
 
@@ -77,7 +100,7 @@ Language changes update MirrorLink’s own interface without stopping active mir
 ### 旧版升级与使用边界
 
 - 0.3.1 及之后版本可主动点击“检查更新…”；安装需本人确认。网络或验签失败时不要跳过验证，可从官方 Release 下载完整包手动安装。
-- 0.3.0 需按下方“应用更新”配置一次更新地址；0.2.0 及更早需手动安装。**同 Build 的本地预览包与社区包不构成版本升级**，例如同为 0.4.4 / Build 9 时，不应期待更新器再次提示；需要时手动安装对应的完整社区包。0.4.4 的 Build 9 高于 0.4.3 的 Build 8，但须在安装包与签名清单公开后才能通过更新器获取。
+- 0.3.0 需按下方“应用更新”配置一次更新地址；0.2.0 及更早需手动安装。**同 Build 的本地预览包与社区包不构成版本升级**，例如同为 0.5.0 / Build 10 时，不应期待更新器再次提示；需要时手动安装对应的完整社区包。0.5.0 的 Build 10 高于 0.4.4 的 Build 9，但须在安装包与签名清单公开后才能通过更新器获取。更新前先结束录屏并确认保存，停止投屏与等待恢复，再按提示安装。
 - 无线首次配对必须在手机“开发者选项 → 无线调试”中扫码，不是微信或普通相机。不要转发配对二维码、配对码或含设备标识的诊断日志；同一 Wi-Fi 不代表已经授权。
 - 单台 USB 真机短时测试与模拟多设备/无线检查已有记录，但长时间动态画质、真实无线、多台手机画面、陌生 Mac 首次安装及旧版经应用内覆盖升级仍有未完成的验收。查看 [QUALITY-QA.md](QUALITY-QA.md)、[STABILITY-QA.md](STABILITY-QA.md)、[WIRELESS-QA.md](WIRELESS-QA.md) 和 [UPDATE-QA.md](UPDATE-QA.md)，不要把构建/验签成功理解为所有设备已验收。
 
@@ -108,10 +131,10 @@ Language changes update MirrorLink’s own interface without stopping active mir
 1. 用 USB 线连接 Android 手机。
 2. 在手机开发者选项中开启 USB 调试，解锁手机并允许此电脑调试。
 3. 打开镜连，点击刷新设备；左侧勾选一台或多台状态为“已连接”的手机。
-4. 点击“开始所选投屏”（快捷键 ⌘↩）。每台手机会在独立的 scrcpy 窗口中打开；窗口标题包含型号和完整设备序列号，便于区分同型号手机。某一台启动失败不会影响其他手机。
+4. 点击“开始所选投屏”（快捷键 ⌘↩）。每台手机会在独立的 scrcpy 窗口中打开；普通模式的窗口标题使用昵称或型号和设备序列号，便于区分同型号手机，演示模式隐藏序列号。某一台启动失败不会影响其他手机。
 5. 可以在右侧对单台设备单独重试或停止，也可以使用“停止全部”关闭本次由镜连启动的所有窗口。
 
-取消勾选或“清空选择”只改变下一次批量启动的对象，不会停止已在投屏的手机；这些设备仍保留单独的停止入口。断开后重新连接不会自动启动投屏，需要再次点击开始。退出镜连会停止本应用启动的全部投屏，不会关闭其他软件启动的 scrcpy 窗口。
+取消勾选或“清空选择”只改变下一次批量启动的对象，不会停止已在投屏的手机；这些设备仍保留单独的停止入口。默认不会在断开重连后自动投屏；主动开启自动恢复后，已有投屏意外断线时最多检查 3 次，只有原已授权硬件身份以原连接方式、原 ADB socket 重新处于 ready 状态才恢复投屏，不主动执行网络重连。无线设备尚未重新就绪时，仍需在“无线连接”中手动连接或配对。退出镜连会取消恢复并停止本应用启动的全部投屏，不会关闭其他软件启动的 scrcpy 窗口。
 
 关闭主窗口不会退出镜连或停止现有投屏。可以点击 Dock 图标，或通过“投屏 → 显示主窗口”（⌘0）重新打开控制窗口；退出应用仍使用 ⌘Q。0.4.2 的故障原因、回归结果与未验收范围见 [STABILITY-QA.md](STABILITY-QA.md)。
 
@@ -153,6 +176,7 @@ https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest/download/appcast.
 ```zsh
 ./script/run_core_checks.sh
 ./script/run_session_checks.sh
+./script/run_device_tools_checks.sh
 ./script/run_wireless_checks.sh
 ./script/run_update_checks.sh
 ./script/build_and_run.sh --verify

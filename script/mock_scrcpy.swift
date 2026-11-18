@@ -7,6 +7,28 @@ guard let serialIndex = CommandLine.arguments.firstIndex(of: "-s"),
 let serial = CommandLine.arguments[serialIndex + 1]
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 let mode = (try? String(contentsOf: root.appendingPathComponent("\(serial).mode"), encoding: .utf8)) ?? "ready"
+let recordingPath = CommandLine.arguments.first { $0.hasPrefix("--record=") }.map { String($0.dropFirst(9)) }
+var interrupted: Int32 = 0
+if recordingPath != nil { signal(SIGINT) { _ in interrupted = 1 } }
+func finishRecording(_ status: Int32) -> Never {
+    if let recordingPath {
+        if mode == "record-failed" {
+            fputs("ERROR: Recording failed to \(recordingPath)\n", stderr)
+        } else if mode != "record-incomplete" {
+            let suffix = mode == "record-final-no-newline" ? "" : "\n"
+            fputs("INFO: Recording complete to mp4 file: \(recordingPath)\(suffix)", stdout)
+        }
+    }
+    exit(status)
+}
+if let recordingPath {
+    // A structural container fixture, deliberately not real decodable video.
+    let bytes: [UInt8] = [0,0,0,16,102,116,121,112,105,115,111,109,0,0,0,0,
+                         0,0,0,12,109,100,97,116,0,0,0,1,
+                         0,0,0,12,109,111,111,118,0,0,0,1]
+    try Data(mode == "record-bad-container" ? [1,2,3] : bytes).write(to: URL(fileURLWithPath: recordingPath))
+    fputs("INFO: Recording started to mp4 file: \(recordingPath)\n", stdout)
+}
 let logURL = root.appendingPathComponent("\(serial).launches")
 let record: [String: Any] = [
     "pid": getpid(), "serial": serial, "arguments": CommandLine.arguments,
@@ -58,10 +80,11 @@ let deadline = Date().addingTimeInterval(40)
 var emittedOnCommand = false
 var previousCommand: String?
 while Date() < deadline {
+    if interrupted != 0 { finishRecording(0) }
     let command = try? String(contentsOf: root.appendingPathComponent("\(serial).command"), encoding: .utf8)
-    if command == "exit" { exit(0) }
-    if command == "fail" { exit(17) }
-    if command == "disconnect" { exit(2) }
+    if command == "exit" { finishRecording(0) }
+    if command == "fail" { finishRecording(17) }
+    if command == "disconnect" { finishRecording(2) }
     if command == "ready" && !emittedOnCommand {
         emitReady()
         emittedOnCommand = true

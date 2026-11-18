@@ -22,6 +22,18 @@ struct MirrorLinkCoreChecks {
         precondition(Array(defaultArguments.prefix(4)) == ["-s", "ABC123", "--window-title=镜连 · Pixel 6 · ABC123", "--no-terminal-title"], "scrcpy device and log arguments")
         precondition(defaultArguments.contains("--video-bit-rate=24M") && defaultArguments.contains("--max-size=0") && defaultArguments.contains("--max-fps=30"), "default native clarity is explicit")
         precondition(command.environment(for: device)["ADB_SERVER_SOCKET"] == "tcp:127.0.0.1:5038", "alternate ADB socket")
+        for recording in [false, true] {
+            for audio in [false, true] {
+                var preferences = DevicePreferences()
+                preferences.audioEnabled = audio
+                let target = recording ? URL(fileURLWithPath: "/tmp/mirrorlink-recording-check.mp4") : nil
+                let arguments = command.arguments(for: device, preferences: preferences, recordingURL: target)
+                let codecs = arguments.filter { $0.hasPrefix("--audio-codec=") }
+                precondition(codecs == (recording && audio ? ["--audio-codec=aac"] : []), "AAC is exclusive to recordings with audio")
+                precondition(arguments.contains("--no-audio") == !audio, "recording preserves the device audio preference")
+                precondition(arguments.contains("--record-format=mp4") == recording, "recording keeps the MP4 container explicit")
+            }
+        }
 
         let secondDevice = AndroidDevice(serial: "DEF456789", model: "Pixel_8", product: "shiba", transport: "USB", state: .ready, adbSocket: "tcp:127.0.0.1:5037")
         precondition(command.arguments(for: device).prefix(2) == ["-s", "ABC123"], "first device serial pinning")

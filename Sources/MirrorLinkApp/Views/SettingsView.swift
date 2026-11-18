@@ -36,6 +36,19 @@ struct SettingsView: View {
                 MirrorQualityControls(profile: $store.qualityProfile, showsAdditionalGuidance: true)
             }
 
+            Section(L10n.tr("多窗口排列")) {
+                Picker(L10n.tr("启动时排列"), selection: $store.windowLayout) {
+                    ForEach(MirrorWindowLayout.allCases) { layout in
+                        Text(layout.title).tag(layout)
+                    }
+                }
+                Text(L10n.tr("仅用于下次启动所选设备的投屏窗口，不会重新排列当前窗口。"))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            StorageSettingsSection()
+
             UpdateSettingsView(updates: updates)
             Section(L10n.tr("投屏组件")) {
                 LabeledContent(L10n.tr("状态")) {

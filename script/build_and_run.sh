@@ -98,6 +98,24 @@ fi
 lipo -create "$ARM_BINARY" "$X86_BINARY" -output "$MACOS_DIR/MirrorLink"
 chmod +x "$MACOS_DIR/MirrorLink"
 
+if [[ "$CONFIGURATION" == "release" ]]; then
+  echo "==> 移除发布版调试符号中的本机构建路径"
+  # SwiftPM release executables retain linker debug records with absolute
+  # source/object paths. Strip only those records from our staged executable,
+  # before signing. Keep local/global symbols, Swift metadata and imports;
+  # leave Debug builds and the upstream vendor binaries untouched.
+  xcrun strip -S "$MACOS_DIR/MirrorLink"
+  build_path_scan=0
+  LC_ALL=C /usr/bin/grep -aFq -- "$ROOT_DIR/" "$MACOS_DIR/MirrorLink" || build_path_scan=$?
+  if [[ "$build_path_scan" == "0" ]]; then
+    print -u2 "发布版主程序仍包含本地项目路径，已停止打包。"
+    exit 1
+  elif [[ "$build_path_scan" != "1" ]]; then
+    print -u2 "无法检查发布版主程序中的本地项目路径，已停止打包。"
+    exit 1
+  fi
+fi
+
 echo "==> 准备官方 scrcpy v4.1 运行时"
 ARM_TOOLS="$ROOT_DIR/vendor/scrcpy/arm64"
 X86_TOOLS="$ROOT_DIR/vendor/scrcpy/x86_64"

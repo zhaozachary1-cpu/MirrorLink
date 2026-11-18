@@ -10,17 +10,19 @@ struct MirrorLinkApp: App {
     @StateObject private var updates: AppUpdateStore
     @StateObject private var wireless: WirelessConnectionStore
     @StateObject private var language: LanguageStore
+    @StateObject private var tools: DeviceToolsStore
     @Environment(\.openWindow) private var openWindow
 
     init() {
         _language = StateObject(wrappedValue: LanguageStore.shared)
         let sessions = MirrorSessionStore()
         _store = StateObject(wrappedValue: sessions)
+        _tools = StateObject(wrappedValue: DeviceToolsStore(paths: sessions.paths))
         _wireless = StateObject(wrappedValue: WirelessConnectionStore(paths: sessions.paths) { [weak sessions] device in
             sessions?.connectAndMirror(device)
         })
         _updates = StateObject(wrappedValue: AppUpdateStore(
-            activeSessionCount: { [weak sessions] in sessions?.runningCount ?? 0 },
+            activeSessionCount: { [weak sessions] in (sessions?.runningCount ?? 0) + (sessions?.hasPendingReconnect == true ? 1 : 0) },
             stopSessions: { [weak sessions] in sessions?.stopMirroring() }
         ))
     }
@@ -31,11 +33,13 @@ struct MirrorLinkApp: App {
         // create another timer/selection UI for the same store.
         Window(L10n.tr("镜连"), id: "main") {
             ContentView(store: store, updates: updates)
+                .environmentObject(tools)
                 .environment(\.locale, language.effectiveLocale)
                 .onAppear {
                     appDelegate.store = store
                     appDelegate.updates = updates
                     appDelegate.wireless = wireless
+                    appDelegate.tools = tools
                     appDelegate.openMainWindow = { openWindow(id: "main") }
                 }
         }
@@ -64,7 +68,7 @@ struct MirrorLinkApp: App {
 
                 Button(L10n.tr("停止全部投屏")) { store.stopMirroring() }
                     .keyboardShortcut(".", modifiers: [.command])
-                    .disabled(!store.isMirroring)
+                    .disabled(!store.isMirroring && !store.hasPendingReconnect)
             }
         }
 
@@ -76,6 +80,7 @@ struct MirrorLinkApp: App {
 
         Settings {
             SettingsView(store: store, updates: updates)
+                .environmentObject(tools)
                 .environment(\.locale, language.effectiveLocale)
         }
     }
@@ -86,6 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var store: MirrorSessionStore?
     weak var updates: AppUpdateStore?
     weak var wireless: WirelessConnectionStore?
+    weak var tools: DeviceToolsStore?
     var openMainWindow: (() -> Void)?
     private var terminationSignal: DispatchSourceSignal?
 
@@ -100,6 +106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        tools?.shutdown()
         wireless?.close()
         store?.shutdown()
     }

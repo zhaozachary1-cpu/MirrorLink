@@ -1,9 +1,20 @@
 import SwiftUI
 
+private typealias SidebarViewState<Value> = SwiftUI.State<Value>
+
 struct SidebarView: View {
     @ObservedObject private var language = LanguageStore.shared
     @ObservedObject var store: MirrorSessionStore
     @Environment(\.openWindow) private var openWindow
+    @SidebarViewState private var settingsDevice: AndroidDevice?
+    @SidebarViewState private var settingsKnownDevice: KnownDevice?
+
+    private var offlineFavorites: [KnownDevice] {
+        let connectedIdentities = Set(store.devices.compactMap { device in
+            DevicePreferences.identity(for: device) ?? (device.hardwareSerial ?? (device.isWireless ? nil : device.serial)).map { "hardware:\($0)" }
+        })
+        return store.knownDevices.filter { $0.preferences.favorite && !connectedIdentities.contains($0.id) }
+    }
 
     var body: some View {
         let _ = language.selection
@@ -26,12 +37,18 @@ struct SidebarView: View {
                     ForEach(store.devices) { device in
                         DeviceRow(
                             device: device,
+                            displayName: store.displayName(for: device),
+                            displaySerial: store.displaySerial(for: device),
+                            favorite: store.preferences(for: device).favorite,
                             sessionState: store.sessionState(for: device),
                             isSelected: store.selectedDeviceIDs.contains(device.id),
                             onSelectionChanged: { isSelected in
                                 store.setDeviceSelected(device.id, isSelected: isSelected)
                             }
                         )
+                        .contextMenu {
+                            Button(L10n.tr("设备设置…")) { settingsDevice = device }
+                        }
                     }
                 }
             } header: {
@@ -48,6 +65,24 @@ struct SidebarView: View {
                 }
             }
 
+            if !offlineFavorites.isEmpty {
+                Section(L10n.tr("离线常用设备")) {
+                    ForEach(offlineFavorites) { device in
+                        Button { settingsKnownDevice = device } label: {
+                            HStack(alignment: .top, spacing: 8) {
+                                Image(systemName: "star").foregroundStyle(.secondary)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(device.displayName).foregroundStyle(.primary).lineLimit(2)
+                                    Text(L10n.tr("未连接 · 点按管理设置"))
+                                        .font(.caption).foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }.padding(.vertical, 4)
+                        }.buttonStyle(.plain)
+                    }
+                }
+            }
+
             Section(L10n.tr("连接提示")) {
                 Button { openWindow(id: "wireless") } label: {
                     Label(L10n.tr("无线连接手机…"), systemImage: "wifi")
@@ -60,6 +95,8 @@ struct SidebarView: View {
             .foregroundStyle(.secondary)
         }
         .listStyle(.sidebar)
+        .sheet(item: $settingsDevice) { device in DevicePreferencesSheet(store: store, device: device) }
+        .sheet(item: $settingsKnownDevice) { device in DevicePreferencesSheet(store: store, knownDevice: device) }
         .safeAreaInset(edge: .bottom) {
             HStack(spacing: 8) {
                 Circle()
@@ -85,6 +122,9 @@ struct SidebarView: View {
 private struct DeviceRow: View {
     @ObservedObject private var language = LanguageStore.shared
     let device: AndroidDevice
+    let displayName: String
+    let displaySerial: String?
+    let favorite: Bool
     let sessionState: MirrorSessionState
     let isSelected: Bool
     let onSelectionChanged: (Bool) -> Void
@@ -97,9 +137,11 @@ private struct DeviceRow: View {
                 set: onSelectionChanged
             )) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(device.displayName)
-                        .lineLimit(1)
-                    Text("\(device.transport) · \(device.state.title) · \(device.serial)")
+                    HStack(spacing: 4) {
+                        Text(displayName).lineLimit(1)
+                        if favorite { Image(systemName: "star.fill").font(.caption2).foregroundStyle(.orange) }
+                    }
+                    Text([device.transport, device.state.title, displaySerial].compactMap { $0 }.joined(separator: " · "))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -107,7 +149,7 @@ private struct DeviceRow: View {
                 }
             }
             .toggleStyle(.checkbox)
-            .help("\(device.logLabel)\n\(device.detailText)")
+            .help("\(displayName)\n\(device.transport) · \(device.state.title)")
             Spacer(minLength: 4)
             Image(systemName: sessionState.symbolName)
                 .font(.caption)

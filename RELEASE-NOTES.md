@@ -1,4 +1,54 @@
-# 镜连 MirrorLink 0.4.4 — 中英文界面 / English and Chinese（免费社区版）
+# 镜连 MirrorLink 0.5.0 — 设备偏好与实用工具 / Device Preferences and Tools（免费社区版）
+
+版本 / Version：**0.5.0 / Build 10**。新增每台设备的设置与工具，保留中英文界面、原生画质档位、无线配对、多设备独立会话和签名更新。
+
+## 本次新增
+
+- **设备偏好与常用设备**：保存昵称、收藏、独立画质或跟随全局、声音、自动恢复、演示模式、全屏与置顶。离线收藏仍可查看和编辑。只有已确认的硬件身份可以持久记忆；未确认身份的无线地址不能收藏或自动恢复。重置/忘记只清除镜连偏好，不撤销 ADB 配对或删除手机数据。
+- **截图与录屏**：截图保存原始 PNG，随后可复制或在访达中查看；录屏保存手机传来的视频流为 MP4。有音频的录屏使用 AAC，普通投屏保留默认音频编码，静音录屏不启动音频编码器。开始录屏会启动或重启该台投屏，结束录屏会保存并重新打开普通投屏，操作前需要确认，其他设备不受影响。只有收到完成信号并验证封装后才显示已保存；异常文件不会冒充完整录屏。
+- **手机导航**：每台设备提供“返回桌面”和“应用列表”，也可明确选择上滑兼容操作。部分 Android 桌面没有独立应用抽屉，标准指令与上滑都可能无效果，可直接在手机桌面查找应用。指令发送成功不等于已验证手机打开了抽屉，镜连不会更改手机桌面设置。
+- **连接自检与自动恢复**：自检检查内置工具、所选设备连接/授权、Android 版本、型号与屏幕尺寸，并显示处理建议。主动开启自动恢复后，意外断线时最多检查 3 次；只有原已授权硬件身份以原连接方式（USB/Wi-Fi）、原 ADB socket 重新出现在 ready 列表中，才重启投屏。可以取消；手动停止、正常关闭投屏窗口和退出应用会取消恢复。不会主动重新连接网络、重新配对、切换连接方式或猜测另一台手机。
+- **演示与窗口**：演示模式禁用手机控制、导航、文件写入和剪贴板自动同步，并隐藏界面及窗口标题中的设备序列号。关闭偏好后，正在运行的只读会话仍需重启才恢复控制。全屏、置顶及自动/并排/网格排列在下次启动相应窗口时应用，不移动现有窗口。
+- **文件工具**：显式选择文件后发送至该手机的 `Download/MirrorLink` 文件夹，单个文件最大 2 GB。APK 使用独立选择与确认入口，不覆盖已安装应用，冲突时安装失败。取消传输可能在手机留下部分文件；取消安装只是停止等待，不承诺撤销手机已执行的安装。
+- **本地反馈导出**：先预览受限、脱敏的版本/设备/会话信息，再保存 ZIP。默认没有原始日志或屏幕附件，不自动发送。附件只能由用户明确选择：最多 8 个普通图片/视频，单个不超过 512 MB、总计不超过 1 GB，不接受符号链接；附件画面和元数据不会自动脱敏。
+- **保存位置与语言**：设置中可选择并打开保存目录。截图直接保存到此处，录屏和反馈导出默认从此目录开始选择；更改设置不会移动已有文件。新增界面支持简体中文与 English。
+
+演示模式不会遮挡手机上的通知、密码或私人内容，截图和录屏也不绕过系统保护。连接自检不是实时画质监控，不测量实际码率、帧率或温度。本版保留原生超清/原生流畅/低负载兼容三档及分辨率下降提示，不承诺所有手机和网络都能长期达到目标码率、帧率或稳定超清。
+
+## What's new in 0.5.0
+
+- **Device preferences and favorites:** Save a nickname, favorite, individual or global quality, audio, reconnect, presentation, full-screen, and always-on-top settings. Offline favorites remain editable. Persistent settings require a verified hardware identity; an unidentified wireless address cannot become a favorite or recovery target. Resetting or forgetting settings does not revoke ADB pairing or delete phone data.
+- **Screenshots and recordings:** Save original PNG screenshots, copy them, or reveal them in Finder. Record the incoming video stream as MP4. Recordings with audio use AAC; ordinary mirroring keeps its default audio codec, and silent recordings do not start an audio encoder. Starting recording starts or restarts only that device; stopping recording saves it and reopens ordinary mirroring, after confirmation. Other devices are unaffected. A recording is shown as saved only after completion and container checks; interrupted files are not reported as complete.
+- **Phone navigation:** Each device has Home and App Drawer controls, plus an explicit upward-swipe alternative. Some Android launchers have no separate app drawer, so both methods may have no effect; look for apps on the phone's home screen instead. Sending a command does not prove the drawer appeared, and MirrorLink does not change launcher settings.
+- **Connection checks and recovery:** Inspect local tools, device connection/authorization, Android version, model, and screen size. Optional recovery checks at most three times after an unexpected disconnect. It resumes mirroring only when the same authorized hardware identity reappears as ready, using the original USB/Wi-Fi transport and ADB socket. Manual stop, normal mirror-window closure, and app exit cancel recovery. It does not actively reconnect network endpoints, re-pair, switch transports, or guess another phone.
+- **Presentation and windows:** Presentation mode disables phone control, navigation, file writes, and automatic clipboard sync, and hides device serial numbers in the interface and titles. Turning the preference off does not unlock an existing read-only session until it restarts. Full-screen, always-on-top, and automatic/side-by-side/grid layouts apply when sessions start; existing windows are not rearranged.
+- **File tools:** Explicitly selected files go to the phone's `Download/MirrorLink` folder, with a 2 GB limit per file. APK installation has its own selection and confirmation and does not overwrite installed apps. Canceling a transfer may leave a partial file; canceling installation stops waiting and does not promise to undo phone-side work.
+- **Local feedback export:** Preview redacted, limited version/device/session information before saving a ZIP. Raw logs and screen attachments are excluded by default; nothing is sent automatically. Explicitly selected attachments are limited to eight regular images/videos, 512 MB each and 1 GB total, with no symbolic links. Attachment images and metadata are not redacted.
+- **Save location and language:** Choose and open a save folder in Settings. Screenshots save there; recording and feedback dialogs start there and allow another location. Existing files are not moved. New controls support English and Simplified Chinese.
+
+Presentation mode does not conceal phone notifications or private content, and capture tools do not bypass protected content. Connection checks do not measure live bitrate, frame rate, or temperature. The existing native-resolution quality profiles and resolution warnings remain; target bitrate/frame rate and sustained clarity are not guaranteed on every device or network.
+
+## 0.5.0 安装与更新 / Installation and updates
+
+完整安装包命名为 `MirrorLink-0.5.0-macOS-universal.dmg` 和 `MirrorLink-0.5.0-macOS-universal.zip`，二选一，打开或解压后将 `MirrorLink.app` 拖入“应用程序”。不要用 Source code 或更新专用 ZIP 安装。覆盖旧版前停止投屏、取消等待恢复，确认录屏已保存，⌘Q 退出并保留旧版备份。需要 macOS 13+；Universal 包包含 Apple Silicon 与 Intel 架构，手机需为已授权 Android，无线配对需要 Android 11+。不支持 iPhone 或 Windows。
+
+Use either the complete DMG or ZIP named above, then move **MirrorLink.app** to **Applications**. Do not use source archives or the update-only ZIP as an installer. Before replacing an existing app, stop mirroring/recovery, confirm recordings are saved, quit with **⌘Q**, and keep a backup. Requires **macOS 13+** and an authorized Android phone; wireless pairing requires **Android 11+**. Universal binaries include Apple Silicon and Intel. This is not an iPhone or Windows client.
+
+**免费社区版没有 Apple Developer ID 签名或 Apple 公证。** 应用使用 ad-hoc 完整性签名，更新包和清单继续使用原有 Sparkle Ed25519 密钥验证。首次打开流程与系统警告的区别见 [README 安装说明](README.md#首次打开的-macos-安全提示)。不要关闭系统安全检查或移除下载隔离标记；受管理 Mac 可能无法安装。
+
+**This community build is not Developer ID signed or notarized by Apple.** It uses an ad-hoc integrity signature and the existing Sparkle Ed25519 key for signed updates. Follow the [README installation guidance](README.md#english-quick-start) for first-launch security messages. Keep system security checks enabled and do not remove quarantine attributes. Managed Macs may prohibit installation.
+
+Build 10 高于 0.4.4 的 Build 9，但只有公开了完整安装包、更新包与签名清单后，已有更新器才能获取本版。相同 Build 10 的本地预览包不触发同版本升级，需要时手动安装完整社区包。源码版本号不等于已发布，公开资产及更新验证状态以 [UPDATE-QA.md](UPDATE-QA.md) 为准。
+
+Build 10 is newer than 0.4.4 / Build 9, but in-app delivery requires the release assets and signed feed to be published. A local preview already on Build 10 does not receive a same-build update; install the complete community package manually if needed. Source version numbers are not proof of publication. See [UPDATE-QA.md](UPDATE-QA.md) for release and upgrade evidence.
+
+## 0.5.0 验证边界 / Validation scope
+
+设备工具、偏好、恢复、录屏与 UI 的检查结果和本次真机证据分别记录在 [TOOLS-QA.md](TOOLS-QA.md)、[QUALITY-QA.md](QUALITY-QA.md)、[LOCALIZATION-QA.md](LOCALIZATION-QA.md) 与 [UPDATE-QA.md](UPDATE-QA.md)。模拟子进程只能证明相应逻辑路径；构建、截图文件或验签也不能替代多台真机实际画面、长时间无线/动态画质、陌生 Mac、Intel 真机或完整应用内升级验收。本节不沿用旧版测试数量作为本次复验结果。
+
+See the linked QA records for this version's device tools, preferences, recovery, recording, UI, and real-device evidence. Simulated processes establish only the exercised logic paths. Builds, screenshot files, and signature checks do not substitute for multi-phone visual checks, prolonged wireless/dynamic-content tests, unfamiliar Macs, Intel hardware, or a complete in-app upgrade. Historical test counts below are not current-version results.
+
+## 历史：0.4.4 — 中英文界面 / English and Chinese（免费社区版）
 
 版本 / Version：**0.4.4 / Build 9**。本次新增应用界面本地化，保留现有画质、无线配对、多设备会话和更新安全机制。
 
@@ -8,13 +58,13 @@
 - 手机名称、序列号、发现服务、地址、历史日志和第三方原始错误保持原文，便于排查；不将外部文本强制翻译。
 - 将中英文文案分别收纳到 `zh-Hans.lproj` 和 `en.lproj` 资源目录，并在 README 增加 English Quick Start 与语言切换说明。
 
-## English summary
+### 0.4.4 English summary
 
 MirrorLink now supports **English and Simplified Chinese**. Open **MirrorLink → Settings…** (**⌘,**), find **“语言 / Language”**, and choose **English**, **简体中文**, or **跟随系统 / System**. The choice is saved. MirrorLink’s interface updates immediately without interrupting active sessions or clearing device selections and connection fields.
 
 Existing scrcpy window titles switch when their next session starts. Native window titles, menus, and Sparkle update dialogs may need an app relaunch; macOS and helper dialogs can follow the system language. Device names, existing logs, and third-party error details remain unchanged. The existing video quality profiles, wireless pairing, multi-device isolation, and signed-update verification are preserved.
 
-## 0.4.4 下载与安装 / Installation
+### 0.4.4 下载与安装 / Installation
 
 完整安装文件为 `MirrorLink-0.4.4-macOS-universal.dmg` 或 `MirrorLink-0.4.4-macOS-universal.zip`，二选一，打开或解压后将 `MirrorLink.app` 拖入“应用程序”。覆盖旧版前停止投屏、⌘Q 退出并保留备份；不要使用 Source code 或更新专用 ZIP 作为安装包。需要 macOS 13+；支持 Android USB 调试与 Android 11+ 无线调试配对，不支持 iPhone 或 Windows。
 
@@ -26,7 +76,7 @@ Download the complete DMG or ZIP, open it, and move **MirrorLink.app** to **Appl
 
 0.4.4 的 Build 9 高于 0.4.3 的 Build 8，安装包与签名清单公开后可由已有更新器检查获取。同为 Build 9 的本地预览包不构成版本升级，需要时手动安装完整社区包。
 
-## 0.4.4 验证边界 / Validation
+### 0.4.4 验证边界 / Validation
 
 本次核心检查、**74 项会话检查、137 项无线检查、28 项更新策略检查及 1,434 项本地化断言**通过，双架构构建与完整签名校验通过。本机原生窗口已验证中英文切换、设置持久化、主窗口与设置排版、手动表单保留和已有无线发现提示更新；修复了英文侧栏说明截断。活动投屏期间的切换由模拟会话覆盖，未作为新增真机验收。记录见 [LOCALIZATION-QA.md](LOCALIZATION-QA.md) 与 [UPDATE-QA.md](UPDATE-QA.md)。此前画质、无线与发行验收限制继续适用。
 
