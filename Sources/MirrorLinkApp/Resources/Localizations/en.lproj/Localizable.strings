@@ -1,4 +1,9 @@
 /* MirrorLink UI and application messages. Only %@ placeholders are used. */
+"“USB 调试”和“无线调试”是两个开关。已在镜连配对过的手机，请选择“发现手机”；只有首次使用或授权被撤销时才需要重新配对。" = "USB debugging and Wireless debugging are separate switches. If this phone was already paired in MirrorLink, choose Discover Phones. Pair again only for first use or if authorization was revoked.";
+"首次使用：扫码配对" = "First time? Pair with QR";
+"使用地址连接" = "Connect by address";
+"检查本地网络权限" = "Check Local Network Permission";
+"无法访问手机的无线调试端口。请在 macOS“系统设置 → 隐私与安全 → 本地网络”中允许 MirrorLink，并检查 VPN、访客网络或设备隔离；权限已开启仍失败时，可导出问题反馈以检查 ADB 后台状态。" = "The phone's wireless debugging port is unreachable. Allow MirrorLink in macOS System Settings → Privacy & Security → Local Network, and check VPN, guest network or device isolation settings. If access is already allowed, export a feedback package to help diagnose the ADB background service.";
 "" = "";
 "%@ · H.264 · 缓冲 %@ ms" = "%@ · H.264 · Buffer %@ ms";
 "%@ · 目标 %@ Mbps · 上限 %@ fps" = "%@ · Target %@ Mbps · Up to %@ fps";

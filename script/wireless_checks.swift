@@ -5,7 +5,7 @@ import Darwin
 private struct Failure: Error, CustomStringConvertible { let description: String }
 
 private final class FakeADB: @unchecked Sendable {
-    enum Scenario { case ready, pairFailure, connectFailure, otherPhone, alias, offline, discoveryFailure, discoveryEmpty, timeout }
+    enum Scenario { case ready, pairFailure, connectFailure, otherPhone, alias, offline, discoveryFailure, discoveryEmpty, timeout, unreachable }
     struct Call { let arguments: [String]; let input: String?; let timeout: TimeInterval }
     private let lock = NSLock()
     private var scenario: Scenario = .ready
@@ -31,6 +31,7 @@ private final class FakeADB: @unchecked Sendable {
             ProcessResult(status: status, stdout: output, stderr: "", timedOut: timedOut)
         }
         if scenario == .timeout { return result("", timedOut: true) }
+        if scenario == .unreachable { return result("failed to connect: No route to host") }
         if arguments.first == "pair" {
             // A tiny delay makes repeat-click checks deterministic.
             Thread.sleep(forTimeInterval: 0.04)
@@ -82,6 +83,11 @@ struct WirelessChecks {
 
     static func main() async {
         do {
+            if CommandLine.arguments.contains("--live-bonjour") {
+                let services = await Task.detached { BonjourWirelessDiscovery.discover(cancellation: nil) }.value
+                print("Live Bonjour: \(services.filter { $0.kind == .connection }.count) connection / \(services.filter { $0.kind == .pairing }.count) pairing services; no connection or pairing attempted")
+                return
+            }
             try await run()
             try await WirelessQRChecks.run()
             print("PASS: \(passed) simulated wireless checks (not real Wi-Fi/video acceptance)")
@@ -133,6 +139,7 @@ struct WirelessChecks {
 
         let root = URL(fileURLWithPath: "/tmp/test-only-wireless")
         let paths = ToolPaths(root: root, adb: root, scrcpy: root, server: root)
+        try checkBonjourDiscovery(paths: paths)
         let fake = FakeADB()
         let service = WirelessADBService(paths: paths, execute: { fake.run($0, $1, $2) })
         let paired = try WirelessEndpoint("192.168.1.8:37123")
@@ -163,6 +170,10 @@ struct WirelessChecks {
             fake.set(scenario)
             try check((try? service.connect(endpoint: endpoint).get()) == nil, "reject failed/other-target/offline/timed-out connection")
         }
+        fake.set(.unreachable)
+        if case let .failure(error) = service.connect(endpoint: endpoint) {
+            try check(error.localizedDescription.contains("本地网络") && !error.localizedDescription.contains("配对端口"), "network denial offers permission recovery rather than blaming the pairing port")
+        } else { throw Failure(description: "accepted unreachable connection") }
         fake.set(.discoveryFailure)
         try check(service.discover().services.isEmpty && service.discover().warning != nil, "failed discovery offers manual fallback")
 
@@ -200,10 +211,45 @@ struct WirelessChecks {
 
         let stdin = ProcessRunner.run(executablePath: "/bin/cat", arguments: [], standardInput: "fixture\n", timeout: 2)
         try check(stdin.succeeded && stdin.stdout == "fixture\n", "real subprocess stdin and EOF plumbing works")
+        let environment = ProcessRunner.run(executablePath: "/usr/bin/printenv", arguments: ["ADB_MDNS"], timeout: 2)
+        try check(environment.succeeded && environment.stdout == "0\n", "newly launched ADB commands use native discovery without the Rust mDNS backend")
         let earlyExit = ProcessRunner.run(executablePath: "/usr/bin/true", arguments: [], standardInput: "fixture\n", timeout: 2)
         try check(earlyExit.succeeded, "child rejecting stdin cannot terminate the host")
         let timeout = ProcessRunner.run(executablePath: "/bin/sleep", arguments: ["2"], timeout: 0.05)
         try check(timeout.timedOut && !timeout.succeeded, "hung process deadline enforced")
+    }
+
+    private static func checkBonjourDiscovery(paths: ToolPaths) throws {
+        var ipv4 = sockaddr_in()
+        ipv4.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        ipv4.sin_family = sa_family_t(AF_INET)
+        _ = inet_pton(AF_INET, "192.168.1.8", &ipv4.sin_addr)
+        let data4 = withUnsafeBytes(of: &ipv4) { Data($0) }
+        try check(BonjourWirelessDiscovery.endpoint(address: data4, port: 39847)?.address == "192.168.1.8:39847", "Bonjour decodes numeric IPv4 with the advertised service port")
+        var ipv6 = sockaddr_in6()
+        ipv6.sin6_len = UInt8(MemoryLayout<sockaddr_in6>.size)
+        ipv6.sin6_family = sa_family_t(AF_INET6)
+        ipv6.sin6_scope_id = 1
+        _ = inet_pton(AF_INET6, "fe80::8", &ipv6.sin6_addr)
+        let data6 = withUnsafeBytes(of: &ipv6) { Data($0) }
+        let endpoint6 = BonjourWirelessDiscovery.endpoint(address: data6, port: 39847)
+        try check(endpoint6?.host.hasPrefix("fe80::8%") == true, "Bonjour preserves IPv6 link-local interface scope")
+        try check(BonjourWirelessDiscovery.endpoint(address: Data(), port: 1) == nil && BonjourWirelessDiscovery.endpoint(address: data4, port: 0) == nil, "Bonjour rejects malformed addresses and invalid ports")
+        _ = inet_pton(AF_INET, "127.0.0.1", &ipv4.sin_addr)
+        let loopback = withUnsafeBytes(of: &ipv4) { Data($0) }
+        try check(BonjourWirelessDiscovery.endpoint(address: loopback, port: 39847) == nil, "Bonjour cannot introduce loopback targets")
+        let candidate = WirelessService(name: "fixture-bonjour", kind: .connection, endpoint: try WirelessEndpoint("192.168.1.8:39847"))
+        let nativeOnly = WirelessADBService(paths: paths, execute: { _, _, _ in ProcessResult(status: 0, stdout: "List of discovered mdns services\n", stderr: "", timedOut: false) }, nativeDiscovery: { _ in [candidate] })
+        try check(nativeOnly.discover().services == [candidate] && nativeOnly.discover().warning == nil, "native Bonjour recovers an empty shared ADB mDNS cache")
+        let brokenADB = WirelessADBService(paths: paths, execute: { _, _, _ in ProcessResult(status: 1, stdout: "", stderr: "failed", timedOut: false) }, nativeDiscovery: { _ in [candidate] })
+        try check(brokenADB.discover().services == [candidate] && brokenADB.discover().warning == nil, "native Bonjour works even when ADB mDNS command fails")
+        let merged = WirelessADBService(paths: paths, execute: { _, _, _ in ProcessResult(status: 0, stdout: "fixture-bonjour _adb-tls-connect._tcp 192.168.1.8:39847\nother _adb-tls-connect._tcp 192.168.1.9:39847", stderr: "", timedOut: false) }, nativeDiscovery: { _ in [candidate] })
+        try check(merged.discover().services.count == 2, "native and ADB services merge without duplicate rows or hiding other devices")
+        let token = ProcessCancellation()
+        token.cancel()
+        try check(nativeOnly.discover(cancellation: token).services.isEmpty, "cancelled discovery cannot publish late native candidates")
+        let started = Date()
+        try check(BonjourWirelessDiscovery.discover(cancellation: token).isEmpty && Date().timeIntervalSince(started) < 0.2, "cancelled native scan launches no browser or blocking wait")
     }
 
     private static func checkLocalizedMessages(paths: ToolPaths) async throws {

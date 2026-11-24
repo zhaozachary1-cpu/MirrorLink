@@ -46,6 +46,7 @@ struct ScrcpyCommand {
     func environment(for device: AndroidDevice) -> [String: String] {
         [
             "ADB": paths.adb.path,
+            "ADB_MDNS": "0",
             "SCRCPY_SERVER_PATH": paths.server.path,
             "SCRCPY_ICON_DIR": paths.server.deletingLastPathComponent().path,
             "ANDROID_SERIAL": device.serial,

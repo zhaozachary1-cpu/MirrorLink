@@ -12,7 +12,10 @@ sources for scrcpy 4.1, FFmpeg 8.1.2, SDL 3.4.12, libusb 1.0.30, dav1d 1.5.3 and
 zlib 1.3.2, the complete licenses collected here, and a hash/URL manifest.
 `script/prepare_third_party.sh` retrieves and verifies the pinned materials;
 it compares both bundled architectures with upstream's official scrcpy archives
-and compares ADB with Google's exact Platform-Tools 37.0.0 archive.
+and compares the original vendor ADB with Google's exact Platform-Tools 37.0.0 archive.
+Final apps use the independently pinned universal ADB from Google's Platform-Tools
+37.0.1 archive; the preparation script verifies those bytes separately and
+includes both versions' notices. The bundled source.properties describes 37.0.1.
 
 The scrcpy 4.1 source archive corresponds to upstream commit
 `2926c06c5dc3064ae6d8db706f1a98a37cfcf3f0`. Its `release/build_macos.sh` and

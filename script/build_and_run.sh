@@ -128,7 +128,13 @@ for version_key in CFBundleVersion CFBundleShortVersionString; do
 done
 lipo -create "$ROOT_DIR/work/native-runtime/bin/scrcpy-arm64" "$ROOT_DIR/work/native-runtime/bin/scrcpy-x86_64" -output "$PHONE_APP/Contents/MacOS/scrcpy"
 ln -s ../Helpers/MirrorLinkWindow.app/Contents/MacOS/scrcpy "$MACOS_DIR/scrcpy"
-cp "$ARM_TOOLS/adb" "$MACOS_DIR/adb"
+# Keep scrcpy's original vendor archives intact, but use the separately pinned
+# Platform-Tools update. Native Bonjour replaces the mDNS driver, which was
+# observed aborting on this Mac with both 37.0.0 and 37.0.1.
+[[ "$(shasum -a 256 "$ROOT_DIR/vendor/platform-tools/adb" | cut -d ' ' -f1)" == 1811e253b21b12cbfda7201ebaf86c10e7ddcb5c606a7a81f7c82b4c429c2d3b ]] || {
+  print -u2 'Pinned Platform-Tools ADB checksum mismatch'; exit 1
+}
+cp "$ROOT_DIR/vendor/platform-tools/adb" "$MACOS_DIR/adb"
 cp "$ARM_TOOLS/scrcpy-server" "$RESOURCES_DIR/scrcpy-server"
 cp "$ARM_TOOLS/scrcpy.png" "$RESOURCES_DIR/scrcpy.png"
 cp "$ARM_TOOLS/disconnected.png" "$RESOURCES_DIR/disconnected.png"

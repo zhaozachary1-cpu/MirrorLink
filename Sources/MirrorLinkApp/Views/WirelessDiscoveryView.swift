@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct WirelessDiscoveryView: View {
     @ObservedObject private var language = LanguageStore.shared
@@ -22,11 +23,18 @@ struct WirelessDiscoveryView: View {
                     .font(.callout).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if store.visibleServices.isEmpty {
-                    Label(store.discoveryMessage ?? (store.isDiscovering ? L10n.tr("正在发现手机…") : L10n.tr("暂未发现手机，请保持手机的无线调试开启。")),
+                    Label(store.isBusy ? L10n.tr("正在连接并确认手机状态…") : (store.discoveryMessage ?? (store.isDiscovering ? L10n.tr("正在发现手机…") : L10n.tr("暂未发现手机，请保持手机的无线调试开启。"))),
                           systemImage: "antenna.radiowaves.left.and.right")
                         .font(.callout).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.vertical, 12)
+                    if connectsDirectly {
+                        HStack {
+                            Button(L10n.tr("首次使用：扫码配对")) { store.selectMode(.qr) }
+                            Button(L10n.tr("使用地址连接")) { store.selectMode(.manual); store.step = .connection }
+                        }
+                        .disabled(store.isBusy)
+                    }
                 }
                 ForEach(store.visibleServices) { candidate in
                     HStack(spacing: 12) {
@@ -43,6 +51,12 @@ struct WirelessDiscoveryView: View {
                         .disabled(store.isBusy)
                     }
                 }
+                Button(L10n.tr("检查本地网络权限")) {
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_LocalNetwork") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                .buttonStyle(.link)
             }.padding(8)
         }
     }

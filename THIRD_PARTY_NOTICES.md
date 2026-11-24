@@ -4,14 +4,14 @@ MirrorLink 自有代码和文档采用根目录 [LICENSE](LICENSE) 中的 Apache
 
 ## 固定运行时与证据
 
-本项目基于 [Genymobile/scrcpy v4.1](https://github.com/Genymobile/scrcpy/tree/v4.1)。0.5.1 起从锁定源码重编 macOS arm64/x86_64 客户端，加入 MirrorLink 原生投屏工具栏；修改及构建配置见 `vendor/mirror-window/`，构建入口为 `script/build_scrcpy.sh`。服务器、图像与 Google Platform-Tools 37.0.0 ADB 保持上游内容。仓库保留的两套原始 vendor 运行时仍与官方归档逐字节核对，它们不是 0.5.1 的最终客户端。下载与源码 SHA-256 见 [vendor/third-party-sources.tsv](vendor/third-party-sources.tsv)，原始运行时清单见 [vendor/runtime-manifest.sha256](vendor/runtime-manifest.sha256)。
+本项目基于 [Genymobile/scrcpy v4.1](https://github.com/Genymobile/scrcpy/tree/v4.1)。0.5.1 起从锁定源码重编 macOS arm64/x86_64 客户端，加入 MirrorLink 原生投屏工具栏；修改及构建配置见 `vendor/mirror-window/`，构建入口为 `script/build_scrcpy.sh`。服务器与图像保持上游内容。0.5.3 起最终应用改用 Google Platform-Tools 37.0.1 的原始通用 ADB，固定在 `vendor/platform-tools/adb`，以替换本机发生 mDNS 线程崩溃的 37.0.0。仓库保留的两套原始 scrcpy vendor 运行时仍与官方归档逐字节核对，但它们不是最终客户端及最终 ADB 的选择。下载与源码 SHA-256 见 [vendor/third-party-sources.tsv](vendor/third-party-sources.tsv)，运行时清单见 [vendor/runtime-manifest.sha256](vendor/runtime-manifest.sha256)。
 
 scrcpy 4.1 对应上游提交 `2926c06c5dc3064ae6d8db706f1a98a37cfcf3f0`。下列库版本与上游依赖一致；MirrorLink 的两个客户端架构均静态链接 SDL、FFmpeg、libusb、dav1d 和 zlib，未启用 FFmpeg GPL 或 nonfree 选项。工具栏代码通过 Cocoa 连接当前 SDL 原生窗口，不修改视频流或申请辅助功能权限。
 
 | 组件 | 版本 | 主要许可证与随附文本 |
 | --- | --- | --- |
 | scrcpy / server / 上游图像 | 4.1 | Apache-2.0，保留原始 LICENSE，随应用为 NOTICE-scrcpy.txt |
-| ADB | 1.0.41 / 37.0.0-14910828 | Android 与各内置组件独立声明，完整 NOTICE-Android-Platform-Tools-37.0.0.txt |
+| ADB | 1.0.41 / 37.0.1-15733141 | Android 与各内置组件独立声明，完整 NOTICE-Android-Platform-Tools-37.0.1.txt；原始 vendor 归档仍保留 37.0.0 声明 |
 | FFmpeg | 8.1.2 | LGPL-2.1-or-later（本构建配置），FFmpeg-COPYING.LGPLv2.1 与完整 LICENSE.md |
 | SDL | 3.4.12 | zlib，SDL-LICENSE.txt |
 | libusb | 1.0.30 | LGPL-2.1-or-later，libusb-COPYING |

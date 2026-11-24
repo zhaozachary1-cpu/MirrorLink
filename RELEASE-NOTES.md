@@ -1,3 +1,19 @@
+# 镜连 MirrorLink 0.5.3 — 原生无线发现 / Native Wireless Discovery
+
+版本 / Version：**0.5.3 / Build 13**。
+
+- 使用 macOS 原生 Bonjour 发现无线调试服务，并与 ADB 发现结果合并去重；ADB mDNS 后台为空或报错时仍能显示原生发现的手机。只解析手机主动广播的调试服务，不扫描 IP 网段。
+- 内置 ADB 升级为 Google 官方 Platform-Tools 37.0.1，并固定官方归档与通用二进制哈希。实测 37.0.0 和 37.0.1 的内置 mDNS 线程均可能在本机崩溃，因此镜连新启动的 ADB 后台使用 `ADB_MDNS=0`，由原生 Bonjour 承担发现；不自动重启或修改已有共享后台。原有 scrcpy 运行时归档保留不变，新 ADB 的来源与许可单独核对。
+- 统一用于“发现手机”、手动地址选择及扫码服务发现；关闭窗口或切换方式后停止本次浏览，取消后不发布旧结果。双栈服务优先使用 IPv4，IPv6 保留接口范围。
+- 明确区分 USB 调试、无线调试和首次配对；发现页提供扫码、手动地址与本地网络权限设置入口。连接中的空列表不再误报未发现手机。
+- 无法访问端口时提示检查本地网络权限及网络环境，不再统一误导为连接端口填写错误。已有手机授权、目标 GUID 校验、USB、多设备与安静工具栏保持原有流程。
+
+**English:** Native macOS Bonjour discovery is merged with ADB results, so phones can appear even when the shared ADB mDNS cache is empty or fails. Bundled Platform-Tools 37.0.1 is pinned to Google's archive. Newly started ADB daemons use native discovery instead of ADB's crash-prone mDNS driver (`ADB_MDNS=0`); existing shared daemons are never restarted or reconfigured automatically. Discovery remains limited to advertised wireless debugging services. Recovery actions clarify first-time pairing and Local Network permission. No network permission reset or legacy TCP/5555 enablement is performed.
+
+真机证据与剩余连接限制见 WIRELESS-QA.md。此版本号本身不代表已公开发布，公开安装包以 GitHub Releases 为准。
+
+---
+
 # 镜连 MirrorLink 0.5.2 — 安静的操作反馈 / Quiet Toolbar Feedback（免费社区版）
 
 版本 / Version：**0.5.2 / Build 12**。

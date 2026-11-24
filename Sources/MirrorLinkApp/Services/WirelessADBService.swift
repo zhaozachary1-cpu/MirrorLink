@@ -21,9 +21,17 @@ struct WirelessDiscoveryResult: Sendable {
 struct WirelessADBService: Sendable {
     typealias Executor = @Sendable ([String], String?, TimeInterval) -> ProcessResult
     typealias CancellableExecutor = @Sendable ([String], String?, TimeInterval, ProcessCancellation?) -> ProcessResult
+    typealias NativeDiscovery = @Sendable (ProcessCancellation?) -> [WirelessService]
     private let run: CancellableExecutor
+    private let nativeDiscovery: NativeDiscovery
 
-    init(paths: ToolPaths, execute: Executor? = nil, cancellableExecute: CancellableExecutor? = nil) {
+    init(paths: ToolPaths, execute: Executor? = nil, cancellableExecute: CancellableExecutor? = nil,
+         nativeDiscovery: NativeDiscovery? = nil) {
+        // Injected ADB tests must never silently browse the real LAN.
+        if let nativeDiscovery { self.nativeDiscovery = nativeDiscovery }
+        else if execute == nil && cancellableExecute == nil {
+            self.nativeDiscovery = { BonjourWirelessDiscovery.discover(cancellation: $0) }
+        } else { self.nativeDiscovery = { _ in [] } }
         self.run = cancellableExecute ?? { arguments, input, timeout, cancellation in
             if let execute { return execute(arguments, input, timeout) }
             return ProcessRunner.run(
@@ -38,11 +46,19 @@ struct WirelessADBService: Sendable {
     }
 
     func discover(cancellation: ProcessCancellation? = nil) -> WirelessDiscoveryResult {
+        let native = nativeDiscovery(cancellation)
+        guard cancellation?.isCancelled != true else {
+            return WirelessDiscoveryResult(services: [], warningMessage: nil)
+        }
         let result = execute(["mdns", "services"], nil, 6, cancellation)
+        guard cancellation?.isCancelled != true else {
+            return WirelessDiscoveryResult(services: [], warningMessage: nil)
+        }
+        let services = WirelessService.merging(native + (result.succeeded ? ADBMDNSParser.parse(result.stdout) : []))
+        if !services.isEmpty { return WirelessDiscoveryResult(services: services, warningMessage: nil) }
         guard result.succeeded else {
             return WirelessDiscoveryResult(services: [], warningMessage: L10n.message("暂时无法发现手机。可手动填写地址；请检查 macOS 的本地网络权限、手机无线调试，以及 Wi-Fi 是否允许设备互访。"))
         }
-        let services = ADBMDNSParser.parse(result.stdout)
         return WirelessDiscoveryResult(services: services, warningMessage: services.isEmpty
             ? L10n.message("暂未发现手机。请开启手机的无线调试，并确认 Mac 与手机在同一 Wi-Fi；访客网络可能禁止设备互访。") : nil)
     }
@@ -136,6 +152,10 @@ struct WirelessADBService: Sendable {
                 : L10n.message("连接超时。请确认手机和 Mac 在同一 Wi-Fi，允许镜连访问本地网络，并检查访客网络、VPN 或路由器的设备隔离设置。"))
         }
         let diagnostic = (result.stdout + result.stderr).lowercased()
+        if diagnostic.contains("no route to host") || diagnostic.contains("network is unreachable")
+            || diagnostic.contains("operation not permitted") || diagnostic.contains("permission denied") {
+            return .localizedFailure(L10n.message("无法访问手机的无线调试端口。请在 macOS“系统设置 → 隐私与安全 → 本地网络”中允许 MirrorLink，并检查 VPN、访客网络或设备隔离；权限已开启仍失败时，可导出问题反馈以检查 ADB 后台状态。"))
+        }
         if !pairing && (diagnostic.contains("authenticate") || diagnostic.contains("authentication")) {
             return .localizedFailure(L10n.message("无线调试尚未授权或授权已失效。请先到“扫码配对”扫描二维码；不支持扫码时可使用手动配对。"))
         }

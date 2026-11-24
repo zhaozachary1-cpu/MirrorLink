@@ -16,6 +16,8 @@
 
 ## English Quick Start
 
+> 源码与本机修复验证已更新到 **0.5.3 / Build 13**：增加原生 Bonjour 发现并避免 ADB 内置发现模块崩溃，已观察到 V2520 的真实无线画面。本版候选安装包尚未公开，以上下载按钮仍对应公开版 0.5.2；验证边界见 [WIRELESS-QA.md](WIRELESS-QA.md)。Source and local validation are at 0.5.3 / Build 13; public downloads remain at 0.5.2 until the new release and upgrade path are validated.
+
 MirrorLink mirrors Android phones on a Mac over USB or authorized wireless debugging. It includes ADB and scrcpy; no Homebrew or separate tool installation is needed. Requires **macOS 13 or later**. The universal installer includes Apple Silicon and Intel binaries; Intel hardware acceptance testing remains incomplete. It does not support iPhone mirroring or Windows.
 
 1. [Download MirrorLink 0.5.2 for macOS (DMG)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.2/MirrorLink-0.5.2-macOS-universal.dmg), open it, and drag **MirrorLink.app** to **Applications**. An alternative [complete ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.2/MirrorLink-0.5.2-macOS-universal.zip) is available. Do not use “Source code” or the update-only ZIP as an installer. Before replacing an existing copy, stop mirroring, quit with **⌘Q**, and keep a backup.
@@ -138,7 +140,7 @@ Optional recovery checks at most three times after an unexpected disconnect. Mir
 
 关闭主窗口不会退出镜连或停止现有投屏。可以点击 Dock 图标，或通过“投屏 → 显示主窗口”（⌘0）重新打开控制窗口；退出应用仍使用 ⌘Q。0.4.2 的故障原因、回归结果与未验收范围见 [STABILITY-QA.md](STABILITY-QA.md)。
 
-### 同 Wi-Fi 无线投屏（0.4.1）
+### 同 Wi-Fi 无线投屏
 
 需要 Android 11+ 且手机提供“无线调试”选项。首次配对不需要 USB 线，但仍须在手机上明确授权；仅加入同一 Wi-Fi 不会自动获得投屏权限。
 
@@ -147,15 +149,19 @@ Optional recovery checks at most three times after an unexpected disconnect. Mir
 3. 镜连默认显示“扫码配对”。在手机点“使用二维码配对设备”，扫描电脑上的二维码。**使用手机“无线调试”里的扫码入口，不是微信或普通相机。** 无需手填 IP、端口或六位配对码；电脑会主动发现扫码的手机，完成配对后核对身份并请求开始投屏，实际画面以主窗口结果为准。
 4. 以后打开“发现手机”，应用会每 4 秒刷新附近开启无线调试的手机。对已授权此 Mac 的手机点击“连接并投屏”即可；主列表中已连接的 Wi-Fi 手机也可以直接选择并开始投屏。发现服务不代表手机已授权，授权被撤销后仍须重新扫码。
 
+**USB 调试与无线调试是两个独立开关。** 已经配对过的手机应使用“发现手机”，不必反复扫描二维码。0.5.3 起同时使用 macOS 原生 Bonjour 与 ADB 的发现结果，修复 ADB 的 mDNS 列表为空、同一网络中的手机实际存在却无法显示的问题。两条发现通道合并去重；镜连新启动的 ADB 后台使用 `ADB_MDNS=0` 避免本机复现的内置发现模块崩溃，由 Bonjour 继续发现手机。此配置不改变运行中的共享后台，不更改加密配对。配对码和连接端口仍严格分开处理，发现不会自动授权或连接其他手机。
+
 手机不提供扫码入口时，使用“手动连接 → 首次配对”：填写手机配对码弹窗中的 IP、配对端口和 6 位配对码。成功后回到手机“无线调试”的**主页面**，将该页 IP 和连接端口填入“连接手机”。**连接端口与配对端口用途不同。** 网络无法自动发现时，已配对的手机也可在这里手填连接地址。切换网络、重开无线调试或重启手机后端口可能变化，以手机当前显示为准。
 
 每台手机单独配对后，可以同时投屏多台无线手机，也可以混用 USB 与 Wi-Fi。能取得硬件序列号时，同一手机的两种连接会合并为一个设备；正在运行的窗口不会被刷新或新连接偷偷切换。如果原窗口仍用 USB，请先停止该手机的投屏再开始，以切换到就绪的 Wi-Fi 连接。
 
 发现不到手机时，可手动填入地址；检查手机是否仍开启无线调试、macOS 是否允许本地网络访问，以及访客 Wi-Fi、路由器设备隔离或 VPN 是否阻止互访。没有无线调试选项的机型继续使用 USB，本版本不会自动打开旧式 5555 端口或修改手机安全设置。
 
+“发现手机”与手动页面提供“检查本地网络权限”入口。点击后检查 **系统设置 → 隐私与安全 → 本地网络 → MirrorLink**；部分系统只打开隐私与安全总页，需再点“本地网络”。如果手机已经出现但连接提示无法访问端口，不能据此认定配对码错误：即使界面权限已开启，旧 ADB 后台仍可能被系统阻止。请先保存其他软件的调试工作，必要时重启 Mac 后重试，或导出本地问题反馈进一步诊断。镜连不会自动重启共享 ADB、重置网络权限或关闭系统保护。
+
 二维码在本机生成，是本次临时授权凭据，请勿分享或截图转发；每次生成都会更换，120 秒内有效，开始配对即隐藏。二维码密码和手动配对码仅在本次操作内存中使用，通过标准输入传给 ADB，不写入参数、日志、设置、剪贴板或 Git，不发送给外部二维码服务。关闭窗口、切换方式或停止操作会取消本次发现及自动连接；ADB 仍会维护已完成的配对授权，不会因此自动撤销，可在手机中忘记此电脑。仅在可信网络使用，用完可在手机关闭无线调试；停止镜连投屏不会擅自断开其他软件的 ADB 连接。
 
-支持 macOS 13+，不包含 iPhone 或 Windows 客户端。不设置固定并行台数上限；实际流畅数量取决于 Mac 性能、Wi-Fi 质量、USB 带宽和手机编码能力。0.4.1 的模拟测试、构建结果与待完成的真机验收分开记录在 [WIRELESS-QA.md](WIRELESS-QA.md)，不能将测试脚本通过等同于无线画面已经验收。
+支持 macOS 13+，不包含 iPhone 或 Windows 客户端。不设置固定并行台数上限；实际流畅数量取决于 Mac 性能、Wi-Fi 质量、USB 带宽和手机编码能力。当前单台无线画面证据、模拟测试与尚未完成的首次扫码 / 多台真机验收分开记录在 [WIRELESS-QA.md](WIRELESS-QA.md)，不能将测试脚本通过等同于全部无线场景已经验收。
 
 ## 应用更新
 

@@ -39,6 +39,10 @@ enum ProcessRunner {
         }
 
         var environment = ProcessInfo.processInfo.environment
+        // Native Bonjour owns discovery. ADB 37's Rust mDNS driver can abort
+        // on macOS; this affects only a daemon started by this command and
+        // never reconfigures or restarts an existing shared daemon.
+        environment["ADB_MDNS"] = "0"
         for (key, value) in environmentOverrides {
             environment[key] = value
         }

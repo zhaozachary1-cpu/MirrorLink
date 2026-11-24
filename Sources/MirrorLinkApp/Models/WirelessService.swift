@@ -12,6 +12,13 @@ struct WirelessService: Identifiable, Hashable, Sendable {
 
     var id: String { "\(name)|\(kind.rawValue)|\(endpoint.address)" }
     var adbSerial: String { "\(name).\(kind.rawValue)" }
+
+    static func merging(_ services: [WirelessService]) -> [WirelessService] {
+        var seen = Set<String>()
+        return services.filter { seen.insert($0.id).inserted }.sorted {
+            $0.id.localizedStandardCompare($1.id) == .orderedAscending
+        }
+    }
 }
 
 enum ADBMDNSParser {

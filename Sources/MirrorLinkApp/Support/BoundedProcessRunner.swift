@@ -24,6 +24,7 @@ enum BoundedProcessRunner {
         process.standardOutput = output
         process.standardError = errors
         var childEnvironment = ProcessInfo.processInfo.environment
+        childEnvironment["ADB_MDNS"] = "0"
         // Explicit route wins over inherited port/address and serial settings.
         for key in ["ANDROID_SERIAL", "ANDROID_ADB_SERVER_PORT", "ANDROID_ADB_SERVER_ADDRESS", "ADB_SERVER_SOCKET"] {
             childEnvironment.removeValue(forKey: key)

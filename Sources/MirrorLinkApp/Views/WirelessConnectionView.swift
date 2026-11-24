@@ -13,6 +13,9 @@ struct WirelessConnectionView: View {
                 Text(L10n.tr("手机与 Mac 连接同一 Wi-Fi。在手机“开发者选项”中开启“无线调试”（Android 11+）。首次扫码授权，以后可发现并连接。"))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                Text(L10n.tr("“USB 调试”和“无线调试”是两个开关。已在镜连配对过的手机，请选择“发现手机”；只有首次使用或授权被撤销时才需要重新配对。"))
+                    .font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Picker(L10n.tr("连接方式"), selection: Binding(get: { store.mode }, set: { store.selectMode($0) })) {
                     ForEach(WirelessConnectionMode.allCases, id: \.self) { mode in

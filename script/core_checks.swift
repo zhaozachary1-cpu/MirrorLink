@@ -22,6 +22,7 @@ struct MirrorLinkCoreChecks {
         precondition(Array(defaultArguments.prefix(4)) == ["-s", "ABC123", "--window-title=镜连 · Pixel 6 · ABC123", "--no-terminal-title"], "scrcpy device and log arguments")
         precondition(defaultArguments.contains("--video-bit-rate=24M") && defaultArguments.contains("--max-size=0") && defaultArguments.contains("--max-fps=30"), "default native clarity is explicit")
         precondition(command.environment(for: device)["ADB_SERVER_SOCKET"] == "tcp:127.0.0.1:5038", "alternate ADB socket")
+        precondition(command.environment(for: device)["ADB_MDNS"] == "0", "native Bonjour discovery avoids crashing ADB mDNS backend")
         for recording in [false, true] {
             for audio in [false, true] {
                 var preferences = DevicePreferences()

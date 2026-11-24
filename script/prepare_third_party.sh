@@ -48,7 +48,14 @@ for architecture in arm64 x86_64; do
 done
 
 cp "$STAGE/platform-tools/NOTICE.txt" "$LICENSES/NOTICE-Android-Platform-Tools-37.0.0.txt"
-cp "$STAGE/platform-tools/source.properties" "$LICENSES/Android-Platform-Tools-source.properties"
+# The original scrcpy archives above remain byte-identical. Final apps use a
+# separately verified Google Platform-Tools maintenance update instead.
+mkdir -p "$STAGE/platform-tools-current"
+unzip -q "$CACHE/platform-tools_r37.0.1-darwin.zip" \
+  platform-tools/adb platform-tools/NOTICE.txt platform-tools/source.properties -d "$STAGE/platform-tools-current"
+cmp "$ROOT_DIR/vendor/platform-tools/adb" "$STAGE/platform-tools-current/platform-tools/adb"
+cp "$STAGE/platform-tools-current/platform-tools/NOTICE.txt" "$LICENSES/NOTICE-Android-Platform-Tools-37.0.1.txt"
+cp "$STAGE/platform-tools-current/platform-tools/source.properties" "$LICENSES/Android-Platform-Tools-source.properties"
 cp "$STAGE/ffmpeg-8.1.2/COPYING.LGPLv2.1" "$LICENSES/FFmpeg-COPYING.LGPLv2.1"
 cp "$STAGE/ffmpeg-8.1.2/LICENSE.md" "$LICENSES/FFmpeg-LICENSE.md"
 cp "$STAGE/SDL-release-3.4.12/LICENSE.txt" "$LICENSES/SDL-LICENSE.txt"
@@ -58,7 +65,7 @@ cp "$STAGE/zlib-1.3.2/LICENSE" "$LICENSES/zlib-LICENSE"
 (
   cd "$LICENSES"
   shasum -a 256 Android-Platform-Tools-source.properties FFmpeg-COPYING.LGPLv2.1 \
-    FFmpeg-LICENSE.md NOTICE-Android-Platform-Tools-37.0.0.txt SDL-LICENSE.txt \
+    FFmpeg-LICENSE.md NOTICE-Android-Platform-Tools-37.0.0.txt NOTICE-Android-Platform-Tools-37.0.1.txt SDL-LICENSE.txt \
     libusb-COPYING dav1d-COPYING zlib-LICENSE > SHA256SUMS.txt
 )
 echo '全部归档哈希与内置运行时逐字节匹配；已收录完整上游许可文本。'
