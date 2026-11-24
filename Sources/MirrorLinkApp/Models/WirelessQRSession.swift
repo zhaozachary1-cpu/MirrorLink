@@ -50,4 +50,18 @@ struct WirelessPairingIdentity: Equatable, Sendable {
     func matches(_ service: WirelessService) -> Bool {
         service.kind == .connection && service.name == guid
     }
+
+    /// AOSP daemon/mdns.cpp generates adb-<ro.serialno>-<six alphanumerics>.
+    /// Some OEMs hide persist.adb.wifi.guid from the authenticated shell. In
+    /// that case only this exact hardware-bound format is eligible, never an
+    /// arbitrary UUID, partial serial match, or matching network address alone.
+    func containsHardwareSerial(_ serial: String?) -> Bool {
+        guard let serial, !serial.isEmpty else { return false }
+        let prefix = "adb-\(serial)-"
+        guard guid.hasPrefix(prefix) else { return false }
+        let suffix = guid.dropFirst(prefix.count)
+        return suffix.utf8.count == 6 && suffix.utf8.allSatisfy {
+            (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0)
+        }
+    }
 }

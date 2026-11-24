@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import Combine
 
@@ -23,13 +24,6 @@ struct ContentView: View {
                 .help(L10n.tr("配对或连接同一 Wi-Fi 下的 Android 手机"))
                 .disabled(!store.toolchainAvailable)
             }
-            ToolbarItem(placement: .automatic) {
-                Button { updates.checkForUpdates() } label: {
-                    Label(L10n.tr("检查更新"), systemImage: "arrow.down.circle")
-                }
-                .help(updates.installationPending ? L10n.tr("安装已下载的更新") : L10n.tr("检查应用更新"))
-                .disabled(!updates.canCheckForUpdates)
-            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     store.refresh()
@@ -40,10 +34,32 @@ struct ContentView: View {
                 .disabled(store.isRefreshing)
             }
         }
-        .frame(minWidth: 880, minHeight: 560)
+        .frame(minWidth: 760, minHeight: 480)
+        .background(SceneWindowReference { window in
+            // Capture only this SwiftUI scene, never the key window: a mirror
+            // or Settings may become key while video startup is in flight.
+            store.onMirrorWindowReady = { [weak window] in window?.close() }
+        })
         .onAppear { store.refresh() }
         .onReceive(Timer.publish(every: 3, on: .main, in: .common).autoconnect()) { _ in
             store.refresh(silent: true)
+        }
+    }
+}
+
+struct SceneWindowReference: NSViewRepresentable {
+    var onResolve: (NSWindow) -> Void
+    func makeNSView(context: Context) -> WindowView {
+        let view = WindowView()
+        view.onResolve = onResolve
+        return view
+    }
+    func updateNSView(_ view: WindowView, context: Context) { view.onResolve = onResolve }
+    final class WindowView: NSView {
+        var onResolve: ((NSWindow) -> Void)?
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let window { onResolve?(window) }
         }
     }
 }

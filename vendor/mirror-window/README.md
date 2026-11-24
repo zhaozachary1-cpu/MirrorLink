@@ -15,6 +15,9 @@ Toolbar buttons, native file panels, installation and recording confirmations,
 operation status and cancellation all belong to the actual SDL Cocoa window.
 Routine progress and successful results do not open a popover automatically.
 More retains status and cancellation; a new failure can still open its details.
+More also offers Connect Another Phone, which asks the parent to restore its
+single main window without restarting any mirroring session. The parent closes
+that main window only after a newly started session reports its video texture.
 An already-open status popover refreshes as the operation changes.
 AppKit confirmation buttons resolve explicitly because SDL owns its event loop.
 State is bilingual, bounded, nonblocking and deduplicated. Socket buffers are

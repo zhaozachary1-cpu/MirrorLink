@@ -14,7 +14,7 @@ struct UpdateSettingsView: View {
         Section(L10n.tr("应用更新")) {
             LabeledContent(L10n.tr("当前版本"), value: L10n.tr("%@（%@）", updates.version, updates.build))
             if updates.isConfigured {
-                LabeledContent(L10n.tr("更新来源")) {
+                DisclosureGroup(L10n.tr("更新来源")) {
                     Text(updates.feedAddress)
                         .font(.caption)
                         .textSelection(.enabled)

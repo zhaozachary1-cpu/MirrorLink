@@ -18,7 +18,7 @@ enum WirelessConnectionMode: String, CaseIterable {
 
 @MainActor
 final class WirelessConnectionStore: ObservableObject {
-    @Published private(set) var mode: WirelessConnectionMode = .qr
+    @Published private(set) var mode: WirelessConnectionMode = .nearby
     @Published var step: WirelessConnectionStep = .pairing
     @Published var pairingAddress = ""
     @Published var connectionAddress = ""
@@ -26,6 +26,7 @@ final class WirelessConnectionStore: ObservableObject {
     @Published private(set) var services: [WirelessService] = []
     @Published private(set) var isBusy = false
     @Published private(set) var isDiscovering = false
+    @Published private(set) var connectedDeviceID: AndroidDevice.ID?
     @Published private var messageValue: LocalizedMessage?
     var message: String? { messageValue?.resolved }
     @Published private(set) var isError = false
@@ -39,12 +40,13 @@ final class WirelessConnectionStore: ObservableObject {
     private var operationGeneration = 0
     private var cancellation = ProcessCancellation()
     private var nearbyTask: Task<Void, Never>?
-    let qr: WirelessQRPairingStore
+    lazy var qr = WirelessQRPairingStore(service: service) { [weak self] device in
+        self?.didConnect(device)
+    }
 
     init(paths: ToolPaths?, service: WirelessADBService? = nil, onConnected: @escaping (AndroidDevice) -> Void) {
         let resolvedService = service ?? paths.map { WirelessADBService(paths: $0) }
         self.service = resolvedService
-        qr = WirelessQRPairingStore(service: resolvedService, onConnected: onConnected)
         self.onConnected = onConnected
     }
 
@@ -77,6 +79,7 @@ final class WirelessConnectionStore: ObservableObject {
         operationGeneration += 1
         discoveryGeneration += 1
         pairingCode = ""
+        connectedDeviceID = nil
         services = []
         discoveryMessageValue = nil
         isBusy = false
@@ -144,7 +147,7 @@ final class WirelessConnectionStore: ObservableObject {
                         self.lastPairedEndpoint = endpoint
                         self.connectionAddress = ""
                         self.step = .connection
-                        self.messageValue = L10n.message("配对成功。请返回手机“无线调试”主页面，使用其中的连接地址；配对成功还不等于已连接投屏。")
+                        self.messageValue = L10n.message("配对成功，请选择下方手机连接，或填写手机的连接地址。")
                         self.discover()
                     case let .failure(error): self.show(error)
                     }
@@ -172,8 +175,8 @@ final class WirelessConnectionStore: ObservableObject {
                     self.isBusy = false
                     switch result {
                     case let .success(device):
-                        self.messageValue = L10n.message("设备已连接，已请求启动投屏。画面与启动结果请查看主窗口。")
-                        self.onConnected(device)
+                        self.messageValue = L10n.message("已连接，正在打开投屏窗口…")
+                        self.didConnect(device)
                     case let .failure(error): self.show(error)
                     }
                 }
@@ -183,10 +186,15 @@ final class WirelessConnectionStore: ObservableObject {
 
     func clearSecret() { pairingCode = "" }
 
+    private func didConnect(_ device: AndroidDevice) {
+        connectedDeviceID = device.id
+        onConnected(device)
+    }
+
     private func beginOperation(_ text: LocalizedMessage) {
+        connectedDeviceID = nil
         discoveryGeneration += 1
         isDiscovering = false
-        services = []
         discoveryMessageValue = nil
         isBusy = true
         isError = false

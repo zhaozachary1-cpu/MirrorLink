@@ -17,6 +17,7 @@ swiftc -swift-version 5 \
   "$ROOT_DIR/Sources/MirrorLinkApp/Services/ToolPaths.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Services/WirelessADBService.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Services/BonjourWirelessDiscovery.swift" \
+  "$ROOT_DIR/Sources/MirrorLinkApp/Services/LocalNetworkReadiness.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Support/ProcessRunner.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Support/ProcessCancellation.swift" \
   "$ROOT_DIR/Sources/MirrorLinkApp/Support/WirelessQRCode.swift" \

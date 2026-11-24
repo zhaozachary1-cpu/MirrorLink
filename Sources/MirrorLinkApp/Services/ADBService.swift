@@ -17,12 +17,13 @@ struct ADBSnapshot: Sendable {
 struct ADBService: Sendable {
     let paths: ToolPaths
 
-    func snapshot() -> ADBSnapshot {
+    func snapshot(additionalSockets: [String] = []) -> ADBSnapshot {
         var allDevices: [AndroidDevice] = []
         var rawRoutes: [AndroidDevice] = []
         var diagnostics: [String] = []
 
-        for socket in [String?(nil), "tcp:127.0.0.1:5038"] {
+        let sockets = [String?(nil), "tcp:127.0.0.1:5038"] + additionalSockets.map(Optional.some)
+        for socket in sockets {
             // A local socket lets ADB start its default daemon when necessary.
             // The optional 5038 endpoint is connect-only; never start/kill it.
             let overrides = ["ADB_SERVER_SOCKET": socket ?? "tcp:5037"]
@@ -56,7 +57,8 @@ struct ADBService: Sendable {
                 let error = result.timedOut ? L10n.tr("扫描超时，请检查 USB / Wi-Fi 连接后刷新。") : result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
                 // An absent optional 5038 daemon is normal. Never hide a primary-daemon failure.
                 if !error.isEmpty && (socket == nil || !error.contains("cannot connect")) {
-                    diagnostics.append("\(socket == nil ? "ADB 5037" : "ADB 5038"): \(error)")
+                    let label = socket == nil ? "ADB 5037" : (socket == "tcp:127.0.0.1:5038" ? "ADB 5038" : "MirrorLink Wireless")
+                    diagnostics.append("\(label): \(error)")
                 }
             }
         }

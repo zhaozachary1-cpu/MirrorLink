@@ -10,15 +10,13 @@ struct DetailView: View {
         let _ = language.selection
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                HeaderView(store: store)
-
                 if store.selectedDevices.isEmpty {
                     EmptySelectionCard(store: store)
                 } else {
                     SelectedDevicesCard(store: store)
                 }
 
-                StatusCard(store: store)
+                if store.globalErrorMessage != nil { StatusCard(store: store) }
 
                 if !store.displayedDevices.isEmpty {
                     DeviceSessionsCard(store: store)
@@ -30,48 +28,10 @@ struct DetailView: View {
 
                 LogCard(store: store)
             }
-            .padding(28)
+            .padding(24)
             .frame(maxWidth: 800, alignment: .leading)
         }
         .background(.regularMaterial)
-    }
-}
-
-private struct HeaderView: View {
-    @ObservedObject private var language = LanguageStore.shared
-    @ObservedObject var store: MirrorSessionStore
-
-    var body: some View {
-        let _ = language.selection
-        HStack(alignment: .top, spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(.blue.gradient)
-                Image(systemName: "rectangle.on.rectangle.angled")
-                    .font(.system(size: 27, weight: .semibold))
-                    .foregroundStyle(.white)
-            }
-            .frame(width: 62, height: 62)
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(L10n.tr("镜连"))
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                Text(L10n.tr("把多台 Android 手机画面同时投到 Mac 上"))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(L10n.tr("USB 或同一 Wi-Fi 连接 → 手机授权 → 多设备独立投屏"))
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer()
-            if let lastRefresh = store.lastRefresh {
-                Text(lastRefresh, style: .time)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .help(L10n.tr("最近一次设备扫描时间"))
-            }
-        }
     }
 }
 
@@ -87,30 +47,12 @@ private struct SelectedDevicesCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(L10n.tr("已选择 %@ 台设备", String(store.selectedDevices.count)))
                             .font(.title3.weight(.semibold))
-                        Text(L10n.tr("其中 %@ 台可以开始投屏。每台手机拥有独立窗口，已启动的设备不会重复打开。", String(store.startableSelectedCount)))
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer()
                     Button(L10n.tr("清除选择")) { store.clearDeviceSelection() }
                         .buttonStyle(.borderless)
                         .fixedSize()
                 }
-
-                Divider()
-
-                MirrorQualityControls(profile: $store.qualityProfile)
-
-                Picker(L10n.tr("启动时排列"), selection: $store.windowLayout) {
-                    ForEach(MirrorWindowLayout.allCases) { layout in
-                        Text(layout.title).tag(layout)
-                    }
-                }
-                .pickerStyle(.menu)
-                Text(L10n.tr("仅用于下次启动所选设备的投屏窗口，不会重新排列当前窗口。"))
-                    .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 12) {
                     Button {
@@ -132,10 +74,6 @@ private struct SelectedDevicesCard: View {
                     .buttonStyle(.bordered)
                     .disabled(!store.isMirroring && !store.hasPendingReconnect)
                 }
-                Text(L10n.tr("取消勾选不会停止投屏"))
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(4)
         }
@@ -214,7 +152,7 @@ private struct DeviceSessionRow: View {
                                 .accessibilityLabel(L10n.tr("常用设备"))
                         }
                     }
-                    Text(store.displaySerial(for: device).map { "\(device.transport) · \($0)" } ?? device.transport)
+                    Text(device.transport)
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
@@ -244,24 +182,17 @@ private struct DeviceSessionRow: View {
                 }
             }
             if let videoStatus {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L10n.tr("本次画质：%@", videoStatus.profile.title))
-                        .font(.caption.weight(.medium))
+                DisclosureGroup(L10n.tr("画面信息")) {
+                    Text(videoStatus.configurationSummary).font(.caption).foregroundStyle(.secondary)
                     Text(videoStatus.resolution.map { L10n.tr("接收画面：%@ px", $0.displayText) } ?? L10n.tr("等待画面尺寸"))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                    Text(videoStatus.configurationSummary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                     if let warning = videoStatus.warning {
                         Label(warning, systemImage: "exclamationmark.triangle")
                             .font(.caption)
                             .foregroundStyle(.orange)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                }
             }
             HStack(spacing: 8) {
                 Spacer()
@@ -333,10 +264,6 @@ private struct StatusCard: View {
                             .font(.callout)
                             .foregroundStyle(.red)
                     }
-                    Text(L10n.tr("单台停止、关闭窗口或连接失败不会停止其他手机。退出镜连会停止本应用启动的全部投屏。"))
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
                 if store.isMirroring || store.hasPendingReconnect {
@@ -362,11 +289,8 @@ private struct EmptySelectionCard: View {
                 .foregroundStyle(.secondary)
             Text(L10n.tr("勾选要投屏的 Android 设备"))
                 .font(.headline)
-            Text(L10n.tr("左侧可以同时勾选多台已授权手机；点击“开始投屏”后会分别打开窗口。"))
-                .font(.callout)
+            Text(L10n.tr("连接 USB，或添加无线手机。"))
                 .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
             Button { openWindow(id: "wireless") } label: {
                 Label(L10n.tr("无线连接手机"), systemImage: "wifi")
             }

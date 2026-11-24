@@ -60,8 +60,6 @@ struct DevicePreferencesSheet: View {
                     }
                     Toggle(L10n.tr("收藏为常用设备"), isOn: $draft.favorite)
                         .disabled(knownID == nil)
-                    Text(L10n.tr("收藏后，设备断开时仍会显示在常用设备列表。"))
-                        .font(.caption).foregroundStyle(.secondary)
                     if knownID == nil {
                         Text(L10n.tr("尚未确认设备身份，当前偏好仅用于本次连接；收藏与自动恢复暂不可用。"))
                             .font(.caption).foregroundStyle(.orange)
@@ -75,15 +73,10 @@ struct DevicePreferencesSheet: View {
                         }
                     }
                     Toggle(L10n.tr("转发手机声音"), isOn: $draft.audioEnabled)
-                    Text(L10n.tr("声音转发取决于 Android 版本、应用限制及手机支持。"))
-                        .font(.caption).foregroundStyle(.secondary)
                 }
                 Section(L10n.tr("连接与演示")) {
                     Toggle(L10n.tr("意外断开后自动恢复"), isOn: $draft.autoReconnect)
                         .disabled(knownID == nil)
-                    Text(L10n.tr("仅恢复这台已授权设备；手动停止后不会自动重开。可在设备卡片取消恢复。"))
-                        .font(.caption).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
                     Toggle(L10n.tr("演示模式"), isOn: $draft.presentationMode)
                     Text(L10n.tr("只读投屏、关闭剪贴板同步，并在界面和窗口标题隐藏设备序列号。截图和反馈附件仍可能包含屏幕上的私人内容。"))
                         .font(.caption).foregroundStyle(.secondary)
@@ -91,7 +84,7 @@ struct DevicePreferencesSheet: View {
                 Section(L10n.tr("窗口")) {
                     Toggle(L10n.tr("启动时全屏"), isOn: $draft.fullscreen)
                     Toggle(L10n.tr("窗口始终置顶"), isOn: $draft.alwaysOnTop)
-                    Text(L10n.tr("画质、声音、演示和窗口设置在下次启动或重新投屏时生效。保存不会中断当前投屏。"))
+                    Text(L10n.tr("下次投屏时生效。"))
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if knownID != nil { Section {
@@ -101,7 +94,7 @@ struct DevicePreferencesSheet: View {
             }
             .formStyle(.grouped)
         }
-        .frame(width: 600, height: 700)
+        .frame(width: 540, height: 600)
         .confirmationDialog(device == nil ? L10n.tr("忘记此设备的设置？") : L10n.tr("重置这台设备的偏好？"), isPresented: $confirmsForget, titleVisibility: .visible) {
             Button(L10n.tr("忘记设置"), role: .destructive) {
                 if let knownID { store.forgetKnownDevice(knownID) }

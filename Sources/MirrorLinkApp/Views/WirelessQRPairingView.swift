@@ -10,10 +10,9 @@ struct WirelessQRPairingView: View {
         GroupBox {
             VStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(L10n.tr("用手机扫一扫，无需输入配对码")).font(.headline)
-                    Text(L10n.tr("在手机打开：开发者选项 → 无线调试 → 使用二维码配对设备，然后扫描下方二维码。"))
+                    Text(L10n.tr("无线调试 → 使用二维码配对设备"))
                         .font(.callout).fixedSize(horizontal: false, vertical: true)
-                    Text(L10n.tr("请使用“无线调试”里的扫码入口，不是微信或普通相机。"))
+                    Text(L10n.tr("使用手机的无线调试扫码入口。"))
                         .font(.caption).foregroundStyle(.secondary)
                 }.frame(maxWidth: .infinity, alignment: .leading)
 
@@ -43,19 +42,26 @@ struct WirelessQRPairingView: View {
                 }
                 .foregroundStyle(store.phase == .failed ? Color.orange : Color.primary)
                 .accessibilityElement(children: .combine)
-                if let warning = store.discoveryWarning {
+                if store.phase == .failed, let warning = store.discoveryWarning {
                     Text(warning).font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 HStack {
+                    if store.canRetryConnection {
+                        Button(L10n.tr("重试连接，无需扫码")) { store.retryConnection() }
+                            .buttonStyle(.borderedProminent)
+                    }
                     Button(store.phase == .completed ? L10n.tr("配对另一台手机") : L10n.tr("生成新二维码")) { store.start() }
                         .disabled(store.phase == .pairing || store.phase == .connecting)
                     if store.phase.isActive { Button(L10n.tr("停止")) { store.stop() } }
-                    if store.phase == .completed { Button(L10n.tr("查看主窗口")) { openWindow(id: "main") } }
+                    if store.phase == .failed {
+                        Button(L10n.tr("本地网络权限")) { WirelessDiscoveryView.openNetworkSettings() }
+                    }
                 }
-                Text(L10n.tr("二维码是本次临时授权凭据，请勿分享或截图转发。关闭此窗口或切换方式会停止发现和自动投屏；已完成的手机授权不会因此撤销。"))
+                if store.session != nil { Text(L10n.tr("二维码仅本次有效，请勿分享。"))
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                }
             }.padding(12).frame(maxWidth: .infinity)
         }
     }

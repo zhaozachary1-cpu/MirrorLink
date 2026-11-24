@@ -26,10 +26,14 @@ private extension SessionChecks {
         let source = SnapshotSource()
         source.set([a, b])
         let store = makeStore(source)
+        var readyEvents = 0
+        store.onMirrorWindowReady = { readyEvents += 1 }
         try await refresh(store)
         store.selectAllReadyDevices()
         store.startMirroring()
+        try check(readyEvents == 0, "control window stays open until video readiness, not Process.run")
         try await wait("quality frames") { store.sessionState(for: a) == .mirroring && store.sessionState(for: b) == .mirroring }
+        try check(readyEvents == 2, "each independently ready mirror requests control window closure once")
         try check(store.videoStatus(for: a.id)?.profile == .nativeClarity && store.videoStatus(for: a.id)?.resolution?.pixelCount == 2_592_000, "a session reports its actual first-frame dimensions and starting profile")
         let peerPID = launches(b.serial).last?["pid"] as? Int
         let firstPID = launches(a.serial).last?["pid"] as? Int
@@ -45,6 +49,7 @@ private extension SessionChecks {
 
         try write("log:INFO: Texture: 2400x1080", serial: a.serial, suffix: "command")
         try await wait("orientation update") { store.logLines.contains { $0.contains("Texture: 2400x1080") } }
+        try check(readyEvents == 2, "rotation cannot close a reopened control window")
         try check(store.videoStatus(for: a.id)?.warning == nil && store.videoStatus(for: a.id)?.resolution?.pixelCount == 2_592_000, "rotation updates dimensions without a false clarity warning")
         try write("split-log:INFO: Texture: 720x1600", serial: a.serial, suffix: "command")
         try await wait("smaller video") { store.videoStatus(for: a.id)?.resolution?.pixelCount == 1_152_000 }
@@ -596,10 +601,16 @@ private extension SessionChecks {
         store.windowToolState = { _ in ["busy": busy, "resultID": "initial"] }
         store.onWindowToolAction = { events.append(($0, $1)) }
         store.onWindowFileAction = { files.append(($0, $1, $2)) }
+        var mainWindowRequests = 0
+        store.onShowMainWindow = { mainWindowRequests += 1 }
         try await refresh(store)
         store.selectAllReadyDevices()
         store.startMirroring()
         try await wait("window controls ready") { store.runningCount == 2 && store.sessionState(for: a) == .mirroring && store.sessionState(for: b) == .mirroring }
+        try write("window:{\"action\":\"showMain\"}", serial: a.serial, suffix: "command")
+        try await wait("restore main from mirror") { mainWindowRequests == 1 }
+        try check(store.runningCount == 2 && launches(a.serial).count == 1 && launches(b.serial).count == 1,
+                  "opening device manager from a mirror preserves both active sessions")
         try write("window:{\"action\":\"home\"}", serial: a.serial, suffix: "command")
         try await wait("home from first window") { events.count == 1 }
         try check(events[0].0 == .home && events[0].1 == a, "window action preserves exact first device and ADB route")

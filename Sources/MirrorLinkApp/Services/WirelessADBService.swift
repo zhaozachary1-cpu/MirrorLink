@@ -16,17 +16,26 @@ struct WirelessDiscoveryResult: Sendable {
     }
 }
 
-/// Mutating connection operations use only the default ADB daemon. Never reset
-/// a daemon, enable tcpip/5555, scan IP ranges, or disconnect another transport.
+/// Mutating operations stay on their configured server. Never reset a shared
+/// daemon, enable tcpip/5555, scan IP ranges, or disconnect another transport.
 struct WirelessADBService: Sendable {
     typealias Executor = @Sendable ([String], String?, TimeInterval) -> ProcessResult
     typealias CancellableExecutor = @Sendable ([String], String?, TimeInterval, ProcessCancellation?) -> ProcessResult
     typealias NativeDiscovery = @Sendable (ProcessCancellation?) -> [WirelessService]
+    typealias NetworkReadiness = @Sendable (WirelessEndpoint, TimeInterval, ProcessCancellation?) -> Bool
     private let run: CancellableExecutor
     private let nativeDiscovery: NativeDiscovery
+    private let networkReadiness: NetworkReadiness
+    private let adbSocket: String?
 
     init(paths: ToolPaths, execute: Executor? = nil, cancellableExecute: CancellableExecutor? = nil,
-         nativeDiscovery: NativeDiscovery? = nil) {
+         nativeDiscovery: NativeDiscovery? = nil, networkReadiness: NetworkReadiness? = nil,
+         adbSocket: String? = nil, prepareBackend: (@Sendable () -> Bool)? = nil) {
+        self.adbSocket = adbSocket
+        if let networkReadiness { self.networkReadiness = networkReadiness }
+        else if execute == nil && cancellableExecute == nil {
+            self.networkReadiness = { LocalNetworkReadiness.wait(for: $0, timeout: $1, cancellation: $2) }
+        } else { self.networkReadiness = { _, _, token in token?.isCancelled != true } }
         // Injected ADB tests must never silently browse the real LAN.
         if let nativeDiscovery { self.nativeDiscovery = nativeDiscovery }
         else if execute == nil && cancellableExecute == nil {
@@ -34,10 +43,13 @@ struct WirelessADBService: Sendable {
         } else { self.nativeDiscovery = { _ in [] } }
         self.run = cancellableExecute ?? { arguments, input, timeout, cancellation in
             if let execute { return execute(arguments, input, timeout) }
+            guard prepareBackend?() != false, cancellation?.isCancelled != true else {
+                return ProcessResult(status: -1, stdout: "", stderr: "cannot connect to daemon", timedOut: false)
+            }
             return ProcessRunner.run(
                 executablePath: paths.adb.path,
                 arguments: arguments,
-                environmentOverrides: ["ADB_SERVER_SOCKET": "tcp:5037"],
+                environmentOverrides: ["ADB_SERVER_SOCKET": adbSocket ?? "tcp:5037"],
                 standardInput: input,
                 timeout: timeout,
                 cancellation: cancellation
@@ -67,6 +79,7 @@ struct WirelessADBService: Sendable {
         guard code.utf8.count == 6, code.utf8.allSatisfy({ (48...57).contains($0) }) else {
             return .failure(.invalidPairingCode)
         }
+        guard networkReadiness(endpoint, 15, cancellation) else { return .failure(networkFailure) }
         // Do not put the code in argv (visible to other processes) or logs.
         let result = execute(["pair", endpoint.address], code + "\n", 25, cancellation)
         guard result.succeeded, result.stdout.contains("Successfully paired to ") else {
@@ -79,12 +92,34 @@ struct WirelessADBService: Sendable {
                 cancellation: ProcessCancellation? = nil) -> Result<WirelessPairingIdentity, WirelessConnectionError> {
         let remaining = session.expiresAt.timeIntervalSinceNow
         guard remaining > 0 else { return .failure(.localizedFailure(L10n.message("二维码已过期，请生成新二维码。"))) }
-        let result = execute(["pair", endpoint.address], session.password + "\n", min(25, remaining), cancellation)
+        guard networkReadiness(endpoint, min(15, remaining), cancellation) else { return .failure(networkFailure) }
+        // A privacy decision may arrive after the first helper failed. Retry
+        // only a transport denial, on the same endpoint and live QR credential.
+        let pairingBudget = session.expiresAt.timeIntervalSinceNow
+        guard pairingBudget > 0 else { return .failure(.localizedFailure(L10n.message("二维码已过期，请生成新二维码。"))) }
+        var result = execute(["pair", endpoint.address], session.password + "\n", min(25, pairingBudget), cancellation)
+        if isNetworkDenied(result), cancellation?.isCancelled != true, session.expiresAt.timeIntervalSinceNow > 1,
+           networkReadiness(endpoint, min(5, session.expiresAt.timeIntervalSinceNow), cancellation) {
+            let retryBudget = session.expiresAt.timeIntervalSinceNow
+            guard retryBudget > 0 else { return .failure(.localizedFailure(L10n.message("二维码已过期，请生成新二维码。"))) }
+            result = execute(["pair", endpoint.address], session.password + "\n", min(25, retryBudget), cancellation)
+        }
         guard session.expiresAt > Date() else {
             return .failure(.localizedFailure(L10n.message("二维码已过期，已停止自动连接。若手机已显示配对成功，可在“发现手机”中连接；否则请生成新二维码。")))
         }
         guard result.succeeded, let identity = WirelessPairingIdentity(output: result.stdout, endpoint: endpoint) else {
             // Never surface tool output: it can echo the QR credential.
+            if isNetworkDenied(result) { return .failure(networkFailure) }
+            let diagnostic = (result.stdout + result.stderr).lowercased()
+            if diagnostic.contains("connection refused") {
+                return .failure(.localizedFailure(L10n.message("手机已关闭扫码端口。请保持扫码页面打开，生成新二维码后再扫一次。")))
+            }
+            if diagnostic.contains("authenticate") || diagnostic.contains("authentication") || diagnostic.contains("wrong password") {
+                return .failure(.localizedFailure(L10n.message("本次扫码授权已失效，请生成新二维码重新扫描。")))
+            }
+            if diagnostic.contains("cannot connect to daemon") || diagnostic.contains("failed to start daemon") {
+                return .failure(.localizedFailure(L10n.message("调试服务不可用。请退出镜连后重新打开；仍失败可导出问题反馈。")))
+            }
             return .failure(.localizedFailure(result.timedOut
                 ? L10n.message("扫码配对超时。请检查 Wi-Fi 与本地网络权限，再生成新二维码。")
                 : L10n.message("扫码配对未完成。请生成新二维码，并使用手机“无线调试”里的扫码入口重新扫描。")))
@@ -94,7 +129,19 @@ struct WirelessADBService: Sendable {
 
     func connect(endpoint: WirelessEndpoint, expectedIdentity: WirelessPairingIdentity? = nil,
                  cancellation: ProcessCancellation? = nil) -> Result<AndroidDevice, WirelessConnectionError> {
-        let result = execute(["connect", endpoint.address], nil, 15, cancellation)
+        guard networkReadiness(endpoint, 15, cancellation) else { return .failure(networkFailure) }
+        var result = execute(["connect", endpoint.address], nil, 15, cancellation)
+        if isNetworkDenied(result), cancellation?.isCancelled != true,
+           networkReadiness(endpoint, 5, cancellation) {
+            // A newly installed ad-hoc helper can receive a delayed network
+            // decision after the native app is allowed. One bounded retry on
+            // this exact endpoint avoids requiring another manual click.
+            let retryAt = Date().addingTimeInterval(1)
+            while Date() < retryAt, cancellation?.isCancelled != true {
+                Thread.sleep(forTimeInterval: 0.05)
+            }
+            result = execute(["connect", endpoint.address], nil, 15, cancellation)
+        }
         let hasAcknowledgement = result.stdout.split(whereSeparator: \.isNewline).contains {
             $0.hasPrefix("connected to ") || $0.hasPrefix("already connected to ")
         }
@@ -103,7 +150,7 @@ struct WirelessADBService: Sendable {
 
         let listing = execute(["devices", "-l"], nil, 6, cancellation)
         guard listing.succeeded else { return .failure(failure(listing, pairing: false)) }
-        let devices = ADBDeviceParser.parse(listing.stdout, adbSocket: nil)
+        let devices = ADBDeviceParser.parse(listing.stdout, adbSocket: adbSocket)
         var match = devices.first { (try? WirelessEndpoint($0.serial)) == endpoint }
         if match == nil {
             // ADB may already have auto-connected this endpoint under its mDNS
@@ -123,15 +170,24 @@ struct WirelessADBService: Sendable {
               state.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == "device" else {
             return .failure(.localizedFailure(L10n.message("手机尚未就绪。请解锁手机，确认无线调试已开启；若授权已失效，请重新配对。")))
         }
+        device.hardwareSerial = ADBDeviceIdentity.hardwareSerial(from:
+            execute(["-s", device.serial, "shell", "getprop", "ro.serialno"], nil, 3, cancellation))
         if let expectedIdentity {
             let identity = execute(["-s", device.serial, "shell", "getprop", "persist.adb.wifi.guid"], nil, 3, cancellation)
-            guard identity.succeeded,
-                  identity.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == expectedIdentity.guid else {
+            let reportedGUID = identity.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            var verified = identity.succeeded && reportedGUID == expectedIdentity.guid
+            if identity.succeeded, reportedGUID.isEmpty,
+               expectedIdentity.containsHardwareSerial(device.hardwareSerial) {
+                // Do not turn an unreadable OEM property into a false mismatch.
+                // Bind the paired GUID to the actual shell hardware identity
+                // and re-resolve exactly one current service on this endpoint.
+                let matches = discover(cancellation: cancellation).services.filter(expectedIdentity.matches)
+                verified = matches.count == 1 && matches[0].endpoint == endpoint
+            }
+            guard verified else {
                 return .failure(.localizedFailure(L10n.message("未能确认连接对象是刚才扫码的手机，已停止自动投屏。请重新扫码或手动核对地址。")))
             }
         }
-        device.hardwareSerial = ADBDeviceIdentity.hardwareSerial(from:
-            execute(["-s", device.serial, "shell", "getprop", "ro.serialno"], nil, 3, cancellation))
         guard cancellation?.isCancelled != true else { return .failure(.localizedFailure(L10n.message("连接已取消。"))) }
         return .success(device)
     }
@@ -152,15 +208,21 @@ struct WirelessADBService: Sendable {
                 : L10n.message("连接超时。请确认手机和 Mac 在同一 Wi-Fi，允许镜连访问本地网络，并检查访客网络、VPN 或路由器的设备隔离设置。"))
         }
         let diagnostic = (result.stdout + result.stderr).lowercased()
-        if diagnostic.contains("no route to host") || diagnostic.contains("network is unreachable")
-            || diagnostic.contains("operation not permitted") || diagnostic.contains("permission denied") {
-            return .localizedFailure(L10n.message("无法访问手机的无线调试端口。请在 macOS“系统设置 → 隐私与安全 → 本地网络”中允许 MirrorLink，并检查 VPN、访客网络或设备隔离；权限已开启仍失败时，可导出问题反馈以检查 ADB 后台状态。"))
-        }
+        if isNetworkDenied(result) { return networkFailure }
         if !pairing && (diagnostic.contains("authenticate") || diagnostic.contains("authentication")) {
             return .localizedFailure(L10n.message("无线调试尚未授权或授权已失效。请先到“扫码配对”扫描二维码；不支持扫码时可使用手动配对。"))
         }
         return .localizedFailure(pairing
             ? L10n.message("配对未成功。请保持手机配对码窗口打开，重新核对其中的 IP、配对端口和 6 位配对码；配对码过期后需重新生成。")
             : L10n.message("连接未成功。请填写“无线调试”主页面的 IP 和连接端口（不是配对码窗口的端口）；重新开启无线调试或切换网络后，端口可能变化。"))
+    }
+
+    private var networkFailure: WirelessConnectionError {
+        .localizedFailure(L10n.message("无法访问手机。请允许镜连的“本地网络”权限后重试；已允许时，请检查 VPN 或 Wi-Fi 设备隔离。"))
+    }
+
+    private func isNetworkDenied(_ result: ProcessResult) -> Bool {
+        let text = (result.stdout + result.stderr).lowercased()
+        return ["no route to host", "network is unreachable", "operation not permitted", "permission denied"].contains { text.contains($0) }
     }
 }

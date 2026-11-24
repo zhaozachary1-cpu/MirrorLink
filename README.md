@@ -12,18 +12,18 @@
 
 镜连是一个原生 macOS Android 投屏工具：它把官方 scrcpy v4.1 与 ADB 作为应用内置运行时，并用 SwiftUI 提供 USB / 同 Wi-Fi 无线连接、多设备选择、授权提示、并行投屏、独立开始/停止和诊断日志。
 
-当前版本为 **0.5.2（Build 12）**：普通操作不再自动弹出进度或成功提示，错误与必要确认保留。将返回桌面、应用列表、截图、录屏、发送文件与安装 APK 移到每台投屏窗口顶部的原生工具栏。保留常用设备与独立设置、截图录屏、连接自检、受控断线恢复、启动时窗口布局、演示模式、文件工具和本地问题反馈包，以及手机“返回桌面 / 打开应用抽屉”快捷操作。保留简体中文与 English、三档画质、无线配对、多设备隔离和签名更新。实际可下载安装的版本以 [最新公开发行页](https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest) 为准；功能与真机证据见 [TOOLS-QA.md](TOOLS-QA.md)，完整发布记录见 [UPDATE-QA.md](UPDATE-QA.md)。
+公开下载版本为 **0.5.2（Build 12）**：普通操作不再自动弹出进度或成功提示，错误与必要确认保留。将返回桌面、应用列表、截图、录屏、发送文件与安装 APK 移到每台投屏窗口顶部的原生工具栏。保留常用设备与独立设置、截图录屏、连接自检、受控断线恢复、启动时窗口布局、演示模式、文件工具和本地问题反馈包，以及手机“返回桌面 / 打开应用抽屉”快捷操作。保留简体中文与 English、三档画质、无线配对、多设备隔离和签名更新。实际可下载安装的版本以 [最新公开发行页](https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest) 为准；功能与真机证据见 [TOOLS-QA.md](TOOLS-QA.md)，完整发布记录见 [UPDATE-QA.md](UPDATE-QA.md)。
 
 ## English Quick Start
 
-> 源码与本机修复验证已更新到 **0.5.3 / Build 13**：增加原生 Bonjour 发现并避免 ADB 内置发现模块崩溃，已观察到 V2520 的真实无线画面。本版候选安装包尚未公开，以上下载按钮仍对应公开版 0.5.2；验证边界见 [WIRELESS-QA.md](WIRELESS-QA.md)。Source and local validation are at 0.5.3 / Build 13; public downloads remain at 0.5.2 until the new release and upgrade path are validated.
+> 最新源码为 **0.5.4 / Build 14**：精简主页面与设置，无线入口先发现附近手机，新手机再扫码；收到画面后自动关闭主页面，投屏窗口“更多 → 连接其他手机…”可重新打开。配对成功后可免扫码重试连接。无线连接改由当前应用管理专用后台，避免沿用旧后台的异常权限状态。候选版尚未公开，下载按钮仍对应公开版 0.5.2；实际验收边界见 [WIRELESS-QA.md](WIRELESS-QA.md)。Source is at 0.5.4 / Build 14; public downloads remain at 0.5.2 until release and upgrade validation is complete.
 
 MirrorLink mirrors Android phones on a Mac over USB or authorized wireless debugging. It includes ADB and scrcpy; no Homebrew or separate tool installation is needed. Requires **macOS 13 or later**. The universal installer includes Apple Silicon and Intel binaries; Intel hardware acceptance testing remains incomplete. It does not support iPhone mirroring or Windows.
 
 1. [Download MirrorLink 0.5.2 for macOS (DMG)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.2/MirrorLink-0.5.2-macOS-universal.dmg), open it, and drag **MirrorLink.app** to **Applications**. An alternative [complete ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.2/MirrorLink-0.5.2-macOS-universal.zip) is available. Do not use “Source code” or the update-only ZIP as an installer. Before replacing an existing copy, stop mirroring, quit with **⌘Q**, and keep a backup.
 2. Launch MirrorLink from Applications. Open **MirrorLink → Settings…** with **⌘,**, find the bilingual **“语言 / Language”** section at the top, and choose **English**. Chinese users can find the same command as **“镜连 → 设置…”**. The other choices are **简体中文** and **跟随系统 / System**.
 3. For USB mirroring, enable **USB debugging** in your Android phone’s Developer options, connect it with a data cable, unlock it, and authorize this Mac on the phone. Click **Refresh Devices**, select the phone, then **Mirror Selected**.
-4. For wireless mirroring, use an **Android 11+** phone with Wireless debugging on the same reachable Wi-Fi network. In MirrorLink, open **Wireless Connection → QR Pairing**. On the phone, open **Developer options → Wireless debugging → Pair device with QR code** and scan there, not with the camera or WeChat. Being on the same network does not grant authorization.
+4. For wireless mirroring, use an **Android 11+** phone with Wireless debugging on the same reachable Wi-Fi network. In 0.5.4, open **Wireless Connection**, connect an already paired nearby phone, or click **Add a Phone**. On the phone, open **Developer options → Wireless debugging → Pair device with QR code** and scan there. Manual Connection is under More. Being on the same network does not grant authorization. Public 0.5.2 uses the QR Pairing / Nearby / Manual tabs.
 
 **This is a free community build with an ad-hoc integrity signature, not an Apple Developer ID signature or Apple notarization.** If macOS only says it cannot verify the developer or check the app for malicious software, confirm that you downloaded it from this official repository and choose to trust it, attempt to open it once, then use **System Settings → Privacy & Security → Open Anyway** and confirm locally. If the warning says the app contains malware, will damage your computer, or is damaged, stop and verify the source and file checksums. Keep Gatekeeper enabled and do not remove quarantine attributes. Managed Macs may prohibit installation. See [Apple’s official guidance](https://support.apple.com/102445).
 
@@ -108,7 +108,7 @@ Optional recovery checks at most three times after an unexpected disconnect. Mir
 
 ## 画质与持续投屏（0.4.3）
 
-在主窗口开始按钮上方或“设置 → 画质与稳定性”选择画质。默认使用“原生超清”，以保留手机细节并限制持续编码的帧率负载。三档均使用 H.264：
+在“设置 → 画质与稳定性”选择画质（0.5.4 起主页面不再重复显示配置）。默认使用“原生超清”，以保留手机细节并限制持续编码的帧率负载。三档均使用 H.264：
 
 | 画质档位 | 画面尺寸请求 | 目标码率 | 帧率上限 | 适用场景 |
 | --- | --- | --- | --- | --- |
@@ -138,34 +138,34 @@ Optional recovery checks at most three times after an unexpected disconnect. Mir
 
 取消勾选或“清空选择”只改变下一次批量启动的对象，不会停止已在投屏的手机；这些设备仍保留单独的停止入口。默认不会在断开重连后自动投屏；主动开启自动恢复后，已有投屏意外断线时最多检查 3 次，只有原已授权硬件身份以原连接方式、原 ADB socket 重新处于 ready 状态才恢复投屏，不主动执行网络重连。无线设备尚未重新就绪时，仍需在“无线连接”中手动连接或配对。退出镜连会取消恢复并停止本应用启动的全部投屏，不会关闭其他软件启动的 scrcpy 窗口。
 
-关闭主窗口不会退出镜连或停止现有投屏。可以点击 Dock 图标，或通过“投屏 → 显示主窗口”（⌘0）重新打开控制窗口；退出应用仍使用 ⌘Q。0.4.2 的故障原因、回归结果与未验收范围见 [STABILITY-QA.md](STABILITY-QA.md)。
+0.5.4 起，收到手机画面后自动关闭主页面；通过无线入口连接时，也关闭该设备本次的配对页并把投屏窗口置前。启动失败时保留页面。关闭主页面不会退出镜连或停止现有投屏。可以点击投屏窗口“更多 → 连接其他手机…”、Dock 图标，或通过“投屏 → 显示主窗口”（⌘0）重新打开；退出应用仍使用 ⌘Q。
 
 ### 同 Wi-Fi 无线投屏
 
 需要 Android 11+ 且手机提供“无线调试”选项。首次配对不需要 USB 线，但仍须在手机上明确授权；仅加入同一 Wi-Fi 不会自动获得投屏权限。
 
 1. Mac 和手机连接同一 Wi-Fi，在手机“开发者选项”中打开“无线调试”，按手机提示允许当前网络。
-2. 打开镜连，点击工具栏或侧栏的“无线连接”，也可选择菜单“投屏 → 无线连接…”（⌘⇧W）。
-3. 镜连默认显示“扫码配对”。在手机点“使用二维码配对设备”，扫描电脑上的二维码。**使用手机“无线调试”里的扫码入口，不是微信或普通相机。** 无需手填 IP、端口或六位配对码；电脑会主动发现扫码的手机，完成配对后核对身份并请求开始投屏，实际画面以主窗口结果为准。
-4. 以后打开“发现手机”，应用会每 4 秒刷新附近开启无线调试的手机。对已授权此 Mac 的手机点击“连接并投屏”即可；主列表中已连接的 Wi-Fi 手机也可以直接选择并开始投屏。发现服务不代表手机已授权，授权被撤销后仍须重新扫码。
+2. 打开镜连，点击工具栏的“无线连接”，也可选择菜单“投屏 → 无线连接…”（⌘⇧W）；没有已连接设备时，主页面也有“无线连接手机”按钮。
+3. 0.5.4 默认发现附近手机。已配对的手机点“连接并投屏”；首次使用点“连接新手机”，再在手机“无线调试 → 使用二维码配对设备”中扫描电脑二维码。**不是微信或普通相机。** 无需手填 IP、端口或六位配对码；电脑匹配扫码服务与认证身份后请求投屏。公开版 0.5.2 使用“扫码配对 / 发现手机 / 手动连接”标签页。
+4. 配对已成功、后续连接未完成时，点“重试连接，无需扫码”。关闭窗口或切换方式会取消本次自动连接；已配对的手机可重新在附近列表连接。附近列表每 4 秒刷新，发现服务不代表手机已授权。
 
 **USB 调试与无线调试是两个独立开关。** 已经配对过的手机应使用“发现手机”，不必反复扫描二维码。0.5.3 起同时使用 macOS 原生 Bonjour 与 ADB 的发现结果，修复 ADB 的 mDNS 列表为空、同一网络中的手机实际存在却无法显示的问题。两条发现通道合并去重；镜连新启动的 ADB 后台使用 `ADB_MDNS=0` 避免本机复现的内置发现模块崩溃，由 Bonjour 继续发现手机。此配置不改变运行中的共享后台，不更改加密配对。配对码和连接端口仍严格分开处理，发现不会自动授权或连接其他手机。
 
-手机不提供扫码入口时，使用“手动连接 → 首次配对”：填写手机配对码弹窗中的 IP、配对端口和 6 位配对码。成功后回到手机“无线调试”的**主页面**，将该页 IP 和连接端口填入“连接手机”。**连接端口与配对端口用途不同。** 网络无法自动发现时，已配对的手机也可在这里手填连接地址。切换网络、重开无线调试或重启手机后端口可能变化，以手机当前显示为准。
+手机不提供扫码入口时，使用“更多 → 手动连接 → 首次配对”：填写手机配对码弹窗中的 IP、配对端口和 6 位配对码。成功后回到手机“无线调试”的**主页面**，将该页 IP 和连接端口填入“连接手机”。**连接端口与配对端口用途不同。** 网络无法自动发现时，已配对的手机也可在这里手填连接地址。切换网络、重开无线调试或重启手机后端口可能变化，以手机当前显示为准。
 
 每台手机单独配对后，可以同时投屏多台无线手机，也可以混用 USB 与 Wi-Fi。能取得硬件序列号时，同一手机的两种连接会合并为一个设备；正在运行的窗口不会被刷新或新连接偷偷切换。如果原窗口仍用 USB，请先停止该手机的投屏再开始，以切换到就绪的 Wi-Fi 连接。
 
 发现不到手机时，可手动填入地址；检查手机是否仍开启无线调试、macOS 是否允许本地网络访问，以及访客 Wi-Fi、路由器设备隔离或 VPN 是否阻止互访。没有无线调试选项的机型继续使用 USB，本版本不会自动打开旧式 5555 端口或修改手机安全设置。
 
-“发现手机”与手动页面提供“检查本地网络权限”入口。点击后检查 **系统设置 → 隐私与安全 → 本地网络 → MirrorLink**；部分系统只打开隐私与安全总页，需再点“本地网络”。如果手机已经出现但连接提示无法访问端口，不能据此认定配对码错误：即使界面权限已开启，旧 ADB 后台仍可能被系统阻止。请先保存其他软件的调试工作，必要时重启 Mac 后重试，或导出本地问题反馈进一步诊断。镜连不会自动重启共享 ADB、重置网络权限或关闭系统保护。
+0.5.4 的“更多 → 检查本地网络权限”和扫码失败页提供权限入口。请检查 **系统设置 → 隐私与安全 → 本地网络 → MirrorLink**；部分系统需再点“本地网络”。已发现手机不代表端口可达：VPN、访客网络和设备隔离都可能阻止连接。无线调试使用由应用直接管理的调试进程与权限为 0700 的私有 Unix socket，不接管 USB 手机；正常退出镜连会关闭该进程，不重启共享 ADB。按照 [Apple TN3179](https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy) 在当前应用内先检查本地网络准备状态，并给初次权限决定留出等待时间；免费 ad-hoc 签名在 macOS 上仍存在身份跟踪限制，不能保证覆盖所有系统权限异常。镜连不会重置网络权限或关闭系统保护。
 
-二维码在本机生成，是本次临时授权凭据，请勿分享或截图转发；每次生成都会更换，120 秒内有效，开始配对即隐藏。二维码密码和手动配对码仅在本次操作内存中使用，通过标准输入传给 ADB，不写入参数、日志、设置、剪贴板或 Git，不发送给外部二维码服务。关闭窗口、切换方式或停止操作会取消本次发现及自动连接；ADB 仍会维护已完成的配对授权，不会因此自动撤销，可在手机中忘记此电脑。仅在可信网络使用，用完可在手机关闭无线调试；停止镜连投屏不会擅自断开其他软件的 ADB 连接。
+二维码在本机生成，是本次临时授权凭据，请勿分享或截图转发；每次生成都会更换，120 秒内有效，开始配对即隐藏。二维码密码和手动配对码仅在本次操作内存中使用，通过标准输入传给 ADB，不写入参数、日志、设置、剪贴板或 Git，不发送给外部二维码服务。连接须对应扫码认证的 GUID；部分手机不向调试命令提供 GUID 属性时，仅在其标准 GUID 与实际硬件序列号、唯一当前服务及连接地址全部一致时继续，无法核对仍停止自动投屏。关闭窗口、切换方式或停止操作会取消本次发现及自动连接；ADB 仍会维护已完成的配对授权，不会因此自动撤销，可在手机中忘记此电脑。仅在可信网络使用，用完可在手机关闭无线调试；停止镜连投屏不会擅自断开其他软件的 ADB 连接。
 
 支持 macOS 13+，不包含 iPhone 或 Windows 客户端。不设置固定并行台数上限；实际流畅数量取决于 Mac 性能、Wi-Fi 质量、USB 带宽和手机编码能力。当前单台无线画面证据、模拟测试与尚未完成的首次扫码 / 多台真机验收分开记录在 [WIRELESS-QA.md](WIRELESS-QA.md)，不能将测试脚本通过等同于全部无线场景已经验收。
 
 ## 应用更新
 
-0.3.0 新增主窗口更新按钮、应用菜单“检查更新…”和“设置 → 应用更新”，使用 Sparkle 2.10.0 验证签名、下载、替换原应用并重启。自动检查需用户主动开启，安装始终需要用户确认；如果仍有手机在投屏，会先确认是否停止。
+通过应用菜单“检查更新…”或“设置 → 应用更新”，使用 Sparkle 2.10.0 验证签名、下载、替换原应用并重启。0.5.4 起移除主窗口重复的更新按钮。自动检查需用户主动开启，安装始终需要用户确认；如果仍有手机在投屏，会先确认是否停止。
 
 0.3.1 内置现有仓库的更新地址。应用只信任内置公钥对应的签名，同时验证更新清单和更新包，不接受随下载源替换的公钥，不内置 GitHub 登录凭据。发布及实际覆盖升级验证记录见 [UPDATE-QA.md](UPDATE-QA.md)。
 
@@ -184,6 +184,7 @@ https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest/download/appcast.
 ./script/run_session_checks.sh
 ./script/run_device_tools_checks.sh
 ./script/run_wireless_checks.sh
+zsh ./script/run_wireless_backend_checks.sh
 ./script/run_update_checks.sh
 ./script/build_and_run.sh --verify
 ./script/package_release.sh --community

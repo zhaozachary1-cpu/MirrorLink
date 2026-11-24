@@ -24,11 +24,6 @@ struct SidebarView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Label(store.isRefreshing ? L10n.tr("正在扫描设备…") : L10n.tr("还没有发现设备"), systemImage: "iphone.slash")
                             .foregroundStyle(.secondary)
-                        Text(L10n.tr("用 USB 数据线连接，或点击“无线连接”配对同一 Wi-Fi 下的 Android 手机。"))
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                            .lineLimit(nil)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
@@ -83,16 +78,6 @@ struct SidebarView: View {
                 }
             }
 
-            Section(L10n.tr("连接提示")) {
-                Button { openWindow(id: "wireless") } label: {
-                    Label(L10n.tr("无线连接手机…"), systemImage: "wifi")
-                }
-                .buttonStyle(.borderless)
-                Label(L10n.tr("USB 连接需允许调试"), systemImage: "checkmark.shield")
-                Label(L10n.tr("可同时勾选多台手机"), systemImage: "square.stack.3d.up")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
         .listStyle(.sidebar)
         .sheet(item: $settingsDevice) { device in DevicePreferencesSheet(store: store, device: device) }
@@ -102,7 +87,7 @@ struct SidebarView: View {
                 Circle()
                     .fill(store.toolchainAvailable ? Color.green : Color.orange)
                     .frame(width: 8, height: 8)
-                Text(store.toolchainAvailable ? L10n.tr("投屏组件就绪") : L10n.tr("缺少投屏组件"))
+                Text(store.sessionSummary)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -141,7 +126,7 @@ private struct DeviceRow: View {
                         Text(displayName).lineLimit(1)
                         if favorite { Image(systemName: "star.fill").font(.caption2).foregroundStyle(.orange) }
                     }
-                    Text([device.transport, device.state.title, displaySerial].compactMap { $0 }.joined(separator: " · "))
+                    Text([device.transport, device.state.title].joined(separator: " · "))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)

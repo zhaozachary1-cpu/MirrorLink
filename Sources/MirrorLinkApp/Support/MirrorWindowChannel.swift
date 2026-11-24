@@ -2,7 +2,7 @@ import Foundation
 import Darwin
 
 enum MirrorWindowAction: String, Codable {
-    case ready, home, drawer, swipe, screenshot, recordStart, recordStop, sendFile, installAPK, cancel
+    case ready, showMain, home, drawer, swipe, screenshot, recordStart, recordStop, sendFile, installAPK, cancel
 }
 
 struct MirrorWindowRequest: Decodable {

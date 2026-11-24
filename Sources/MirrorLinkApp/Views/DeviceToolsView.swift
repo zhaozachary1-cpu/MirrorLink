@@ -22,9 +22,6 @@ struct DeviceToolsView: View {
     var body: some View {
         let _ = language.selection
         VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.tr("开始投屏后，可在画面窗口顶部进行手机导航、截图、录屏、发送文件和安装 APK。"))
-                .font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
             if presentation {
                 Text(L10n.tr("演示模式已禁用手机导航与写入操作。"))
                     .font(.caption).foregroundStyle(.secondary)

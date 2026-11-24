@@ -15,6 +15,7 @@ BRANCH="$(git symbolic-ref --short HEAD)"
 ./script/run_session_checks.sh
 ./script/run_device_tools_checks.sh
 ./script/run_wireless_checks.sh
+zsh ./script/run_wireless_backend_checks.sh
 ./script/run_update_checks.sh
 ./script/run_localization_checks.sh
 git fetch origin

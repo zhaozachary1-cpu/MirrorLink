@@ -8,9 +8,6 @@ struct ManualWirelessConnectionView: View {
     var body: some View {
         let _ = language.selection
         VStack(alignment: .leading, spacing: 16) {
-            Text(L10n.tr("手机不支持扫码，或网络无法发现设备时，可使用此兼容入口。"))
-                .font(.callout).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
             Picker(L10n.tr("手动连接步骤"), selection: $store.step) {
                 ForEach(WirelessConnectionStep.allCases, id: \.self) { Text($0.title).tag($0) }
             }
@@ -48,7 +45,6 @@ struct ManualWirelessConnectionView: View {
                         HStack {
                             Button(L10n.tr("连接并投屏")) { store.connect() }
                                 .buttonStyle(.borderedProminent).disabled(store.connectionAddress.isEmpty)
-                            Button(L10n.tr("查看主窗口")) { openWindow(id: "main") }
                         }
                     }
                 }.padding(8).disabled(store.isBusy)

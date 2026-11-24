@@ -18,9 +18,6 @@ struct StorageSettingsSection: View {
                 Button(L10n.tr("选择文件夹…")) { chooseDirectory() }
                 Button(L10n.tr("打开文件夹")) { openDirectory() }
             }
-            Text(L10n.tr("截图保存到此处；录屏和反馈导出时默认使用此文件夹，也可以另选位置。更改设置不会移动已保存的文件。"))
-                .font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
             if let errorMessage {
                 Text(errorMessage.resolved).font(.caption).foregroundStyle(.red)
                     .fixedSize(horizontal: false, vertical: true)

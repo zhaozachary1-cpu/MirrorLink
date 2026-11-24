@@ -11,11 +11,17 @@ struct MirrorLinkApp: App {
     @StateObject private var wireless: WirelessConnectionStore
     @StateObject private var language: LanguageStore
     @StateObject private var tools: DeviceToolsStore
+    private let wirelessBackend: WirelessDebugBackend
     @Environment(\.openWindow) private var openWindow
 
     init() {
         _language = StateObject(wrappedValue: LanguageStore.shared)
-        let sessions = MirrorSessionStore()
+        let paths = ToolPaths.discover()
+        let backend = WirelessDebugBackend(paths: paths)
+        wirelessBackend = backend
+        let sessions = MirrorSessionStore(paths: paths, snapshotProvider: { paths in
+            ADBService(paths: paths).snapshot(additionalSockets: backend.activeSocket.map { [$0] } ?? [])
+        })
         _store = StateObject(wrappedValue: sessions)
         let deviceTools = DeviceToolsStore(paths: sessions.paths)
         _tools = StateObject(wrappedValue: deviceTools)
@@ -34,7 +40,8 @@ struct MirrorLinkApp: App {
             if action == .installAPK { deviceTools?.installAPK(url, to: device, confirmed: true) }
             else if action == .sendFile { deviceTools?.sendFile(url, to: device) }
         }
-        _wireless = StateObject(wrappedValue: WirelessConnectionStore(paths: sessions.paths) { [weak sessions] device in
+        let wirelessService = paths.map { WirelessADBService(paths: $0, adbSocket: backend.socket, prepareBackend: { backend.prepare() }) }
+        _wireless = StateObject(wrappedValue: WirelessConnectionStore(paths: paths, service: wirelessService) { [weak sessions] device in
             sessions?.connectAndMirror(device)
         })
         _updates = StateObject(wrappedValue: AppUpdateStore(
@@ -56,10 +63,15 @@ struct MirrorLinkApp: App {
                     appDelegate.updates = updates
                     appDelegate.wireless = wireless
                     appDelegate.tools = tools
+                    appDelegate.wirelessBackend = wirelessBackend
                     appDelegate.openMainWindow = { openWindow(id: "main") }
+                    store.onShowMainWindow = {
+                        openWindow(id: "main")
+                        NSApp.activate(ignoringOtherApps: true)
+                    }
                 }
         }
-        .defaultSize(width: 960, height: 640)
+        .defaultSize(width: 840, height: 560)
         .commands {
             CommandGroup(after: .appInfo) {
                 Button(updates.installationPending ? L10n.tr("安装已下载的更新…") : L10n.tr("检查更新…")) {
@@ -89,10 +101,10 @@ struct MirrorLinkApp: App {
         }
 
         Window(L10n.tr("无线连接"), id: "wireless") {
-            WirelessConnectionView(store: wireless)
+            WirelessConnectionView(store: wireless, sessions: store)
                 .environment(\.locale, language.effectiveLocale)
         }
-        .defaultSize(width: 640, height: 720)
+        .defaultSize(width: 560, height: 590)
 
         Settings {
             SettingsView(store: store, updates: updates)
@@ -108,6 +120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var updates: AppUpdateStore?
     weak var wireless: WirelessConnectionStore?
     weak var tools: DeviceToolsStore?
+    var wirelessBackend: WirelessDebugBackend?
     var openMainWindow: (() -> Void)?
     private var terminationSignal: DispatchSourceSignal?
 
@@ -125,6 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         tools?.shutdown()
         wireless?.close()
         store?.shutdown()
+        wirelessBackend?.stop()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

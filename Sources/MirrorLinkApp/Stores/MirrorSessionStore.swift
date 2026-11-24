@@ -36,6 +36,8 @@ final class MirrorSessionStore: ObservableObject {
     var windowToolState: ((AndroidDevice) -> [String: Any])?
     var onWindowToolAction: ((MirrorWindowAction, AndroidDevice) -> Void)?
     var onWindowFileAction: ((MirrorWindowAction, URL, AndroidDevice) -> Void)?
+    var onMirrorWindowReady: (() -> Void)?
+    var onShowMainWindow: (() -> Void)?
     private var windowControlTimer: DispatchSourceTimer?
     private var windowRecordingFeedback: [String: String] = [:]
 
@@ -792,6 +794,9 @@ final class MirrorSessionStore: ObservableObject {
                     if session.reconnect != nil { reconnectRequests[deviceID] = nil }
                     if session.recording != nil { recordingMessages[deviceID] = L10n.message("正在录屏，停止后将保存 MP4。") }
                     appendLog(L10n.tr("[%@] 已收到手机画面，投屏窗口已就绪。", session.device.logLabel))
+                    onMirrorWindowReady?()
+                    NSRunningApplication(processIdentifier: session.process.processIdentifier)?
+                        .activate(options: [.activateIgnoringOtherApps])
                 }
             }
             if line == "[server] INFO: Applying video encoder constraints"
@@ -994,6 +999,7 @@ final class MirrorSessionStore: ObservableObject {
         state["screenshotTitle"] = L10n.tr("保存截图")
         state["recordTitle"] = session.recording != nil ? L10n.tr("结束录屏") : L10n.tr("开始录屏…")
         state["moreTitle"] = L10n.tr("更多投屏操作")
+        state["showMainTitle"] = L10n.tr("连接其他手机…")
         state["sendFileTitle"] = L10n.tr("发送文件…")
         state["installAPKTitle"] = L10n.tr("安装 APK…")
         state["chooseFileTitle"] = L10n.tr("选择要发送的文件")
@@ -1030,6 +1036,7 @@ final class MirrorSessionStore: ObservableObject {
         guard !shuttingDown, let session = runningSessions[deviceID], session.token == token,
               session.process.isRunning, !session.stopRequested else { return }
         if request.action == .ready { updateWindowControls(session, force: true); return }
+        if request.action == .showMain { onShowMainWindow?(); return }
         guard sessionStates[deviceID] == .mirroring, session.restartRequest == nil else { return }
         let state = windowToolState?(session.device) ?? [:]
         switch request.action {
@@ -1057,7 +1064,7 @@ final class MirrorSessionStore: ObservableObject {
             guard session.recording != nil else { return }
             windowRecordingFeedback[deviceID] = state["resultID"] as? String ?? ""
             stopRecording(for: deviceID)
-        case .ready: break
+        case .ready, .showMain: break
         }
         updateWindowControls(session)
     }

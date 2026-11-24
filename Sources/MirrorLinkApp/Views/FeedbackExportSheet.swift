@@ -42,9 +42,6 @@ struct FeedbackExportSheet: View {
                     Text(L10n.tr("默认不附加截图或录屏。附件可能包含屏幕上的私人内容，请自行检查；上方文本预览不包含附件画面。"))
                         .font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(L10n.tr("反馈附件仅支持普通图片或视频文件，最多 8 个，每个不超过 512 MB，总计不超过 1 GB；不支持符号链接。"))
-                        .font(.caption).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
                     if !attachments.isEmpty {
                         ScrollView {
                             VStack(alignment: .leading, spacing: 6) {

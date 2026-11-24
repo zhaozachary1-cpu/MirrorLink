@@ -23,6 +23,8 @@ final class WirelessQRPairingStore: ObservableObject {
     private var cancellation: ProcessCancellation?
     private var task: Task<Void, Never>?
     private var generation = UUID()
+    private var pairedIdentity: WirelessPairingIdentity?
+    var canRetryConnection: Bool { pairedIdentity != nil && phase == .failed }
 
     init(service: WirelessADBService?, lifetime: TimeInterval = 120,
          connectionWait: TimeInterval = 35, pollInterval: TimeInterval = 1.5,
@@ -53,6 +55,7 @@ final class WirelessQRPairingStore: ObservableObject {
             // The helper releases its QR credential before the connection stage.
             guard let identity = await self.waitForPairing(service: service, token: token, id: id),
                   self.isCurrent(id) else { return }
+            self.pairedIdentity = identity
             self.session = nil
             self.phase = .connecting
             self.messageValue = L10n.message("配对成功，正在自动连接这台手机…")
@@ -67,9 +70,25 @@ final class WirelessQRPairingStore: ObservableObject {
         task?.cancel()
         task = nil
         session = nil
+        pairedIdentity = nil
         discoveryWarningValue = nil
         phase = .idle
         messageValue = L10n.message("已停止扫码发现。已完成的手机授权不会自动撤销，可在手机中手动忘记此电脑。")
+    }
+
+    func retryConnection() {
+        guard canRetryConnection, let identity = pairedIdentity, let service else { return }
+        cancellation?.cancel()
+        task?.cancel()
+        generation = UUID()
+        let id = generation
+        let token = ProcessCancellation()
+        cancellation = token
+        phase = .connecting
+        messageValue = L10n.message("配对成功，正在自动连接这台手机…")
+        task = Task { [weak self] in
+            await self?.waitForConnection(identity, service: service, token: token, id: id)
+        }
     }
 
     private func isCurrent(_ id: UUID) -> Bool { generation == id && !Task.isCancelled }
@@ -115,7 +134,12 @@ final class WirelessQRPairingStore: ObservableObject {
         while isCurrent(id), Date() < deadline {
             let discovery = await Task.detached { service.discover(cancellation: token) }.value
             guard isCurrent(id) else { return }
-            if let target = discovery.services.first(where: identity.matches), Date() < deadline {
+            let matches = discovery.services.filter(identity.matches)
+            if matches.count > 1 {
+                fail(L10n.message("发现多个相同身份的连接服务，已停止自动连接。请使用手动连接核对地址。"))
+                return
+            }
+            if let target = matches.first, Date() < deadline {
                 let result = await Task.detached {
                     service.connect(endpoint: target.endpoint, expectedIdentity: identity, cancellation: token)
                 }.value
@@ -124,7 +148,7 @@ final class WirelessQRPairingStore: ObservableObject {
                 case let .success(device):
                     phase = .completed
                     discoveryWarningValue = nil
-                    messageValue = L10n.message("已连接扫码的手机，已请求开始投屏。画面与启动结果请查看主窗口。")
+                    messageValue = L10n.message("已连接，正在打开投屏窗口…")
                     onConnected(device)
                     return
                 case let .failure(error): lastError = error.localizedMessage

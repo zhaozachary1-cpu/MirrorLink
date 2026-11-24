@@ -258,6 +258,10 @@
 }
 - (void)showMenu:(NSButton *)sender {
     NSMenu *menu = [[NSMenu alloc] init];
+    NSMenuItem *devices = [[NSMenuItem alloc] initWithTitle:[self text:@"showMainTitle"] action:@selector(showMain:) keyEquivalent:@""];
+    devices.target = self; devices.enabled = !self.closed;
+    [menu addItem:devices];
+    [menu addItem:NSMenuItem.separatorItem];
     if ([self flag:@"busy"]) {
         NSMenuItem *progress = [[NSMenuItem alloc] initWithTitle:[self text:@"status"] action:nil keyEquivalent:@""];
         progress.enabled = NO; [menu addItem:progress];
@@ -285,6 +289,7 @@
     [menu popUpMenuPositioningItem:nil atLocation:NSMakePoint(0, -4) inView:sender];
 }
 - (void)swipe:(id)sender { if ([self flag:@"controlAllowed"] && ![self flag:@"busy"]) [self send:@"swipe" path:nil]; }
+- (void)showMain:(id)sender { if (!self.closed) [self send:@"showMain" path:nil]; }
 - (void)cancelOperation:(id)sender { [self send:@"cancel" path:nil]; }
 - (void)reveal:(NSMenuItem *)sender {
     NSString *path = sender.representedObject;

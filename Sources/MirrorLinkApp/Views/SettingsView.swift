@@ -26,14 +26,10 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.menu)
-                Text(L10n.tr("更改会立即应用于镜连界面，不会中断正在投屏的手机。系统菜单和更新弹窗可能需要下次启动应用后切换。"))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Section(L10n.tr("画质与稳定性")) {
-                MirrorQualityControls(profile: $store.qualityProfile, showsAdditionalGuidance: true)
+                MirrorQualityControls(profile: $store.qualityProfile)
             }
 
             Section(L10n.tr("多窗口排列")) {
@@ -42,15 +38,13 @@ struct SettingsView: View {
                         Text(layout.title).tag(layout)
                     }
                 }
-                Text(L10n.tr("仅用于下次启动所选设备的投屏窗口，不会重新排列当前窗口。"))
-                    .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
 
             StorageSettingsSection()
 
             UpdateSettingsView(updates: updates)
-            Section(L10n.tr("投屏组件")) {
+            Section {
+              DisclosureGroup(L10n.tr("关于镜连")) {
                 LabeledContent(L10n.tr("状态")) {
                     Label(paths?.isUsable == true ? L10n.tr("已就绪") : L10n.tr("缺少文件"), systemImage: paths?.isUsable == true ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                         .foregroundStyle(paths?.isUsable == true ? .green : .orange)
@@ -63,23 +57,15 @@ struct SettingsView: View {
                             .lineLimit(2)
                     }
                 }
-            }
-
-            Section(L10n.tr("当前版本范围")) {
-                Text(L10n.tr("支持 macOS 13 或更高版本，可同时投屏多台通过 USB 授权或无线调试配对的 Android 手机。每台手机独立显示，可分别开始、重试、重新投屏和停止；退出镜连会停止本应用启动的全部投屏。实际并行能力取决于手机与 Mac 性能，以及 USB 或 Wi-Fi 连接。"))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section(L10n.tr("发布说明")) {
                 Text(distributionNote)
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+              }
             }
         }
         .formStyle(.grouped)
-        .frame(width: 580, height: 650)
+        .frame(width: 540, height: 590)
         .scenePadding()
     }
 }
