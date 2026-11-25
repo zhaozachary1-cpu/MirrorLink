@@ -1,3 +1,20 @@
+# 镜连 MirrorLink 0.5.5 — 修复文件选择后按钮置灰 / Restore Controls After File Selection（免费社区版）
+
+版本 / Version：**0.5.5 / Build 18**。
+
+- 修复“安装 APK”关闭文件选择窗口后，投屏工具栏持续置灰、无法继续操作的问题。
+- 同时修复“发送文件”和“录屏保存位置”的相同状态恢复问题，取消后可以立即重新操作。
+- 选择 APK 后仍需确认文件和目标手机；取消不安装，已有应用不自动覆盖。会话关闭时取消所属文件窗口，防止迟到的安装或录屏请求。
+- 保留普通操作不自动弹提示的体验；真实失败仍说明原因。
+
+**English:** Fixes the mirror toolbar remaining disabled after closing the APK picker. File transfer and recording save panels use the same corrected cleanup. APK installation still requires a separate confirmation; cancelling never installs an app, and existing apps are not silently replaced. Closing the session cancels its owned picker and prevents late file actions. Routine successful operations remain quiet.
+
+使用完整 DMG 或 macOS-universal.zip 安装，旧版也可从应用菜单“检查更新…”获取已发布更新。免费社区版，ad-hoc 完整性签名，未经 Apple 公证；更新继续使用原有 Sparkle Ed25519 密钥签名。安装与安全注意事项见 README，实际验证边界见 TOOLS-QA.md 和 UPDATE-QA.md。
+
+**Installation:** Use the full DMG or macOS-universal.zip, or Check for Updates once this release is published. This free community build is ad-hoc signed and is not Apple-notarized; the existing Sparkle update key is retained. See README for installation guidance and the QA documents for actual verification limits.
+
+---
+
 # 镜连 MirrorLink 0.5.4 — 简洁连接与紧凑窗口 / Simpler Connections and Compact Windows（免费社区版）
 
 版本 / Version：**0.5.4 / Build 17**。包含此前尚未公开的 0.5.3 无线发现修复。

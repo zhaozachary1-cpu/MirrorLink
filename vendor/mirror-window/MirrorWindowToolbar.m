@@ -20,6 +20,7 @@
 @property(nonatomic) NSPopover *result;
 @property(nonatomic) id closeObserver;
 @property(nonatomic) NSAlert *activeAlert;
+@property(nonatomic) NSSavePanel *activePanel;
 @property(nonatomic, copy) void (^alertAnswer)(NSModalResponse);
 - (void)send:(NSString *)action path:(NSString *)path;
 - (void)receive;
@@ -27,6 +28,26 @@
 @end
 
 @implementation MLWindowToolbar
+- (NSOpenPanel *)makeOpenPanel { return [NSOpenPanel openPanel]; }
+- (NSSavePanel *)makeSavePanel { return [NSSavePanel savePanel]; }
+- (NSModalResponse)runFilePanel:(NSSavePanel *)panel {
+    // SDL pumps Cocoa events without NSApplication.run. Sheet completion
+    // handlers can remain pending after the file panel has already closed.
+    // Let AppKit own this panel's modal loop and restore controls on every exit.
+    self.activePanel = panel;
+    self.dialogOpen = YES;
+    [self update];
+    NSModalResponse response = NSModalResponseCancel;
+    @try {
+        response = [panel runModal];
+    } @finally {
+        [panel orderOut:nil];
+        self.activePanel = nil;
+        self.dialogOpen = NO;
+        [self update];
+    }
+    return self.closed ? NSModalResponseCancel : response;
+}
 - (void)presentAlert:(NSAlert *)alert completion:(void (^)(NSModalResponse))completion {
     self.activeAlert = alert;
     self.alertAnswer = completion;
@@ -159,39 +180,32 @@
     [self send:action path:nil];
 }
 - (void)chooseFile:(BOOL)apk {
-    self.dialogOpen = YES; [self update];
-    NSOpenPanel *panel = [NSOpenPanel openPanel];
+    NSOpenPanel *panel = [self makeOpenPanel];
     panel.title = [self text:apk ? @"chooseAPKTitle" : @"chooseFileTitle"];
     panel.prompt = [self text:apk ? @"installAPKTitle" : @"sendPrompt"];
     panel.message = [self text:apk ? @"installExplanation" : @"sendExplanation"];
     panel.canChooseDirectories = NO; panel.allowsMultipleSelection = NO;
     if (apk) panel.allowedFileTypes = @[@"apk"];
-    __weak MLWindowToolbar *weakSelf = self;
-    [panel beginSheetModalForWindow:self.window completionHandler:^(NSModalResponse choice) {
-        MLWindowToolbar *owner = weakSelf;
-        if (!owner || owner.closed) return;
-        owner.dialogOpen = NO;
-        if (choice != NSModalResponseOK || !panel.URL.isFileURL) { [owner update]; return; }
-        NSURL *url = panel.URL;
-        if ([url.pathExtension.lowercaseString isEqual:@"apk"]) {
-            owner.dialogOpen = YES;
-            NSAlert *alert = [[NSAlert alloc] init];
-            owner.activeAlert = alert;
-            alert.messageText = [owner text:@"installTitle"];
-            alert.informativeText = [NSString stringWithFormat:@"%@\n\n%@", url.lastPathComponent, [owner text:@"installExplanation"]];
-            [alert addButtonWithTitle:[owner text:@"installConfirm"]];
-            [alert addButtonWithTitle:[owner text:@"cancelTitle"]];
-            [owner presentAlert:alert completion:^(NSModalResponse response) {
-                MLWindowToolbar *owner = weakSelf;
-                if (!owner || owner.closed) return;
-                owner.activeAlert = nil;
-                owner.dialogOpen = NO;
-                if (response == NSAlertFirstButtonReturn) [owner send:@"installAPK" path:url.path];
-                [owner update];
-            }];
-        } else if (!apk) { [owner send:@"sendFile" path:url.path]; }
-        [owner update];
-    }];
+    NSModalResponse choice = [self runFilePanel:panel];
+    if (self.closed || choice != NSModalResponseOK || !panel.URL.isFileURL) return;
+    NSURL *url = panel.URL;
+    if ([url.pathExtension.lowercaseString isEqual:@"apk"]) {
+        self.dialogOpen = YES;
+        [self update];
+        NSAlert *alert = [[NSAlert alloc] init];
+        alert.messageText = [self text:@"installTitle"];
+        alert.informativeText = [NSString stringWithFormat:@"%@\n\n%@", url.lastPathComponent, [self text:@"installExplanation"]];
+        [alert addButtonWithTitle:[self text:@"installConfirm"]];
+        [alert addButtonWithTitle:[self text:@"cancelTitle"]];
+        __weak MLWindowToolbar *weakSelf = self;
+        [self presentAlert:alert completion:^(NSModalResponse response) {
+            MLWindowToolbar *owner = weakSelf;
+            if (!owner || owner.closed) return;
+            owner.dialogOpen = NO;
+            if (response == NSAlertFirstButtonReturn) [owner send:@"installAPK" path:url.path];
+            [owner update];
+        }];
+    } else if (!apk) { [self send:@"sendFile" path:url.path]; }
 }
 - (void)confirmRecording {
     BOOL stopping = [self flag:@"recording"];
@@ -216,20 +230,17 @@
             [owner send:@"recordStop" path:nil];
             [owner update];
         } else {
-            NSSavePanel *panel = [NSSavePanel savePanel];
+            NSSavePanel *panel = [owner makeSavePanel];
             panel.title = [owner text:@"saveRecordingTitle"];
             panel.allowedFileTypes = @[@"mp4"];
             panel.canCreateDirectories = YES;
             NSString *directory = [owner text:@"directory"];
             if (directory.length) panel.directoryURL = [NSURL fileURLWithPath:directory isDirectory:YES];
             panel.nameFieldStringValue = [NSString stringWithFormat:@"MirrorLink-Recording-%.0f.mp4", NSDate.date.timeIntervalSince1970];
-            [panel beginSheetModalForWindow:owner.window completionHandler:^(NSModalResponse choice) {
-                MLWindowToolbar *owner = weakSelf;
-                if (!owner || owner.closed) return;
-                owner.dialogOpen = NO;
-                if (choice == NSModalResponseOK && panel.URL.isFileURL) [owner send:@"recordStart" path:panel.URL.path];
-                [owner update];
-            }];
+            NSModalResponse choice = [owner runFilePanel:panel];
+            if (!owner.closed && choice == NSModalResponseOK && panel.URL.isFileURL) {
+                [owner send:@"recordStart" path:panel.URL.path];
+            }
         }
     }];
 }
@@ -299,6 +310,7 @@
 - (void)invalidate {
     if (self.closed) return;
     self.closed = YES;
+    [self.activePanel cancel:nil];
     self.activeAlert = nil;
     self.alertAnswer = nil;
     [self.result close];

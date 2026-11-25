@@ -20,6 +20,10 @@ single main window without restarting any mirroring session. The parent closes
 that main window only after a newly started session reports its video texture.
 An already-open status popover refreshes as the operation changes.
 AppKit confirmation buttons resolve explicitly because SDL owns its event loop.
+File open/save panels use AppKit's modal return value instead of deferred sheet
+completion handlers: cancelling or choosing a file restores controls immediately,
+including APK confirmation and recording save cancellation. Closing a session
+cancels its owned panel and prevents a late file action.
 State is bilingual, bounded, nonblocking and deduplicated. Socket buffers are
 configured above Darwin's default 2 KB to fit localized states and media paths.
 
