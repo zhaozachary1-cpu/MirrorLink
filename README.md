@@ -18,9 +18,9 @@
 
 > **0.5.5 / Build 18 is available:** fixes disabled mirror controls after closing an APK, file-transfer, or recording-save picker. It retains the compact 640 × 420 main window, visible phone brands/models, nearby-phone connections, and app-owned wireless backend. Control pages close when video arrives; More → Connect Another Phone, the Dock, or ⌘0 reopens the main window. See [TOOLS-QA.md](TOOLS-QA.md) and [WIRELESS-QA.md](WIRELESS-QA.md) for actual-device evidence and remaining limits.
 
-源码与本机验证版 **0.5.6 / Build 19** 优化 APK 安装：无线调试连接优先协商压缩传输，再让手机安装；USB 的 Android 7+ 使用流式安装。本地磁盘支持时快速克隆安装包。投屏窗口内显示阶段、已用秒数、取消和安装结果，手机安装较长时提醒查看授权。不会跳过手机安全检查，也不承诺所有 APK 的安装总时长缩短固定比例。顶部公开下载仍为 0.5.5；源码同步和本机安装不代表 0.5.6 已发布，验证范围见 [TOOLS-QA.md](TOOLS-QA.md)。
+源码与本机验证版 **0.5.7 / Build 20** 支持 APK 覆盖更新：确认安装后，已有同一应用时直接更新并保留数据，无需先卸载。签名不一致或版本过低时会说明原因并保留原应用。沿用无线压缩传输、USB 流式安装、本地快速克隆，以及窗口内的阶段、计时、取消和结果反馈。顶部公开下载仍为 0.5.5；源码同步和本机安装不代表 0.5.7 已发布，验证范围见 [TOOLS-QA.md](TOOLS-QA.md)。
 
-**Source/local validation build 0.5.6 / Build 19:** negotiates compressed APK transfer for Android wireless debugging, then installs on the phone. USB uses streaming installation on Android 7+. Local file cloning is preferred where supported. Installation phase, elapsed time, cancellation and completion appear inside the mirror window. Phone security checks remain in place; total installation time is not guaranteed to improve by a fixed factor. Public downloads above remain 0.5.5 until a separate release is published.
+**Source/local validation build 0.5.7 / Build 20:** confirmed APK installation updates an existing app in place, keeping its data without uninstalling it. Signature mismatches and older versions show a specific error and leave the existing app in place. Compressed wireless transfer, USB streaming, local cloning, progress, elapsed time and cancellation remain available. Public downloads above remain 0.5.5 until a separate release is published.
 
 MirrorLink mirrors Android phones on a Mac over USB or authorized wireless debugging. It includes ADB and scrcpy; no Homebrew or separate tool installation is needed. Requires **macOS 13 or later**. The universal installer includes Apple Silicon and Intel binaries; Intel hardware acceptance testing remains incomplete. It does not support iPhone mirroring or Windows.
 
@@ -57,7 +57,7 @@ Language changes update MirrorLink’s own interface without stopping active mir
 | 自动恢复 | 主动开启后，意外断线时最多检查 3 次；仅当原已授权硬件身份、原连接方式（USB/Wi-Fi）和原 ADB socket 同时匹配，并重新出现在 ready 列表中，才重启投屏。可取消；主动停止、正常关闭投屏窗口或退出应用后不恢复。不会主动重新连接网络、重新配对、切换连接方式或猜测另一台手机。 |
 | 窗口布局 | 自动位置、并排排列、网格排列，在下一次开始投屏时生效。现有投屏仍是独立窗口，不申请辅助功能权限来强制移动其他应用窗口。 |
 | 演示模式 | 使用昵称或型号代替窗口标题中的设备编号，并禁用手机控制和剪贴板自动同步；可选择置顶或全屏。它不会自动遮挡手机通知、密码或最后一帧敏感内容。 |
-| 声音与文件 | 每台设备可单独选择是否转发声音，修改在该台下一次启动时生效。在投屏窗口点击发送文件，选好后直接发送至该手机的 Download/MirrorLink 目录；保留可读文件名并加短编号避免覆盖。选到 APK 会进入一次安装确认，也可直接点击安装 APK 按钮。窗口内显示状态、取消及结果；不会覆盖已安装应用。 |
+| 声音与文件 | 每台设备可单独选择是否转发声音，修改在该台下一次启动时生效。在投屏窗口点击发送文件，选好后直接发送至该手机的 Download/MirrorLink 目录；保留可读文件名并加短编号避免覆盖。选到 APK 会进入一次安装确认，也可直接点击安装 APK 按钮。已有同一应用时覆盖更新并保留数据，仍需签名匹配且版本不低于已安装版本。窗口内显示状态、取消及结果。 |
 | 问题反馈包 | 先查看脱敏后的结构化设备、应用和会话信息，再选择是否加入截图/录像，导出本地 ZIP。默认不附带画面或原始日志，不自动发送给任何人。 |
 
 截图和录像的保存位置可在设置中更改，也可打开文件夹查看。发送文件、截图、自检和导出期间会显示状态，并提供取消或明确结果。首次使用建议先连接一台手机确认操作，之后再扩展至多台。

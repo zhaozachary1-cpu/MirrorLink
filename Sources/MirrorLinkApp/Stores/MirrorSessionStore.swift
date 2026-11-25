@@ -1006,7 +1006,7 @@ final class MirrorSessionStore: ObservableObject {
         state["chooseFileTitle"] = L10n.tr("选择要发送的文件")
         state["chooseAPKTitle"] = L10n.tr("选择要安装的 APK")
         state["installTitle"] = L10n.tr("确认安装所选 APK？")
-        state["installExplanation"] = L10n.tr("将所选 APK 安装到 %@。不会覆盖已有应用；请确认文件来源。", displayName(for: session.device))
+        state["installExplanation"] = L10n.tr("将所选 APK 安装到 %@。已有同一应用时将覆盖更新并保留数据；请确认文件来源。", displayName(for: session.device))
         state["installConfirm"] = L10n.tr("安装到这台设备")
         state["sendPrompt"] = L10n.tr("发送到手机")
         state["sendExplanation"] = L10n.tr("选择后直接发送到这台手机的 Download/MirrorLink 文件夹（最大 2 GB）。选择 APK 时将进入安装确认。")

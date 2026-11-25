@@ -62,6 +62,9 @@ private final class MockADB: @unchecked Sendable {
         }
         if command.first == "install" || command.starts(with: ["shell", "cmd", "package", "install"]) {
             if command.first == "install" { stagedBytes = try? Data(contentsOf: URL(fileURLWithPath: command.last!)) }
+            if mode == "existingApp", !command.contains("-r") {
+                return result("Failure [INSTALL_FAILED_ALREADY_EXISTS]", status: 1)
+            }
             if mode == "parseFileError" { return result("Exception: Failed to parse APK file: PRIVATE /Users/person/file", status: 255) }
             if mode == "slowInstall" {
                 while cancellation?.isCancelled != true { Thread.sleep(forTimeInterval: 0.01) }
@@ -190,7 +193,7 @@ struct DeviceToolsChecks {
         let progress = ToolProgressMessages()
         try service.installAPK(apk, to: device, confirmed: true, cancellation: nil, progress: { progress.append($0) })
         expect(mock.calls.contains { $0.arguments.dropFirst(2).first == "install" }, "confirmed APK uses dedicated install command")
-        expect(mock.calls.last?.arguments.dropFirst(2).dropLast() == ["install", "--streaming", "--no-incremental", "--no-fastdeploy", "-R"], "APK selects one streaming attempt and explicitly prohibits replacement")
+        expect(mock.calls.last?.arguments.dropFirst(2).dropLast() == ["install", "--streaming", "--no-incremental", "--no-fastdeploy", "-r"], "APK selects one streaming attempt with data-preserving replacement")
         expect(mock.stagedBytes == payload, "fast APK staging preserves the exact selected bytes")
         expect(progress.values == [L10n.tr("正在检查手机连接…"), L10n.tr("正在准备 APK…"), L10n.tr("正在传输并安装 APK…")], "installation reports real phases without invented percentages")
         expect(!FileManager.default.fileExists(atPath: mock.calls.last!.arguments.last!), "successful install removes its private local staging file")
@@ -201,18 +204,22 @@ struct DeviceToolsChecks {
         expect(!FileManager.default.fileExists(atPath: mock.calls.last!.arguments.last!), "timed-out install removes its private local staging file")
         mock.mode = "oldAndroid"; mock.clear()
         try service.installAPK(apk, to: device, confirmed: true, cancellation: nil)
-        expect(mock.calls.last!.arguments.contains("--streaming") && !mock.calls.last!.arguments.contains("-R") && !mock.calls.last!.arguments.contains("-r"),
-               "Android 7-8 streaming retains its default no-replacement behavior")
+        expect(mock.calls.last!.arguments.contains("--streaming") && !mock.calls.last!.arguments.contains("-R") && mock.calls.last!.arguments.contains("-r"),
+               "Android 7-8 streaming explicitly requests replacement")
         mock.mode = "legacyAndroid"; mock.clear()
         try service.installAPK(apk, to: device, confirmed: true, cancellation: nil)
-        expect(!mock.calls.last!.arguments.contains("--streaming") && !mock.calls.last!.arguments.contains("-R") && !mock.calls.last!.arguments.contains("-r"),
-               "older USB phones retain compatible legacy installation without replacement")
+        expect(!mock.calls.last!.arguments.contains("--streaming") && !mock.calls.last!.arguments.contains("-R") && mock.calls.last!.arguments.contains("-r"),
+               "older USB phones use compatible legacy installation with replacement")
         for (code, expected) in [("INSTALL_PARSE_FAILED_NOT_APK", DeviceToolsError.apkInvalid),
-            ("INSTALL_FAILED_ALREADY_EXISTS", .apkConflict), ("INSTALL_FAILED_USER_RESTRICTED", .apkBlocked),
+            ("INSTALL_FAILED_ALREADY_EXISTS", .apkConflict), ("INSTALL_FAILED_UPDATE_INCOMPATIBLE", .apkSignatureMismatch),
+            ("INSTALL_FAILED_VERSION_DOWNGRADE", .apkVersionDowngrade), ("INSTALL_FAILED_USER_RESTRICTED", .apkBlocked),
             ("INSTALL_FAILED_NO_MATCHING_ABIS", .apkIncompatible)] {
-            mock.mode = code
+            mock.mode = code; mock.clear()
             do { try service.installAPK(apk, to: device, confirmed: true, cancellation: nil); fatalError("expected install rejection") }
             catch let error as DeviceToolsError { expect(error.localizedDescription == expected.localizedDescription && !error.localizedDescription.contains("PRIVATE"), "APK failure \(code) gives actionable localized guidance without raw private output") }
+            expect(mock.calls.filter { $0.arguments.contains("install") }.count == 1 &&
+                   !mock.calls.flatMap(\.arguments).contains(where: { ["uninstall", "clear", "-d", "-g", "-R"].contains($0) }),
+                   "USB \(code) never retries removes app data downgrades or grants permissions")
         }
         let wireless = AndroidDevice(serial: "wireless-install-target", model: nil, product: nil, transport: "Wi-Fi",
                                      state: .ready, adbSocket: "localfilesystem:/tmp/mock-wireless-adb")
@@ -227,8 +234,8 @@ struct DeviceToolsChecks {
                "wireless installer uses only its own unpredictable remote APK name")
         expect(wifiCalls.allSatisfy { $0.arguments.prefix(2) == ["-s", wireless.serial] && $0.environment["ADB_SERVER_SOCKET"] == wireless.adbSocket },
                "compressed transfer installation and cleanup remain on the exact wireless route")
-        expect(wifiCalls.contains { Array($0.arguments.dropFirst(2)) == ["shell", "cmd", "package", "install", "-R", remoteAPK] },
-               "wireless installation runs only after push and explicitly rejects replacement")
+        expect(wifiCalls.contains { Array($0.arguments.dropFirst(2)) == ["shell", "cmd", "package", "install", "-r", remoteAPK] },
+               "wireless installation runs only after push with data-preserving replacement")
         expect(Array(wifiCalls.last!.arguments.dropFirst(2)) == ["shell", "rm", "-f", remoteAPK] && wifiCalls.last!.timeout == 1.5 && !wifiCalls.last!.hasCancellation,
                "wireless cleanup removes one exact owned file with an independent bounded wait")
         expect(wirelessProgress.values.suffix(2) == [L10n.tr("正在传输 APK…"), L10n.tr("正在手机上安装 APK…")],
@@ -239,14 +246,28 @@ struct DeviceToolsChecks {
         expect(mock.calls.first { $0.arguments.contains("push") }!.arguments.last != remoteAPK, "each wireless APK gets a distinct temporary destination")
         for (mode, failure) in [("wirelessTransferTimeout", DeviceToolsError.apkTransferTimedOut),
                                 ("installTimeout", .apkTimedOut), ("INSTALL_FAILED_USER_RESTRICTED", .apkBlocked),
-                                ("INSTALL_PARSE_FAILED_NOT_APK", .apkInvalid), ("parseFileError", .apkInvalid), ("INSTALL_FAILED_ALREADY_EXISTS", .apkConflict)] {
+                                ("INSTALL_PARSE_FAILED_NOT_APK", .apkInvalid), ("parseFileError", .apkInvalid), ("INSTALL_FAILED_ALREADY_EXISTS", .apkConflict),
+                                ("INSTALL_FAILED_UPDATE_INCOMPATIBLE", .apkSignatureMismatch), ("INSTALL_FAILED_VERSION_DOWNGRADE", .apkVersionDowngrade)] {
             mock.mode = mode; mock.clear()
             do { try service.installAPK(apk, to: wireless, confirmed: true, cancellation: nil); fatalError("expected wireless error") }
             catch let error as DeviceToolsError { expect(error.localizedDescription == failure.localizedDescription, "wireless \(mode) has the correct actionable failure") }
             expect(mock.calls.last!.arguments.contains("rm"), "wireless \(mode) still attempts exact-file cleanup")
+            expect(mock.calls.filter { $0.arguments.contains("install") }.count <= 1 &&
+                   !mock.calls.flatMap(\.arguments).contains(where: { ["uninstall", "clear", "-d", "-g", "-R"].contains($0) }),
+                   "wireless \(mode) never retries removes app data downgrades or grants permissions")
             if mode == "wirelessTransferTimeout" {
                 expect(!mock.calls.contains { $0.arguments.contains("install") }, "incomplete transfer cannot initiate phone installation")
             }
+        }
+        for target in [device, wireless] {
+            mock.mode = "existingApp"; mock.clear()
+            try service.installAPK(apk, to: target, confirmed: true, cancellation: nil)
+            expect(mock.calls.filter { $0.arguments.contains("install") }.count == 1,
+                   "existing app updates in one attempt on \(target.transport)")
+            expect(mock.calls.allSatisfy { $0.arguments.prefix(2) == ["-s", target.serial] &&
+                $0.environment["ADB_SERVER_SOCKET"] == target.adbSocket }, "existing app update keeps its selected route")
+            expect(!mock.calls.flatMap(\.arguments).contains(where: { ["uninstall", "clear", "-d", "-g", "-R"].contains($0) }),
+                   "existing app update never uninstalls clears data downgrades or grants permissions")
         }
         mock.mode = "cancelWirelessTransfer"; mock.clear()
         let transferCancellation = ProcessCancellation()

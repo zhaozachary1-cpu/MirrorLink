@@ -5,7 +5,7 @@ enum DeviceToolsError: Error, LocalizedError, Sendable {
     case toolsMissing, invalidTarget, deviceNotReady, cancelled, timedOut, outputTooLarge
     case commandFailed, invalidPNG, invalidFile, saveFailed, apkRequiresConfirmation
     case apkOnly, drawerUnsupported, invalidScreenSize, invalidAttachment
-    case apkInvalid, apkConflict, apkBlocked, apkIncompatible, apkTimedOut, apkTransferTimedOut
+    case apkInvalid, apkConflict, apkSignatureMismatch, apkVersionDowngrade, apkBlocked, apkIncompatible, apkTimedOut, apkTransferTimedOut
     var message: LocalizedMessage {
         switch self {
         case .toolsMissing: return L10n.message("内置工具不可用，请重新安装完整应用。")
@@ -21,7 +21,9 @@ enum DeviceToolsError: Error, LocalizedError, Sendable {
         case .apkRequiresConfirmation: return L10n.message("APK 需要使用“安装 APK”并明确确认，普通文件发送不会安装应用。")
         case .apkOnly: return L10n.message("请选择 APK 安装文件。")
         case .apkInvalid: return L10n.message("这个 APK 已损坏或不是有效安装包，请重新下载后再试。")
-        case .apkConflict: return L10n.message("手机上已有这个应用，镜连没有覆盖它。如需更新，请使用该应用自己的更新方式。")
+        case .apkConflict: return L10n.message("手机拒绝了覆盖安装，请确认安装包与原应用兼容。原应用和数据已保留。")
+        case .apkSignatureMismatch: return L10n.message("安装包与原应用签名不一致，无法覆盖。请选择同一来源的安装包；原应用和数据已保留。")
+        case .apkVersionDowngrade: return L10n.message("安装包版本低于手机上的版本，无法覆盖。请选择相同或更高版本；原应用和数据已保留。")
         case .apkBlocked: return L10n.message("手机拒绝了安装，请解锁手机并查看手机上的安装授权提示。")
         case .apkIncompatible: return L10n.message("这个 APK 不兼容当前手机，请选择适用于该手机 Android 版本和处理器的安装包。")
         case .apkTimedOut: return L10n.message("安装等待超时。请查看手机上的安装授权和应用列表，确认结果后再试；停止等待不会撤销已完成的安装。")
@@ -92,8 +94,8 @@ struct DeviceToolsService: Sendable {
         progress(L10n.message("正在检查手机连接…"))
         guard device.state == .ready else { throw DeviceToolsError.deviceNotReady }
         // One successful, targeted query both checks the connection and selects
-        // compatible options. Android 9+ replaces by default unless -R is sent;
-        // older releases reject replacement by default and do not accept -R.
+        // compatible options. Explicit replacement below works across supported
+        // Android versions and keeps app data under the package manager's rules.
         let version = try text(["shell", "getprop", "ro.build.version.sdk"], device, cancellation)
         guard let api = Int(version), api >= 21 else { throw DeviceToolsError.deviceNotReady }
         let directory = try ToolFileSafety.temporaryDirectory(in: temporaryRoot)
@@ -104,7 +106,7 @@ struct DeviceToolsService: Sendable {
         // Android 7+ supports streaming. Earlier USB phones retain ADB's legacy
         // mode. Neither path probes incremental installation or silently retries.
         let mode = api >= 24 ? ["--streaming"] : []
-        let replacement = api >= 28 ? ["-R"] : []
+        let replacement = ["-r"]
         let result: BinaryProcessResult
         if device.isWireless, api >= 30 {
             // Streaming install cannot compress its APK stream. Negotiate ADB
@@ -297,7 +299,9 @@ struct DeviceToolsService: Sendable {
                 let failure = String(decoding: result.stdout + result.stderr, as: UTF8.self)
                 if failure.contains("INSTALL_PARSE_FAILED") || failure.contains("INSTALL_FAILED_INVALID_APK") ||
                     failure.contains("Failed to parse APK file:") { throw DeviceToolsError.apkInvalid }
-                if failure.contains("INSTALL_FAILED_ALREADY_EXISTS") || failure.contains("INSTALL_FAILED_UPDATE_INCOMPATIBLE") { throw DeviceToolsError.apkConflict }
+                if failure.contains("INSTALL_FAILED_UPDATE_INCOMPATIBLE") { throw DeviceToolsError.apkSignatureMismatch }
+                if failure.contains("INSTALL_FAILED_VERSION_DOWNGRADE") { throw DeviceToolsError.apkVersionDowngrade }
+                if failure.contains("INSTALL_FAILED_ALREADY_EXISTS") { throw DeviceToolsError.apkConflict }
                 if failure.contains("INSTALL_FAILED_USER_RESTRICTED") || failure.contains("INSTALL_CANCELED_BY_USER") { throw DeviceToolsError.apkBlocked }
                 if failure.contains("INSTALL_FAILED_NO_MATCHING_ABIS") || failure.contains("INSTALL_FAILED_OLDER_SDK") { throw DeviceToolsError.apkIncompatible }
             }

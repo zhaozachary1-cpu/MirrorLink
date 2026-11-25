@@ -384,7 +384,6 @@
 "安装到这台设备" = "Install on This Device";
 "导出问题反馈" = "Export Feedback";
 "导出问题反馈…" = "Export Feedback…";
-"将 %@ 安装到 %@。请确认文件来源；不会覆盖已安装的应用，存在冲突时安装会失败。" = "Install %@ on %@. Check that you trust the file's source. Installed apps will not be overwritten; installation will fail if a conflict exists.";
 "将启动或重新启动这台设备的投屏并开始录制，当前画面会短暂中断；其他手机不受影响。录屏可能包含手机上的私人内容。" = "Mirroring will start or restart for this device to begin recording. Its screen will briefly disconnect; other phones are unaffected. The recording may contain private phone content.";
 "尚未确认设备身份，当前偏好仅用于本次连接；收藏与自动恢复暂不可用。" = "This device's identity has not been verified. Preferences apply only to this connection; favorites and automatic recovery are unavailable.";
 "尝试上滑打开应用列表" = "Try Swiping Up for Apps";
@@ -463,13 +462,15 @@
 "查看操作结果" = "View Action Result";
 "开始投屏后，可在手机画面窗口顶部返回桌面、打开应用列表、截图和录屏。" = "After starting mirroring, use the toolbar above the phone picture for Home, App Drawer, screenshots, and recording.";
 "文件、自检与反馈" = "Files, Connection Checks, and Feedback";
-"将所选 APK 安装到 %@。不会覆盖已有应用；请确认文件来源。" = "Install the selected APK on %@. Existing apps will not be overwritten; check the file's source.";
+"将所选 APK 安装到 %@。已有同一应用时将覆盖更新并保留数据；请确认文件来源。" = "Install the selected APK on %@. If the same app is already installed, update it and keep its data. Check that you trust the file's source.";
 "发送到手机" = "Send to Phone";
 "选择后直接发送到这台手机的 Download/MirrorLink 文件夹（最大 2 GB）。选择 APK 时将进入安装确认。" = "The selected file will be sent to this phone's Download/MirrorLink folder (up to 2 GB). Selecting an APK opens an installation confirmation.";
 "开始投屏后，可在画面窗口顶部进行手机导航、截图、录屏、发送文件和安装 APK。" = "Once mirroring starts, use the top of the phone window for navigation, screenshots, recording, file transfer, and APK installation.";
 "自检与反馈" = "Connection Checks and Feedback";
 "这个 APK 已损坏或不是有效安装包，请重新下载后再试。" = "This APK is damaged or is not a valid package. Download it again and retry.";
-"手机上已有这个应用，镜连没有覆盖它。如需更新，请使用该应用自己的更新方式。" = "This app is already installed. MirrorLink did not overwrite it. Use the app's own update method to update it.";
+"手机拒绝了覆盖安装，请确认安装包与原应用兼容。原应用和数据已保留。" = "The phone rejected the update. Check that the APK is compatible with the installed app. The existing app and data have been kept.";
+"安装包与原应用签名不一致，无法覆盖。请选择同一来源的安装包；原应用和数据已保留。" = "The APK's signature does not match the installed app. Choose an APK from the same source. The existing app and data have been kept.";
+"安装包版本低于手机上的版本，无法覆盖。请选择相同或更高版本；原应用和数据已保留。" = "The APK is older than the installed app. Choose the same or a newer version. The existing app and data have been kept.";
 "手机拒绝了安装，请解锁手机并查看手机上的安装授权提示。" = "The phone rejected installation. Unlock it and check for an installation permission prompt.";
 "这个 APK 不兼容当前手机，请选择适用于该手机 Android 版本和处理器的安装包。" = "This APK is incompatible with this phone. Choose a package for its Android version and processor.";
 "画面信息" = "Video Details";
