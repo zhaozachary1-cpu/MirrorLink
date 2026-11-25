@@ -55,7 +55,7 @@ struct MirrorLinkApp: App {
         // One control window owns all device sessions; reopening must not
         // create another timer/selection UI for the same store.
         Window(L10n.tr("镜连"), id: "main") {
-            ContentView(store: store, updates: updates)
+            ContentView(store: store, updates: updates, wireless: wireless)
                 .environmentObject(tools)
                 .environment(\.locale, language.effectiveLocale)
                 .onAppear {
@@ -71,7 +71,7 @@ struct MirrorLinkApp: App {
                     }
                 }
         }
-        .defaultSize(width: 640, height: 420)
+        .defaultSize(width: 580, height: 460)
         .commands {
             CommandGroup(after: .appInfo) {
                 Button(updates.installationPending ? L10n.tr("安装已下载的更新…") : L10n.tr("检查更新…")) {
@@ -83,9 +83,9 @@ struct MirrorLinkApp: App {
                 Button(L10n.tr("显示主窗口")) { openWindow(id: "main") }
                     .keyboardShortcut("0", modifiers: [.command])
                 Divider()
-                Button(L10n.tr("无线连接…")) { openWindow(id: "wireless") }
+                Button(L10n.tr("无线连接…")) { openWindow(id: "main"); wireless.open() }
                     .keyboardShortcut("w", modifiers: [.command, .shift])
-                Button(L10n.tr("刷新设备")) { store.refresh() }
+                Button(L10n.tr("刷新设备")) { store.refresh(); wireless.discover(preservingServices: true) }
                     .keyboardShortcut("r", modifiers: [.command])
 
                 Divider()
@@ -99,12 +99,6 @@ struct MirrorLinkApp: App {
                     .disabled(!store.isMirroring && !store.hasPendingReconnect)
             }
         }
-
-        Window(L10n.tr("无线连接"), id: "wireless") {
-            WirelessConnectionView(store: wireless, sessions: store)
-                .environment(\.locale, language.effectiveLocale)
-        }
-        .defaultSize(width: 560, height: 590)
 
         Settings {
             SettingsView(store: store, updates: updates)

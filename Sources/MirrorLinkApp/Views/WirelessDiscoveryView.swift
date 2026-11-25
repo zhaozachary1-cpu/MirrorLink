@@ -5,6 +5,10 @@ struct WirelessDiscoveryView: View {
     @ObservedObject private var language = LanguageStore.shared
     @ObservedObject var store: WirelessConnectionStore
     let connectsDirectly: Bool
+    var connectedSerials: Set<String> = []
+    private var candidates: [WirelessService] {
+        store.visibleServices.filter { !connectedSerials.contains($0.endpoint.address) && !connectedSerials.contains($0.adbSerial) }
+    }
 
     var body: some View {
         let _ = language.selection
@@ -17,18 +21,18 @@ struct WirelessDiscoveryView: View {
                     Button(L10n.tr("刷新")) { store.discover() }
                         .disabled(store.isBusy || store.isDiscovering)
                 }
-                if store.visibleServices.isEmpty {
+                if candidates.isEmpty {
                     Label(store.isBusy ? L10n.tr("正在连接并确认手机状态…") : (store.discoveryMessage ?? (store.isDiscovering ? L10n.tr("正在发现手机…") : L10n.tr("暂未发现手机，请保持手机的无线调试开启。"))),
                           systemImage: "antenna.radiowaves.left.and.right")
                         .font(.callout).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 4)
                     if connectsDirectly {
                         Text(L10n.tr("首次使用？点击“连接新手机”扫码授权。"))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
-                ForEach(store.visibleServices) { candidate in
+                ForEach(candidates) { candidate in
                     HStack(spacing: 12) {
                         Image(systemName: "iphone.radiowaves.left.and.right").font(.title2)
                         VStack(alignment: .leading, spacing: 3) {
@@ -44,7 +48,7 @@ struct WirelessDiscoveryView: View {
                         .accessibilityLabel(L10n.tr("连接并投屏 %@", candidate.name))
                     }
                 }
-            }.padding(8)
+            }.padding(4)
         }
     }
 

@@ -421,6 +421,10 @@
 "画质、声音、演示和窗口设置在下次启动或重新投屏时生效。保存不会中断当前投屏。" = "Quality, audio, presentation, and window settings apply the next time mirroring starts or restarts. Saving does not interrupt the current session.";
 "画质与声音" = "Quality and Audio";
 "确认安装所选 APK？" = "Install the selected APK?";
+"收起" = "Collapse";
+"更多无线连接方式" = "More wireless connection options";
+"选择设备 %@" = "Select device %@";
+"连接 USB，或在下方连接无线手机。" = "Connect with USB, or connect a wireless phone below.";
 "离线常用设备" = "Offline Favorites";
 "移除附件 %@" = "Remove attachment %@";
 "窗口" = "Window";

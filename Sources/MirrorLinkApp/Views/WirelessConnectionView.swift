@@ -1,44 +1,40 @@
-import AppKit
-import Combine
 import SwiftUI
 
-private typealias WirelessViewState<Value> = SwiftUI.State<Value>
-
+/// Inline controls; discovery and cancellation belong to the main scene.
 struct WirelessConnectionView: View {
     @ObservedObject private var language = LanguageStore.shared
     @ObservedObject var store: WirelessConnectionStore
     @ObservedObject var sessions: MirrorSessionStore
-    @WirelessViewState private var windowHandle = WirelessWindowHandle()
 
     var body: some View {
         let _ = language.selection
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                Label(L10n.tr("无线连接"), systemImage: "wifi")
-                    .font(.title2.weight(.semibold))
-                Text(L10n.tr("连接同一 Wi-Fi，并开启手机“无线调试”。"))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    if store.mode != .nearby {
-                        Button { store.selectMode(.nearby) } label: {
-                            Label(L10n.tr("附近手机"), systemImage: "chevron.left")
-                        }
-                    } else {
-                        Button(L10n.tr("连接新手机")) { store.selectMode(.qr) }
-                            .buttonStyle(.borderedProminent)
-                    }
+                    Label(L10n.tr("无线连接"), systemImage: "wifi").font(.headline)
                     Spacer()
-                    Menu(L10n.tr("更多")) {
+                    if store.mode != .nearby {
+                        Button(L10n.tr("收起")) { store.selectMode(.nearby) }
+                            .buttonStyle(.borderless)
+                    }
+                    Menu {
+                        Button(L10n.tr("扫码配对")) { store.selectMode(.qr) }
                         Button(L10n.tr("手动连接")) { store.selectMode(.manual); store.step = .connection }
                         Button(L10n.tr("检查本地网络权限")) { WirelessDiscoveryView.openNetworkSettings() }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
                     }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .accessibilityLabel(L10n.tr("更多无线连接方式"))
                 }
+                Text(L10n.tr("连接同一 Wi-Fi，并开启手机“无线调试”。"))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 switch store.mode {
                 case .qr: WirelessQRPairingView(store: store.qr)
                 case .nearby:
-                    WirelessDiscoveryView(store: store, connectsDirectly: true)
+                    WirelessDiscoveryView(store: store, connectsDirectly: true, connectedSerials: Set(sessions.devices.filter { $0.state == .ready }.map(\.serial)))
                 case .manual:
                     ManualWirelessConnectionView(store: store)
                 }
@@ -60,19 +56,5 @@ struct WirelessConnectionView: View {
                     }
                 }
             }
-            .padding(24)
-        }
-        .frame(minWidth: 520, minHeight: 540)
-        .background(SceneWindowReference { window in windowHandle.window = window })
-        .onReceive(store.$connectedDeviceID.combineLatest(sessions.$sessionStates)) { deviceID, states in
-            guard let deviceID, states[deviceID] == .mirroring else { return }
-            windowHandle.window?.close()
-        }
-        .onAppear { store.open() }
-        .onDisappear { store.close() }
     }
-}
-
-private final class WirelessWindowHandle {
-    weak var window: NSWindow?
 }

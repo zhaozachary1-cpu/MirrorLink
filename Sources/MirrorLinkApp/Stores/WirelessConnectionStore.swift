@@ -40,6 +40,7 @@ final class WirelessConnectionStore: ObservableObject {
     private var operationGeneration = 0
     private var cancellation = ProcessCancellation()
     private var nearbyTask: Task<Void, Never>?
+    private(set) var isOpen = false
     lazy var qr = WirelessQRPairingStore(service: service) { [weak self] device in
         self?.didConnect(device)
     }
@@ -50,11 +51,17 @@ final class WirelessConnectionStore: ObservableObject {
         self.onConnected = onConnected
     }
 
-    func open() { selectMode(mode) }
+    // Repeated key-window notifications and language refreshes must not restart
+    // discovery, discard form values or replace a live pairing QR.
+    func open() {
+        guard !isOpen else { return }
+        selectMode(.nearby)
+    }
 
     func selectMode(_ mode: WirelessConnectionMode) {
         close()
         self.mode = mode
+        isOpen = true
         messageValue = nil
         isError = false
         if mode == .qr { qr.start() }
@@ -71,6 +78,7 @@ final class WirelessConnectionStore: ObservableObject {
     }
 
     func close() {
+        isOpen = false
         qr.stop()
         nearbyTask?.cancel()
         nearbyTask = nil

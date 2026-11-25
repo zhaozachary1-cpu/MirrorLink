@@ -5,15 +5,21 @@ private typealias DetailViewState<Value> = SwiftUI.State<Value>
 struct DetailView: View {
     @ObservedObject private var language = LanguageStore.shared
     @ObservedObject var store: MirrorSessionStore
+    @ObservedObject var wireless: WirelessConnectionStore
 
     var body: some View {
         let _ = language.selection
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if store.selectedDevices.isEmpty {
-                    EmptySelectionCard(store: store)
-                } else {
-                    SelectedDevicesCard(store: store)
+                if store.displayedDevices.isEmpty {
+                    VStack(spacing: 6) {
+                        Label(store.isRefreshing ? L10n.tr("正在扫描设备…") : L10n.tr("还没有发现设备"), systemImage: "iphone")
+                            .font(.headline)
+                        Text(L10n.tr("连接 USB，或在下方连接无线手机。"))
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 16)
                 }
 
                 if store.globalErrorMessage != nil { StatusCard(store: store) }
@@ -22,60 +28,23 @@ struct DetailView: View {
                     DeviceSessionsCard(store: store)
                 }
 
+                WirelessConnectionView(store: wireless, sessions: store)
+                    .id("wireless")
+                OfflineFavoritesCard(store: store)
+
                 if !store.toolchainAvailable {
                     ToolchainMissingCard()
                 }
 
                 LogCard(store: store)
             }
-            .padding(14)
-            .frame(maxWidth: 800, alignment: .leading)
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(.regularMaterial)
-    }
-}
-
-private struct SelectedDevicesCard: View {
-    @ObservedObject private var language = LanguageStore.shared
-    @ObservedObject var store: MirrorSessionStore
-
-    var body: some View {
-        let _ = language.selection
-        GroupBox {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(L10n.tr("已选择 %@ 台设备", String(store.selectedDevices.count)))
-                            .font(.headline)
-                    }
-                    Spacer()
-                    Button(L10n.tr("清除选择")) { store.clearDeviceSelection() }
-                        .buttonStyle(.borderless)
-                        .fixedSize()
-                }
-
-                HStack(spacing: 8) {
-                    Button {
-                        store.startMirroring()
-                    } label: {
-                        Label(L10n.tr("开始所选投屏"), systemImage: "play.fill")
-                            .frame(minWidth: 100)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .keyboardShortcut(.return, modifiers: [.command])
-                    .disabled(!store.canStart)
-
-                    Button(role: .destructive) {
-                        store.stopMirroring()
-                    } label: {
-                        Label(L10n.tr("停止全部"), systemImage: "stop.fill")
-                            .frame(minWidth: 80)
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(!store.isMirroring && !store.hasPendingReconnect)
-                }
-            }
-            .padding(2)
+        .onChange(of: wireless.mode) { mode in
+            if mode != .nearby { proxy.scrollTo("wireless", anchor: .top) }
+        }
         }
     }
 }
@@ -86,14 +55,27 @@ private struct DeviceSessionsCard: View {
 
     var body: some View {
         let _ = language.selection
-        GroupBox(L10n.tr("设备与投屏")) {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(L10n.tr("设备与投屏")).font(.headline)
+                Spacer()
+                if store.devices.count > 1 {
+                    Button(L10n.tr("全选")) { store.selectAllReadyDevices() }.buttonStyle(.borderless)
+                    Button(L10n.tr("开始所选投屏")) { store.startMirroring() }
+                        .disabled(!store.canStart)
+                }
+                if store.runningCount > 1 || store.hasPendingReconnect {
+                    Button(L10n.tr("停止全部"), role: .destructive) { store.stopMirroring() }
+                }
+            }
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(store.displayedDevices) { device in
                     DeviceSessionRow(device: device, store: store)
-                    if device.id != store.displayedDevices.last?.id { Divider() }
+                        .padding(10)
+                        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.08)))
                 }
             }
-            .padding(2)
         }
     }
 }
@@ -139,6 +121,13 @@ private struct DeviceSessionRow: View {
         let _ = language.selection
         VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 10) {
+                if store.devices.count > 1, connection != nil {
+                    Toggle(L10n.tr("选择设备 %@", store.displayName(for: device)), isOn: Binding(
+                        get: { store.selectedDeviceIDs.contains(device.id) },
+                        set: { store.setDeviceSelected(device.id, isSelected: $0) }
+                    )).labelsHidden().toggleStyle(.checkbox)
+                        .accessibilityLabel(L10n.tr("选择设备 %@", store.displayName(for: device)))
+                }
                 Image(systemName: state.symbolName)
                     .foregroundStyle(stateTint)
                     .frame(width: 20)
@@ -167,7 +156,7 @@ private struct DeviceSessionRow: View {
                     .font(.caption)
                     .foregroundStyle(stateTint)
                     .fixedSize()
-                Button { showsPreferences = true } label: {
+                Button { showsPreferences.toggle() } label: {
                     Image(systemName: "slider.horizontal.3")
                 }
                 .buttonStyle(.borderless)
@@ -232,9 +221,12 @@ private struct DeviceSessionRow: View {
                     .foregroundStyle(.orange)
             }
             DeviceToolsView(store: store, device: device)
+            if showsPreferences {
+                Divider()
+                DevicePreferencesEditor(store: store, device: device) { showsPreferences = false }
+            }
         }
         .padding(.vertical, 2)
-        .sheet(isPresented: $showsPreferences) { DevicePreferencesSheet(store: store, device: device) }
     }
 
     private var stateTint: Color {
@@ -279,30 +271,34 @@ private struct StatusCard: View {
     }
 }
 
-private struct EmptySelectionCard: View {
+private struct OfflineFavoritesCard: View {
     @ObservedObject private var language = LanguageStore.shared
     @ObservedObject var store: MirrorSessionStore
-    @Environment(\.openWindow) private var openWindow
+    @DetailViewState private var editingID: String?
+
+    private var favorites: [KnownDevice] {
+        let connected = Set(store.devices.compactMap { device in
+            DevicePreferences.identity(for: device) ?? (device.hardwareSerial ?? (device.isWireless ? nil : device.serial)).map { "hardware:\($0)" }
+        })
+        return store.knownDevices.filter { $0.preferences.favorite && !connected.contains($0.id) }
+    }
 
     var body: some View {
         let _ = language.selection
-        VStack(spacing: 8) {
-            Image(systemName: "square.stack.3d.up")
-                .font(.system(size: 30))
-                .foregroundStyle(.secondary)
-            Text(L10n.tr("勾选要投屏的 Android 设备"))
-                .font(.headline)
-            Text(L10n.tr("连接 USB，或添加无线手机。"))
-                .foregroundStyle(.secondary)
-            Button { openWindow(id: "wireless") } label: {
-                Label(L10n.tr("无线连接手机"), systemImage: "wifi")
-            }
-            if !store.readyDevices.isEmpty {
-                Button(L10n.tr("全选已连接设备")) { store.selectAllReadyDevices() }
-                    .buttonStyle(.borderedProminent)
+        if !favorites.isEmpty {
+            DisclosureGroup(L10n.tr("离线常用设备")) {
+                ForEach(favorites) { device in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Button { editingID = editingID == device.id ? nil : device.id } label: {
+                            Label(device.displayName, systemImage: "star")
+                        }.buttonStyle(.borderless)
+                        if editingID == device.id {
+                            DevicePreferencesEditor(store: store, knownDevice: device) { editingID = nil }
+                        }
+                    }.padding(.vertical, 6)
+                }
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 140)
     }
 }
 

@@ -288,9 +288,13 @@ enum WirelessQRChecks {
 
         let rootStore = WirelessConnectionStore(paths: nil, service: slowService) { _ in lateCallbacks += 1 }
         rootStore.open()
-        try check(rootStore.mode == .nearby && rootStore.qr.session == nil, "wireless window discovers nearby phones without creating an unnecessary QR")
+        try check(rootStore.mode == .nearby && rootStore.qr.session == nil && rootStore.isOpen, "main page discovers nearby phones without creating an unnecessary QR")
         rootStore.selectMode(.qr)
         try check(rootStore.qr.session != nil, "new-phone action explicitly starts QR pairing")
+        let liveQRName = rootStore.qr.session?.serviceName
+        rootStore.open()
+        try check(rootStore.mode == .qr && rootStore.qr.session?.serviceName == liveQRName,
+                  "refocusing the main page preserves the active QR and connection mode")
         rootStore.selectMode(.nearby)
         try check(rootStore.qr.session == nil && rootStore.step == .connection, "switch to nearby cancels QR and selects connection services")
         try await WirelessChecks.wait { !rootStore.services.isEmpty }
@@ -327,6 +331,11 @@ enum WirelessQRChecks {
         try await WirelessChecks.wait { rootStore.qr.phase == .completed }
         try check(lateCallbacks == 3 && rootStore.connectedDeviceID == "HARDWARE-SCANNED",
                   "QR completion also targets the exact phone for window handoff")
+        rootStore.close()
+        try check(!rootStore.isOpen && rootStore.qr.session == nil, "closing main page stops pairing and clears QR secrets")
+        rootStore.open()
+        try check(rootStore.mode == .nearby && rootStore.qr.session == nil && rootStore.isOpen,
+                  "reopening main page resumes nearby discovery without regenerating QR")
         rootStore.close()
     }
 }

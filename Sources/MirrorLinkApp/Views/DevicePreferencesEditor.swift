@@ -2,26 +2,28 @@ import SwiftUI
 
 private typealias PreferenceState<Value> = SwiftUI.State<Value>
 
-struct DevicePreferencesSheet: View {
+struct DevicePreferencesEditor: View {
     @ObservedObject private var language = LanguageStore.shared
     @ObservedObject var store: MirrorSessionStore
-    @Environment(\.dismiss) private var dismiss
+    private let onFinish: () -> Void
     @PreferenceState private var draft: DevicePreferences
     @PreferenceState private var confirmsForget = false
     private let device: AndroidDevice?
     private let knownID: String?
     private let originalName: String
 
-    init(store: MirrorSessionStore, device: AndroidDevice) {
+    init(store: MirrorSessionStore, device: AndroidDevice, onFinish: @escaping () -> Void) {
         self.store = store
+        self.onFinish = onFinish
         self.device = device
         knownID = DevicePreferences.identity(for: device) ?? store.knownDevices.first(where: { $0.id == "hardware:\(device.hardwareSerial ?? device.serial)" })?.id
         originalName = device.displayName == device.serial ? L10n.tr("Android 手机") : device.displayName
         _draft = PreferenceState(initialValue: store.preferences(for: device))
     }
 
-    init(store: MirrorSessionStore, knownDevice: KnownDevice) {
+    init(store: MirrorSessionStore, knownDevice: KnownDevice, onFinish: @escaping () -> Void) {
         self.store = store
+        self.onFinish = onFinish
         device = nil
         knownID = knownDevice.id
         originalName = knownDevice.model
@@ -38,20 +40,18 @@ struct DevicePreferencesSheet: View {
 
     var body: some View {
         let _ = language.selection
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(L10n.tr("设备设置")).font(.title2.weight(.semibold))
-                    Text(originalName).foregroundStyle(.secondary).lineLimit(2)
+                    Text(L10n.tr("设备设置")).font(.headline)
                 }
                 Spacer()
-                Button(L10n.tr("取消")) { dismiss() }.keyboardShortcut(.cancelAction)
-                Button(L10n.tr("保存")) { save(); dismiss() }
-                    .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+                Button(L10n.tr("取消")) { onFinish() }
+                Button(L10n.tr("保存")) { save(); onFinish() }
+                    .buttonStyle(.borderedProminent)
                     .disabled(nicknameError != nil)
-            }.padding(20)
-            Divider()
-            Form {
+            }
+            VStack(alignment: .leading, spacing: 12) {
                 Section(L10n.tr("识别设备")) {
                     TextField(L10n.tr("设备昵称"), text: $draft.nickname, prompt: Text(originalName))
                         .textFieldStyle(.roundedBorder)
@@ -92,21 +92,20 @@ struct DevicePreferencesSheet: View {
                         .buttonStyle(.borderless)
                 } }
             }
-            .formStyle(.grouped)
-        }
-        .frame(width: 540, height: 600)
-        .confirmationDialog(device == nil ? L10n.tr("忘记此设备的设置？") : L10n.tr("重置这台设备的偏好？"), isPresented: $confirmsForget, titleVisibility: .visible) {
-            Button(L10n.tr("忘记设置"), role: .destructive) {
-                if let knownID { store.forgetKnownDevice(knownID) }
-                dismiss()
-            }
-            Button(L10n.tr("取消"), role: .cancel) {}
-        } message: {
-            Text(L10n.tr("仅清除镜连保存的昵称、收藏和设备偏好，不会撤销手机上的 ADB 配对授权，也不会删除手机数据。"))
-            if device != nil {
-                Text(L10n.tr("连接中的设备仍会出现在设备列表，并恢复默认偏好。"))
+            if confirmsForget {
+                Text(L10n.tr("仅清除镜连保存的昵称、收藏和设备偏好，不会撤销手机上的 ADB 配对授权，也不会删除手机数据。"))
+                    .font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Button(L10n.tr("取消")) { confirmsForget = false }
+                    Button(L10n.tr("忘记设置"), role: .destructive) {
+                        if let knownID { store.forgetKnownDevice(knownID) }
+                        onFinish()
+                    }
+                }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .buttonStyle(.bordered)
     }
 
     private func save() {

@@ -224,10 +224,10 @@ final class MirrorSessionStore: ObservableObject {
         devices.filter { $0.state == .ready }
     }
 
-    /// Keep individual controls visible after deselection or USB removal.
+    /// Show every detected phone directly, retaining session controls on removal.
     var displayedDevices: [AndroidDevice] {
         var visible = sessionDevices
-        for device in devices where selectedDeviceIDs.contains(device.id) || visible[device.id] != nil {
+        for device in devices {
             // A live process remains pinned to the route with which it started.
             if runningSessions[device.id] == nil { visible[device.id] = device }
         }

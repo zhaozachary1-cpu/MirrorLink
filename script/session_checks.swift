@@ -348,8 +348,11 @@ private final class SessionChecks {
         store.clearDeviceSelection()
         try await refresh(store)
         try check(store.selectedDeviceIDs.isEmpty, "periodic refresh respects Clear Selection")
+        try check(store.displayedDevices.map(\.id) == [a.id], "detected phone stays on main page without selection or a session")
         source.set([a, b])
         try await refresh(store)
+        try check(Set(store.displayedDevices.map(\.id)) == [a.id, b.id] && store.selectedDeviceIDs.isEmpty,
+                  "all detected phones appear directly while batch selection remains optional")
         store.selectAllReadyDevices()
         store.startMirroring()
         try check(store.runningCount == 2 && store.sessionState(for: a) == .starting, "two children start independently; no premature video success")

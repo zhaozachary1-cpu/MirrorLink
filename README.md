@@ -18,9 +18,9 @@
 
 > **0.5.5 / Build 18 is available:** fixes disabled mirror controls after closing an APK, file-transfer, or recording-save picker. It retains the compact 640 × 420 main window, visible phone brands/models, nearby-phone connections, and app-owned wireless backend. Control pages close when video arrives; More → Connect Another Phone, the Dock, or ⌘0 reopens the main window. See [TOOLS-QA.md](TOOLS-QA.md) and [WIRELESS-QA.md](WIRELESS-QA.md) for actual-device evidence and remaining limits.
 
-源码与本机验证版 **0.5.7 / Build 20** 支持 APK 覆盖更新：确认安装后，已有同一应用时直接更新并保留数据，无需先卸载。签名不一致或版本过低时会说明原因并保留原应用。沿用无线压缩传输、USB 流式安装、本地快速克隆，以及窗口内的阶段、计时、取消和结果反馈。顶部公开下载仍为 0.5.5；源码同步和本机安装不代表 0.5.7 已发布，验证范围见 [TOOLS-QA.md](TOOLS-QA.md)。
+源码与本机验证版 **0.5.8 / Build 21** 使用无侧边栏的统一主界面：检测到的手机直接显示，附近无线手机、扫码和手动连接都在当前页面操作，设备偏好在卡片内编辑。沿用 APK 覆盖更新并保留数据、无线压缩传输、USB 流式安装及安装进度反馈。顶部公开下载仍为 0.5.5；源码同步和本机安装不代表 0.5.8 已发布，验证范围见 [TOOLS-QA.md](TOOLS-QA.md) 和 [WIRELESS-QA.md](WIRELESS-QA.md)。
 
-**Source/local validation build 0.5.7 / Build 20:** confirmed APK installation updates an existing app in place, keeping its data without uninstalling it. Signature mismatches and older versions show a specific error and leave the existing app in place. Compressed wireless transfer, USB streaming, local cloning, progress, elapsed time and cancellation remain available. Public downloads above remain 0.5.5 until a separate release is published.
+**Source/local validation build 0.5.8 / Build 21:** all detected phones appear directly on the main page, without a sidebar. Nearby phones, QR pairing, manual connections and device preferences stay inline. Data-preserving APK updates, compressed wireless transfer, USB streaming and installation feedback remain available. Public downloads above remain 0.5.5 until a separate release is published.
 
 MirrorLink mirrors Android phones on a Mac over USB or authorized wireless debugging. It includes ADB and scrcpy; no Homebrew or separate tool installation is needed. Requires **macOS 13 or later**. The universal installer includes Apple Silicon and Intel binaries; Intel hardware acceptance testing remains incomplete. It does not support iPhone mirroring or Windows.
 
@@ -138,23 +138,23 @@ Optional recovery checks at most three times after an unexpected disconnect. Mir
 
 1. 用 USB 线连接 Android 手机。
 2. 在手机开发者选项中开启 USB 调试，解锁手机并允许此电脑调试。
-3. 打开镜连，点击刷新设备；左侧勾选一台或多台状态为“已连接”的手机。
-4. 点击“开始所选投屏”（快捷键 ⌘↩）。每台手机会在独立的 scrcpy 窗口中打开；普通模式的窗口标题使用昵称或型号和设备序列号，便于区分同型号手机，演示模式隐藏序列号。某一台启动失败不会影响其他手机。
-5. 可以在右侧对单台设备单独重试或停止，也可以使用“停止全部”关闭本次由镜连启动的所有窗口。
+3. 打开镜连，检测到的手机直接展示在主界面，点击对应手机的“开始”。多台手机时可勾选卡片并点击“开始所选投屏”（⌘↩）。
+4. 每台手机会在独立的 scrcpy 窗口中打开；普通模式的窗口标题使用昵称或型号和设备序列号，便于区分同型号手机，演示模式隐藏序列号。某一台启动失败不会影响其他手机。
+5. 在手机卡片上单独重试或停止；多台投屏时可用“停止全部”。点击“设备设置”直接展开卡片内的编辑区域，保存或取消后收起。
 
 取消勾选或“清空选择”只改变下一次批量启动的对象，不会停止已在投屏的手机；这些设备仍保留单独的停止入口。默认不会在断开重连后自动投屏；主动开启自动恢复后，已有投屏意外断线时最多检查 3 次，只有原已授权硬件身份以原连接方式、原 ADB socket 重新处于 ready 状态才恢复投屏，不主动执行网络重连。无线设备尚未重新就绪时，仍需在“无线连接”中手动连接或配对。退出镜连会取消恢复并停止本应用启动的全部投屏，不会关闭其他软件启动的 scrcpy 窗口。
 
-0.5.4 起，收到手机画面后自动关闭主页面；通过无线入口连接时，也关闭该设备本次的配对页并把投屏窗口置前。启动失败时保留页面。关闭主页面不会退出镜连或停止现有投屏。可以点击投屏窗口“更多 → 连接其他手机…”、Dock 图标，或通过“投屏 → 显示主窗口”（⌘0）重新打开；退出应用仍使用 ⌘Q。
+收到手机画面后自动关闭主页面并把投屏窗口置前。启动失败时保留页面。关闭主页面不会退出镜连或停止现有投屏，但会取消未完成的无线配对。可以点击投屏窗口“更多 → 连接其他手机…”、Dock 图标，或通过“投屏 → 显示主窗口”（⌘0）重新打开并恢复附近发现；退出应用仍使用 ⌘Q。
 
-Build 16 主窗口默认 640 × 420，最小内容尺寸 560 × 360；设备侧栏可折叠，多台设备的详情可滚动。首次升级会将主窗口调整为紧凑尺寸一次，之后保留用户的手动调整，不改变手机投屏窗口尺寸。The main window uses a compact layout with a collapsible device sidebar and scrollable details. Its size is adjusted once on upgrade; later manual resizing is preserved.
+源码版 Build 21 主窗口默认 580 × 460，最小内容尺寸 500 × 360，不设侧边栏或独立无线窗口，设备和连接方式统一纵向排列。首次升级调整主窗口尺寸一次并收起诊断日志，之后保留手动调整；不改变手机投屏窗口尺寸。Build 21 uses one compact, scrollable main page without a sidebar or a separate wireless window. Its size is adjusted once on upgrade; later manual resizing is preserved. Public build 18 retains the earlier layout.
 
 ### 同 Wi-Fi 无线投屏
 
 需要 Android 11+ 且手机提供“无线调试”选项。首次配对不需要 USB 线，但仍须在手机上明确授权；仅加入同一 Wi-Fi 不会自动获得投屏权限。
 
 1. Mac 和手机连接同一 Wi-Fi，在手机“开发者选项”中打开“无线调试”，按手机提示允许当前网络。
-2. 打开镜连，点击工具栏的“无线连接”，也可选择菜单“投屏 → 无线连接…”（⌘⇧W）；没有已连接设备时，主页面也有“无线连接手机”按钮。
-3. 默认发现附近手机。已配对的手机点“连接并投屏”；首次使用点“连接新手机”，再在手机“无线调试 → 使用二维码配对设备”中扫描电脑二维码。**不是微信或普通相机。** 无需手填 IP、端口或六位配对码；电脑匹配扫码服务与认证身份后请求投屏。
+2. 打开镜连，直接查看主界面的“无线连接”区域；菜单“投屏 → 无线连接…”（⌘⇧W）也会回到这个主窗口。
+3. 已配对的附近手机点“连接并投屏”；首次使用点工具栏的“连接新手机”，二维码在当前页面展开，再在手机“无线调试 → 使用二维码配对设备”中扫描。**不是微信或普通相机。** 无需手填 IP、端口或六位配对码；电脑匹配扫码服务与认证身份后请求投屏。
 4. 配对已成功、后续连接未完成时，点“重试连接，无需扫码”。关闭窗口或切换方式会取消本次自动连接；已配对的手机可重新在附近列表连接。附近列表每 4 秒刷新，发现服务不代表手机已授权。
 
 **USB 调试与无线调试是两个独立开关。** 已经配对过的手机应使用“发现手机”，不必反复扫描二维码。0.5.3 起同时使用 macOS 原生 Bonjour 与 ADB 的发现结果，修复 ADB 的 mDNS 列表为空、同一网络中的手机实际存在却无法显示的问题。两条发现通道合并去重；镜连新启动的 ADB 后台使用 `ADB_MDNS=0` 避免本机复现的内置发现模块崩溃，由 Bonjour 继续发现手机。此配置不改变运行中的共享后台，不更改加密配对。配对码和连接端口仍严格分开处理，发现不会自动授权或连接其他手机。
