@@ -1,3 +1,28 @@
+# 镜连 MirrorLink 0.5.4 — 简洁连接与紧凑窗口 / Simpler Connections and Compact Windows（免费社区版）
+
+版本 / Version：**0.5.4 / Build 17**。包含此前尚未公开的 0.5.3 无线发现修复。
+
+- 主窗口默认缩至 640 × 420，压缩卡片留白；设备侧栏可折叠，多台设备可滚动查看。首次升级调整一次主窗口尺寸，之后保留手动调整。
+- 无线连接默认发现附近手机。已授权设备点击“连接并投屏”；新手机点击“连接新手机”，再在 Android 的“无线调试 → 使用二维码配对设备”中扫码。“更多”保留手动连接与权限检查。
+- 无线调试使用由当前应用管理的独立后台，避免沿用旧后台的异常权限状态。原生 Bonjour 发现配合 Google Platform-Tools 37.0.1，停用本机复现崩溃的 ADB 内置发现模块，不重启共享 ADB。
+- 修复 V2520 扫码成功后因厂商未提供 GUID 属性而被误拦截的问题：保留 TLS 授权，并对认证服务标识、硬件身份和当前连接端点做受限核对。连接阶段失败可免重复扫码重试，不按同一 IP 或第一台设备猜测目标。
+- 收到手机画面后自动关闭主页面和本次无线连接页。通过投屏窗口“更多 → 连接其他手机…”、Dock 或 ⌘0 可重新打开主页面，现有投屏继续运行。
+- 连接后在主页面和投屏标题显示手机实际返回的品牌与型号，保留昵称；读取失败不阻止投屏，不猜测商品名。已实测的 vivo 默认桌面使用一键上滑打开应用列表，其他桌面保留标准指令和手动兜底。
+
+**English:** A compact 640 × 420 main window has a collapsible sidebar and scrollable device details. Wireless Connection starts with nearby phones; connect an authorized phone directly, or choose Add a Phone and scan from Android's Wireless debugging QR-pairing screen. An app-owned wireless backend and native Bonjour discovery avoid the shared-backend problems reproduced on this Mac. Platform-Tools 37.0.1 is bundled; the crash-prone ADB discovery driver is disabled without restarting shared ADB. A narrowly checked identity fallback fixes V2520's missing GUID property after authenticated pairing. Video readiness closes the control pages; More → Connect Another Phone, the Dock, or ⌘0 reopens the main window. Phone brand and model are visible alongside custom names. The verified vivo launcher gets a one-click drawer gesture; other launchers retain the standard action and explicit fallback.
+
+安装：下载本版完整 DMG 或 macOS-universal.zip，将 MirrorLink.app 拖入“应用程序”；不要使用源码或 update.zip 安装。旧版可从“镜连 → 检查更新…”获取，安装前结束录屏并确认保存，按提示停止投屏。Build 17 高于本机候选 Build 16，同一显示版本也可更新。
+
+**免费社区版，没有 Apple Developer ID 签名或 Apple 公证。** 更新包与清单使用原有 Sparkle Ed25519 密钥签名。首次打开若仅提示无法验证开发者或检查恶意软件，确认官方来源并选择信任后，到“系统设置 → 隐私与安全 → 仍要打开”完成本机确认；若提示恶意软件、会损害电脑或已损坏，停止并核对来源与校验值。不要关闭 Gatekeeper 或移除隔离标记，受管理的 Mac 可能限制安装。
+
+**Installation:** Use the complete DMG or macOS-universal.zip, then move MirrorLink.app to Applications. Existing users can choose Check for Updates. Finish and save recordings before installation. Build 17 also updates the local Build 16 candidate. This free community build is ad-hoc signed and is not Apple-notarized. Updates retain the existing Sparkle trust key. See README for Apple's first-open procedure; keep system security protections enabled.
+
+已验证 V2520 单台真实无线连接、持续变化的桌面、Home 和抽屉操作，以及中英紧凑列表；未完成两台无线并行、长时间稳定性、Intel/macOS 13 真机或陌生 Mac 首次打开验收。无线与工具证据见 WIRELESS-QA.md、TOOLS-QA.md；发行及实际覆盖更新结果见 UPDATE-QA.md。
+
+**Validation limits:** Single-phone wireless video and navigation, brand/model display, and the compact bilingual device list were verified. Two simultaneous wireless phones, long-duration stability, Intel/macOS 13 hardware, and first installation on another Mac remain unverified.
+
+---
+
 # 镜连 MirrorLink 0.5.3 — 原生无线发现 / Native Wireless Discovery
 
 版本 / Version：**0.5.3 / Build 13**。
