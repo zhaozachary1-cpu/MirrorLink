@@ -16,7 +16,7 @@ struct DevicePreferencesSheet: View {
         self.store = store
         self.device = device
         knownID = DevicePreferences.identity(for: device) ?? store.knownDevices.first(where: { $0.id == "hardware:\(device.hardwareSerial ?? device.serial)" })?.id
-        originalName = device.model?.replacingOccurrences(of: "_", with: " ") ?? L10n.tr("Android 手机")
+        originalName = device.displayName == device.serial ? L10n.tr("Android 手机") : device.displayName
         _draft = PreferenceState(initialValue: store.preferences(for: device))
     }
 

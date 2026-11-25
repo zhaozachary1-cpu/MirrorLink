@@ -716,7 +716,7 @@ private extension SessionChecks {
         try await wait("per-device preferences") { store.sessionState(for: a) == .mirroring && store.sessionState(for: b) == .mirroring }
         let argsA = launches(a.serial).last?["arguments"] as? [String] ?? []
         let argsB = launches(b.serial).last?["arguments"] as? [String] ?? []
-        try check(argsA.contains("--window-title=镜连 · 演示手机") && !argsA.contains(where: { $0.hasPrefix("--window-title=") && $0.contains(a.serial) }) && argsA.contains("--no-control") && argsA.contains("--no-clipboard-autosync") && argsA.contains("--no-audio"), "presentation removes serial from the title and applies read-only, clipboard and audio isolation")
+        try check(argsA.contains("--window-title=镜连 · 演示手机 · Test Phone") && !argsA.contains(where: { $0.hasPrefix("--window-title=") && $0.contains(a.serial) }) && argsA.contains("--no-control") && argsA.contains("--no-clipboard-autosync") && argsA.contains("--no-audio"), "presentation retains nickname and model, hides serial and applies read-only, clipboard and audio isolation")
         try check(argsA.contains("--max-size=1920") && argsB.contains("--max-size=0") && !argsB.contains("--no-audio") && !argsB.contains("--no-control") && !argsB.contains(where: { $0.hasPrefix("--audio-codec=") }), "per-device overrides do not change a peer's quality, audio or control, and ordinary mirroring keeps its default audio codec")
         try check(argsA.first { $0.hasPrefix("--window-x=") } != argsB.first { $0.hasPrefix("--window-x=") }, "batch layout assigns separate initial window cells")
         let peerPID = launches(b.serial).last?["pid"] as? Int
@@ -922,7 +922,7 @@ private extension SessionChecks {
         let recoveredRequest = launches(routedUSB.serial).last!
         let recoveredArguments = recoveredRequest["arguments"] as? [String] ?? []
         try check(recoveredRequest["socket"] as? String == "tcp:5037" && launches(routedWiFi.serial).isEmpty && routeStore.runningCount == 1, "UI route deduplication cannot hide the original USB route or switch recovery to Wi-Fi or another daemon")
-        try check(recoveredArguments.contains("--no-control") && recoveredArguments.contains("--no-clipboard-autosync") && recoveredArguments.contains("--no-audio") && recoveredArguments.contains("--max-size=1920") && recoveredArguments.contains("--window-title=镜连 · 最新演示设置"), "a recovered process adopts preferences saved while discovery was in flight, including read-only, sound and quality")
+        try check(recoveredArguments.contains("--no-control") && recoveredArguments.contains("--no-clipboard-autosync") && recoveredArguments.contains("--no-audio") && recoveredArguments.contains("--max-size=1920") && recoveredArguments.contains("--window-title=镜连 · 最新演示设置 · Test Phone"), "a recovered process adopts preferences saved while discovery was in flight, including read-only, sound, quality and visible model")
         try check(routeStore.activePreferences(for: routedUSB.id)?.presentationMode == true && routeStore.displaySerial(for: routedUSB) == nil, "recovered-session snapshot agrees with the newly applied presentation restrictions")
         routeStore.stopMirroring()
         try await wait("raw route fixture stopped") { !routeStore.isMirroring }

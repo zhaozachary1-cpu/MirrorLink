@@ -16,7 +16,7 @@
 
 ## English Quick Start
 
-> 最新源码为 **0.5.4 / Build 14**：精简主页面与设置，无线入口先发现附近手机，新手机再扫码；收到画面后自动关闭主页面，投屏窗口“更多 → 连接其他手机…”可重新打开。配对成功后可免扫码重试连接。无线连接改由当前应用管理专用后台，避免沿用旧后台的异常权限状态。候选版尚未公开，下载按钮仍对应公开版 0.5.2；实际验收边界见 [WIRELESS-QA.md](WIRELESS-QA.md)。Source is at 0.5.4 / Build 14; public downloads remain at 0.5.2 until release and upgrade validation is complete.
+> 最新源码为 **0.5.4 / Build 16**：主窗口默认缩至 640 × 420，卡片与侧栏更紧凑，多台设备可滚动查看。无线入口先发现附近手机，新手机再扫码；收到画面后自动关闭主页面，投屏窗口“更多 → 连接其他手机…”可重新打开。配对成功后可免扫码重试连接。无线连接改由当前应用管理专用后台，避免沿用旧后台的异常权限状态。连接后显示手机品牌与型号，并为已实测的 vivo 桌面自动使用上滑打开应用列表。候选版尚未公开，下载按钮仍对应公开版 0.5.2；实际验收边界见 [WIRELESS-QA.md](WIRELESS-QA.md)。Source is at 0.5.4 / Build 16 with a compact 640 × 420 main window, connected phone brands and models, and a verified vivo app-drawer action. Public downloads remain at 0.5.2 until release and upgrade validation is complete.
 
 MirrorLink mirrors Android phones on a Mac over USB or authorized wireless debugging. It includes ADB and scrcpy; no Homebrew or separate tool installation is needed. Requires **macOS 13 or later**. The universal installer includes Apple Silicon and Intel binaries; Intel hardware acceptance testing remains incomplete. It does not support iPhone mirroring or Windows.
 
@@ -41,10 +41,12 @@ Language changes update MirrorLink’s own interface without stopping active mir
 
 每台手机有独立的设置和工具，操作前请确认设备名称。返回桌面、应用列表、截图、开始/结束录屏、发送文件和安装 APK 六个按钮位于每台手机的投屏窗口顶部。按钮只操作该窗口对应的手机，鼠标停留可查看说明；“更多投屏操作”中提供上滑兼容方式、查看结果和打开最近文件。主客户端保留设备设置、自检与反馈，无需来回切换窗口操作。
 
+0.5.4 / Build 15 起，已连接设备和投屏窗口显示手机实际返回的品牌与型号，例如 `vivo V2520`。自定义昵称仍保留，真实品牌型号同时可见；品牌读取失败不阻止投屏，也不会猜测商品名或改变设备身份。连接前的 Bonjour 服务名不能作为已认证的品牌型号。
+
 | 功能 | 使用方式与边界 |
 | --- | --- |
 | 常用设备 | 设置昵称并收藏，保留每台设备的画质、声音、演示和自动恢复偏好。独立画质可选择继承全局。记忆设置不等于获得新授权，未确认身份的无线地址不能充当永久设备身份。 |
-| 返回桌面 / 应用列表 | 对当前手机发送返回桌面或应用列表指令，也可明确选择上滑兼容方式。部分手机桌面没有独立应用抽屉，标准指令与上滑都可能无效果，可直接在手机桌面查找应用。发送成功不等于抽屉已打开；镜连不会更改手机桌面设置，演示只读模式不允许发送控制指令。 |
+| 返回桌面 / 应用列表 | 对当前手机发送返回桌面或应用列表指令；已在 V2520 验证的 vivo 桌面自动使用上滑方式，按实际默认桌面组件识别，不按手机品牌猜测。其他桌面保留标准指令与显式上滑兜底。部分桌面没有独立抽屉，两种方式都可能无效果。发送成功不等于抽屉已打开；镜连不会更改手机桌面设置，演示只读模式不允许发送控制指令。 |
 | 截图 | 从选定手机取得 PNG，保存后可复制或在 Finder 中显示。手机不需要先生成临时截图文件；截图不会自动上传。受系统保护的内容仍可能无法捕获。 |
 | 录屏 | 使用手机传来的原视频流保存 MP4。开始或停止录制可能会重新打开该手机的投屏，界面会先说明；其他设备不受影响。正常收尾后才显示完成，异常中断的文件明确区分为未完成。 |
 | 连接自检 | 检查本机工具、设备授权/在线状态、Android 版本和屏幕尺寸，结合会话状态查看处理建议。不把目标码率或帧率上限当作实测值。 |
@@ -139,6 +141,8 @@ Optional recovery checks at most three times after an unexpected disconnect. Mir
 取消勾选或“清空选择”只改变下一次批量启动的对象，不会停止已在投屏的手机；这些设备仍保留单独的停止入口。默认不会在断开重连后自动投屏；主动开启自动恢复后，已有投屏意外断线时最多检查 3 次，只有原已授权硬件身份以原连接方式、原 ADB socket 重新处于 ready 状态才恢复投屏，不主动执行网络重连。无线设备尚未重新就绪时，仍需在“无线连接”中手动连接或配对。退出镜连会取消恢复并停止本应用启动的全部投屏，不会关闭其他软件启动的 scrcpy 窗口。
 
 0.5.4 起，收到手机画面后自动关闭主页面；通过无线入口连接时，也关闭该设备本次的配对页并把投屏窗口置前。启动失败时保留页面。关闭主页面不会退出镜连或停止现有投屏。可以点击投屏窗口“更多 → 连接其他手机…”、Dock 图标，或通过“投屏 → 显示主窗口”（⌘0）重新打开；退出应用仍使用 ⌘Q。
+
+Build 16 主窗口默认 640 × 420，最小内容尺寸 560 × 360；设备侧栏可折叠，多台设备的详情可滚动。首次升级会将主窗口调整为紧凑尺寸一次，之后保留用户的手动调整，不改变手机投屏窗口尺寸。The main window uses a compact layout with a collapsible device sidebar and scrollable details. Its size is adjusted once on upgrade; later manual resizing is preserved.
 
 ### 同 Wi-Fi 无线投屏
 

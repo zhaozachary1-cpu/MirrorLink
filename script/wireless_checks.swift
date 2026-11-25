@@ -5,7 +5,7 @@ import Darwin
 private struct Failure: Error, CustomStringConvertible { let description: String }
 
 private final class FakeADB: @unchecked Sendable {
-    enum Scenario { case ready, pairFailure, connectFailure, otherPhone, alias, offline, discoveryFailure, discoveryEmpty, timeout, unreachable }
+    enum Scenario { case ready, pairFailure, connectFailure, otherPhone, alias, offline, discoveryFailure, discoveryEmpty, timeout, unreachable, metadataFailure }
     struct Call { let arguments: [String]; let input: String?; let timeout: TimeInterval }
     private let lock = NSLock()
     private var scenario: Scenario = .ready
@@ -58,6 +58,7 @@ private final class FakeADB: @unchecked Sendable {
         }
         if arguments.last == "get-state" { return result(scenario == .offline ? "offline" : "device\n") }
         if arguments.suffix(3) == ["shell", "getprop", "ro.serialno"] { return result("HARDWARE123\n") }
+        if arguments.last == AndroidDevice.brandQuery { return scenario == .metadataFailure ? result("", status: 1) : result("vivo\nvivo\n") }
         return result("unexpected command", status: 99)
     }
 }
@@ -134,6 +135,8 @@ struct WirelessChecks {
         wireless.hardwareSerial = devices[0].serial
         try check(wireless.id == devices[0].id && wireless.serial != devices[0].serial, "hardware identity is distinct from ADB transport serial")
         try check(ADBDeviceIdentity.preferred(devices[0], wireless).isWireless, "ready wireless preferred over USB for new sessions")
+        var brandedUSB = devices[0]; brandedUSB.brand = "Example"
+        try check(ADBDeviceIdentity.preferred(brandedUSB, wireless).brand == "Example", "route preference preserves available brand metadata without changing route")
         try check(!ADBDeviceIdentity.preferred(devices[0], devices[2]).isWireless, "offline Wi-Fi does not hide a ready USB device")
         try check(ADBDeviceIdentity.hardwareSerial(from: ProcessResult(status: 0, stdout: "unknown\n", stderr: "", timedOut: false)) == nil, "unknown hardware serial never merges unrelated devices")
 
@@ -161,8 +164,13 @@ struct WirelessChecks {
         fake.set(.ready)
         let phone = try service.connect(endpoint: endpoint).get()
         try check(phone.serial == endpoint.address && phone.id == "HARDWARE123" && phone.isWireless, "connect verifies target and resolves hardware identity")
+        try check(phone.displayName == "vivo Test Phone", "wireless connect reads brand before opening its mirror window")
+        try check(fake.recordedCalls().contains { $0.arguments == ["-s", endpoint.address, "shell", AndroidDevice.brandQuery] }, "brand lookup is pinned to the authenticated target")
         try check(fake.recordedCalls().contains { $0.arguments == ["-s", endpoint.address, "get-state"] }, "readiness check is serial-pinned")
         try check(fake.recordedCalls().allSatisfy { $0.input == nil && $0.timeout <= 25 }, "connection operations bounded, no pairing secret reused")
+        fake.set(.metadataFailure)
+        let noBrandPhone = try service.connect(endpoint: endpoint).get()
+        try check(noBrandPhone.displayName == "Test Phone" && noBrandPhone.id == phone.id, "brand lookup failure keeps authenticated connection and model")
         fake.set(.alias)
         let aliased = try service.connect(endpoint: endpoint).get()
         try check(aliased.serial == "adb-PHONE-one._adb-tls-connect._tcp", "already auto-connected mDNS alias resolved by exact endpoint")

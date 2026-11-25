@@ -36,6 +36,7 @@ struct AndroidDevice: Identifiable, Hashable, Sendable {
     /// Keeps an existing session/selection key stable if hardware identity is
     /// learned after a Wi-Fi route first appears. Never used as an ADB target.
     var sessionIdentity: String? = nil
+    var brand: String? = nil
 
     var id: String {
         // The ADB daemon is a route, not a second phone. Keep selection and
@@ -46,8 +47,37 @@ struct AndroidDevice: Identifiable, Hashable, Sendable {
     var isWireless: Bool { transport == "Wi-Fi" }
 
     var displayName: String {
-        let cleanedModel = model?.replacingOccurrences(of: "_", with: " ")
-        return cleanedModel?.isEmpty == false ? cleanedModel! : serial
+        let model = Self.productLabel(model?.replacingOccurrences(of: "_", with: " "))
+        let brand = Self.productLabel(brand)
+        guard let model else { return brand ?? serial }
+        guard let brand else { return model }
+        if model.caseInsensitiveCompare(brand) == .orderedSame
+            || model.lowercased().hasPrefix(brand.lowercased() + " ") { return model }
+        return "\(brand) \(model)"
+    }
+
+    /// Two fixed getprop outputs: Android's brand, followed by manufacturer.
+    /// Display metadata never participates in routing or authenticated identity.
+    static let brandQuery = "getprop ro.product.brand; getprop ro.product.manufacturer"
+
+    static func brand(fromProperties output: String) -> String? {
+        let lines = output.components(separatedBy: "\n")
+        guard (2...3).contains(lines.count), lines.count != 3 || lines[2].isEmpty else { return nil }
+        let value = productLabel(lines[0]) ?? productLabel(lines[1])
+        guard let value else { return nil }
+        let names = ["vivo": "vivo", "oppo": "OPPO", "realme": "realme", "oneplus": "OnePlus",
+                     "google": "Google", "samsung": "Samsung", "xiaomi": "Xiaomi", "redmi": "Redmi",
+                     "honor": "HONOR", "huawei": "HUAWEI", "motorola": "Motorola", "sony": "Sony"]
+        return names[value.lowercased()] ?? value
+    }
+
+    private static func productLabel(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let label = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !label.isEmpty, label.count <= 160,
+              !["unknown", "null", "none"].contains(label.lowercased()),
+              !label.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else { return nil }
+        return label
     }
 
     var detailText: String {

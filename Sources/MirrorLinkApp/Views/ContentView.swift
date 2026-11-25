@@ -12,7 +12,7 @@ struct ContentView: View {
         let _ = language.selection
         NavigationSplitView {
             SidebarView(store: store)
-                .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 340)
+                .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
         } detail: {
             DetailView(store: store)
         }
@@ -34,8 +34,16 @@ struct ContentView: View {
                 .disabled(store.isRefreshing)
             }
         }
-        .frame(minWidth: 760, minHeight: 480)
+        .frame(minWidth: 560, minHeight: 360)
         .background(SceneWindowReference { window in
+            // SwiftUI restores saved geometry instead of defaultSize. Migrate
+            // only this scene once; subsequent user resizing stays untouched.
+            DispatchQueue.main.async { [weak window] in
+                let key = "mainWindowCompactLayoutV1"
+                guard let window, !UserDefaults.standard.bool(forKey: key) else { return }
+                window.setContentSize(NSSize(width: 640, height: 420))
+                UserDefaults.standard.set(true, forKey: key)
+            }
             // Capture only this SwiftUI scene, never the key window: a mirror
             // or Settings may become key while video startup is in flight.
             store.onMirrorWindowReady = { [weak window] in window?.close() }

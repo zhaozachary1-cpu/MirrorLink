@@ -9,7 +9,7 @@ struct DetailView: View {
     var body: some View {
         let _ = language.selection
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 12) {
                 if store.selectedDevices.isEmpty {
                     EmptySelectionCard(store: store)
                 } else {
@@ -28,7 +28,7 @@ struct DetailView: View {
 
                 LogCard(store: store)
             }
-            .padding(24)
+            .padding(14)
             .frame(maxWidth: 800, alignment: .leading)
         }
         .background(.regularMaterial)
@@ -42,11 +42,11 @@ private struct SelectedDevicesCard: View {
     var body: some View {
         let _ = language.selection
         GroupBox {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(L10n.tr("已选择 %@ 台设备", String(store.selectedDevices.count)))
-                            .font(.title3.weight(.semibold))
+                            .font(.headline)
                     }
                     Spacer()
                     Button(L10n.tr("清除选择")) { store.clearDeviceSelection() }
@@ -54,12 +54,12 @@ private struct SelectedDevicesCard: View {
                         .fixedSize()
                 }
 
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     Button {
                         store.startMirroring()
                     } label: {
                         Label(L10n.tr("开始所选投屏"), systemImage: "play.fill")
-                            .frame(minWidth: 120)
+                            .frame(minWidth: 100)
                     }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.return, modifiers: [.command])
@@ -69,13 +69,13 @@ private struct SelectedDevicesCard: View {
                         store.stopMirroring()
                     } label: {
                         Label(L10n.tr("停止全部"), systemImage: "stop.fill")
-                            .frame(minWidth: 100)
+                            .frame(minWidth: 80)
                     }
                     .buttonStyle(.bordered)
                     .disabled(!store.isMirroring && !store.hasPendingReconnect)
                 }
             }
-            .padding(4)
+            .padding(2)
         }
     }
 }
@@ -87,13 +87,13 @@ private struct DeviceSessionsCard: View {
     var body: some View {
         let _ = language.selection
         GroupBox(L10n.tr("设备与投屏")) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
                 ForEach(store.displayedDevices) { device in
                     DeviceSessionRow(device: device, store: store)
                     if device.id != store.displayedDevices.last?.id { Divider() }
                 }
             }
-            .padding(4)
+            .padding(2)
         }
     }
 }
@@ -151,6 +151,9 @@ private struct DeviceSessionRow: View {
                             Image(systemName: "star.fill").font(.caption).foregroundStyle(.orange)
                                 .accessibilityLabel(L10n.tr("常用设备"))
                         }
+                    }
+                    if store.displayName(for: device) != device.displayName, device.displayName != device.serial {
+                        Text(device.displayName).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                     }
                     Text(device.transport)
                         .font(.caption.monospaced())
@@ -283,9 +286,9 @@ private struct EmptySelectionCard: View {
 
     var body: some View {
         let _ = language.selection
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             Image(systemName: "square.stack.3d.up")
-                .font(.system(size: 40))
+                .font(.system(size: 30))
                 .foregroundStyle(.secondary)
             Text(L10n.tr("勾选要投屏的 Android 设备"))
                 .font(.headline)
@@ -299,7 +302,7 @@ private struct EmptySelectionCard: View {
                     .buttonStyle(.borderedProminent)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 180)
+        .frame(maxWidth: .infinity, minHeight: 140)
     }
 }
 

@@ -37,6 +37,11 @@ private final class MockADB: @unchecked Sendable {
                 stderr: Data(), timedOut: mode == "timeout", outputLimitExceeded: mode == "overflow")
         }
         if command.last == "ro.build.version.sdk" { return result(mode == "oldAndroid" ? "27" : "36") }
+        if command.contains("resolve-activity") {
+            if mode == "vivoLauncher" { return result("priority=0 isDefault=true\ncom.android.launcher3/com.bbk.launcher2.Launcher\n") }
+            if mode == "launcherQueryFailed" { return result("", status: 1) }
+            return result("com.example.launcher/.Home\n")
+        }
         if command.last == "ro.build.version.release" { return result("16") }
         if command.last == "ro.product.model" { return result("Mock Phone") }
         if command == ["shell", "wm", "size"] { return result("Physical size: 1080x2400\nOverride size: 720x1600") }
@@ -178,6 +183,21 @@ struct DeviceToolsChecks {
         try service.swipeUpForDrawer(for: device, cancellation: nil)
         expect(Array(mock.calls.last!.arguments.suffix(8)) == ["shell", "input", "swipe", "320", "249", "320", "70", "350"], "drawer fallback uses current PNG orientation and central 78%-22% swipe")
         expect(!mock.calls.contains { $0.arguments.contains("wm") }, "drawer fallback does not mistake natural wm size for current orientation")
+        mock.mode = "vivoLauncher"; mock.clear()
+        try service.openAppDrawer(for: device, cancellation: nil)
+        expect(mock.calls.contains { $0.arguments.contains("swipe") } && !mock.calls.contains { $0.arguments.contains("284") }, "verified vivo HOME component automatically uses the working swipe route")
+        expect(mock.calls.allSatisfy { $0.arguments.prefix(2) == ["-s", device.serial] && $0.environment["ADB_SERVER_SOCKET"] == device.adbSocket }, "launcher query and automatic swipe remain bound to selected phone and ADB route")
+        expect(DeviceToolsService.prefersSwipeForDrawer(homeResolution: "com.android.launcher3/com.bbk.launcher2.Launcher\n"), "exact resolved launcher selects compatibility")
+        for resolution in ["", "com.android.launcher3/.Launcher", "com.example.launcher/.Home", "other/com.bbk.launcher2.Launcher", "com.android.launcher3/com.bbk.launcher2.LauncherExtra", "com.android.launcher3/com.bbk.launcher2.Launcher\nother/.Home"] {
+            expect(!DeviceToolsService.prefersSwipeForDrawer(homeResolution: resolution), "unverified or ambiguous HOME component retains standard behavior")
+        }
+        mock.mode = "launcherQueryFailed"; mock.clear()
+        try service.openAppDrawer(for: device, cancellation: nil)
+        expect(mock.calls.last!.arguments.suffix(4) == ["shell", "input", "keyevent", "284"], "unavailable launcher query preserves standard ALL_APPS route")
+        mock.clear()
+        rejects("cancelled drawer operation starts no device commands") { try service.openAppDrawer(for: device, cancellation: cancel) }
+        expect(mock.calls.isEmpty, "cancelled drawer cannot issue launcher query or gesture")
+        mock.mode = "normal"
 
         let report = FeedbackReport(appVersion: "0.4.5", build: "10", device: device, health: health,
             session: FeedbackSessionSnapshot(state: "mirroring", quality: "Ultra", videoSize: "1080×2400", failure: "secret raw logs"))

@@ -106,12 +106,31 @@ struct DeviceToolsService: Sendable {
 
     func openAppDrawer(for device: AndroidDevice, cancellation: ProcessCancellation?) throws {
         try ready(device, cancellation)
+        // V2520's stock launcher ignores ALL_APPS but its desktop swipe was
+        // verified on-device. Select that route by the resolved HOME component,
+        // not the phone brand/model: users may install another launcher.
+        let launcherResult = try? command(["shell", "cmd", "package", "resolve-activity", "--brief",
+            "-a", "android.intent.action.MAIN", "-c", "android.intent.category.HOME"],
+            device, timeout: 2, cancellation: cancellation)
+        try checkCancellation(cancellation)
+        let launcher = launcherResult.map { String(decoding: $0.stdout, as: UTF8.self) } ?? ""
+        if Self.prefersSwipeForDrawer(homeResolution: launcher) {
+            try swipeUpForDrawer(for: device, cancellation: cancellation)
+            return
+        }
         let version = try text(["shell", "getprop", "ro.build.version.sdk"], device, cancellation)
         guard let api = Int(version), api >= 28 else { throw DeviceToolsError.drawerUnsupported }
         _ = try command(["shell", "input", "keyevent", "3"], device, cancellation: cancellation)
         // Android KEYCODE_ALL_APPS = 284, added in API 28. A successful input
         // command is not proof that a particular launcher's drawer became visible.
         _ = try command(["shell", "input", "keyevent", "284"], device, cancellation: cancellation)
+    }
+
+    static func prefersSwipeForDrawer(homeResolution: String) -> Bool {
+        let components = homeResolution.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { $0.contains("/") }
+        return components == ["com.android.launcher3/com.bbk.launcher2.Launcher"]
     }
 
     func swipeUpForDrawer(for device: AndroidDevice, cancellation: ProcessCancellation?) throws {

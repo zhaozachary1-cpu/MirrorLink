@@ -37,9 +37,11 @@ struct ScrcpyCommand {
 
     func windowTitle(for device: AndroidDevice, preferences: DevicePreferences = DevicePreferences()) -> String {
         let nickname = preferences.normalized.nickname
-        let name = nickname.isEmpty ? device.displayName : nickname
+        let physicalName = device.displayName
+        let name = nickname.isEmpty ? physicalName
+            : (physicalName == device.serial || nickname == physicalName ? nickname : "\(nickname) · \(physicalName)")
         let label = preferences.presentationMode ? (name == device.serial ? L10n.tr("Android 手机") : name)
-            : (nickname.isEmpty ? device.logLabel : "\(nickname) · \(device.serial)")
+            : (nickname.isEmpty ? device.logLabel : "\(name) · \(device.serial)")
         return L10n.tr("镜连 · %@", label)
     }
 

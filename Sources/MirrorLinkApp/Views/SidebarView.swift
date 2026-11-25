@@ -97,8 +97,8 @@ struct SidebarView: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
             .background(.bar)
         }
     }
@@ -123,8 +123,11 @@ private struct DeviceRow: View {
             )) {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 4) {
-                        Text(displayName).lineLimit(1)
+                        Text(displayName).lineLimit(2)
                         if favorite { Image(systemName: "star.fill").font(.caption2).foregroundStyle(.orange) }
+                    }
+                    if displayName != device.displayName, device.displayName != device.serial {
+                        Text(device.displayName).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                     }
                     Text([device.transport, device.state.title].joined(separator: " · "))
                         .font(.caption)

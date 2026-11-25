@@ -41,6 +41,26 @@ struct MirrorLinkCoreChecks {
         precondition(command.arguments(for: secondDevice).prefix(2) == ["-s", "DEF456789"], "second device serial pinning")
         precondition(command.windowTitle(for: device) != command.windowTitle(for: secondDevice), "unique scrcpy windows")
 
+        var branded = device
+        branded.brand = AndroidDevice.brand(fromProperties: "google\nGoogle\n")
+        precondition(branded.displayName == "Google Pixel 6" && branded.id == device.id, "brand and normalized model do not change device identity")
+        precondition(command.windowTitle(for: branded).contains("Google Pixel 6"), "mirror title contains brand and model")
+        var named = DevicePreferences(); named.nickname = "Work phone"
+        precondition(command.windowTitle(for: branded, preferences: named).contains("Work phone · Google Pixel 6"), "nickname preserves visible physical brand and model")
+        named.presentationMode = true
+        precondition(!command.windowTitle(for: branded, preferences: named).contains(device.serial), "presentation title continues to hide device serial")
+        branded = AndroidDevice(serial: "TEST", model: "Samsung_Galaxy", product: nil, transport: "USB", state: .ready, adbSocket: nil)
+        branded.brand = "Samsung"
+        precondition(branded.displayName == "Samsung Galaxy", "model already containing brand is not duplicated")
+        branded.brand = nil
+        precondition(branded.displayName == "Samsung Galaxy", "missing brand retains existing model")
+        precondition(AndroidDevice.brand(fromProperties: "\nvivo\n") == "vivo", "manufacturer is a fallback when brand is empty")
+        precondition(AndroidDevice.brand(fromProperties: "unknown\nSAMSUNG\n") == "Samsung", "unknown brand falls back and normalizes manufacturer")
+        precondition(AndroidDevice.brand(fromProperties: "\r\nSony\r\n") == "Sony", "CRLF manufacturer output is normalized")
+        for invalid in ["", "one line", "unknown\nnull\n", "vivo\nvivo\nextra", "bad\tlabel\n\n", String(repeating: "x", count: 161) + "\n\n"] {
+            precondition(AndroidDevice.brand(fromProperties: invalid) == nil, "malformed or unavailable brand metadata is ignored")
+        }
+
         var wireless = AndroidDevice(serial: "192.168.1.8:39847", model: device.model, product: device.product, transport: "Wi-Fi", state: .ready, adbSocket: device.adbSocket)
         wireless.hardwareSerial = device.serial
         wireless.sessionIdentity = device.id

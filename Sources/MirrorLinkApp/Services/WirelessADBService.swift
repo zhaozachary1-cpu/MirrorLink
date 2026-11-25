@@ -188,6 +188,8 @@ struct WirelessADBService: Sendable {
                 return .failure(.localizedFailure(L10n.message("未能确认连接对象是刚才扫码的手机，已停止自动投屏。请重新扫码或手动核对地址。")))
             }
         }
+        let metadata = execute(["-s", device.serial, "shell", AndroidDevice.brandQuery], nil, 2, cancellation)
+        if metadata.succeeded { device.brand = AndroidDevice.brand(fromProperties: metadata.stdout) }
         guard cancellation?.isCancelled != true else { return .failure(.localizedFailure(L10n.message("连接已取消。"))) }
         return .success(device)
     }

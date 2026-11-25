@@ -38,6 +38,12 @@ struct ADBService: Sendable {
             if result.succeeded {
                 let devices = ADBDeviceParser.parse(result.stdout, adbSocket: socket)
                 for var device in devices {
+                    if device.state == .ready {
+                        let metadata = ProcessRunner.run(executablePath: paths.adb.path,
+                            arguments: ["-s", device.serial, "shell", AndroidDevice.brandQuery],
+                            environmentOverrides: overrides, timeout: 2)
+                        if metadata.succeeded { device.brand = AndroidDevice.brand(fromProperties: metadata.stdout) }
+                    }
                     if device.isWireless && device.state == .ready {
                         device.hardwareSerial = ADBDeviceIdentity.hardwareSerial(from: ProcessRunner.run(
                             executablePath: paths.adb.path,

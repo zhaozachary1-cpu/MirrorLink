@@ -442,6 +442,7 @@ final class MirrorSessionStore: ObservableObject {
             if let match {
                 device.sessionIdentity = match.id
                 if device.hardwareSerial == nil { device.hardwareSerial = match.hardwareSerial }
+                if device.brand == nil { device.brand = match.brand }
             }
             if let index = resolved.firstIndex(where: { $0.id == device.id }) {
                 resolved[index] = ADBDeviceIdentity.preferred(resolved[index], device)

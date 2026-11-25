@@ -23,8 +23,11 @@ enum ADBDeviceIdentity {
             case .unknown: return 3
             }
         }
-        if rank(first.state) != rank(second.state) { return rank(first.state) < rank(second.state) ? first : second }
-        if first.isWireless != second.isWireless { return first.isWireless ? first : second }
-        return first
+        var preferred: AndroidDevice
+        if rank(first.state) != rank(second.state) { preferred = rank(first.state) < rank(second.state) ? first : second }
+        else if first.isWireless != second.isWireless { preferred = first.isWireless ? first : second }
+        else { preferred = first }
+        if preferred.brand == nil { preferred.brand = first.brand ?? second.brand }
+        return preferred
     }
 }

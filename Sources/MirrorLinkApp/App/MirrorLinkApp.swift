@@ -71,7 +71,7 @@ struct MirrorLinkApp: App {
                     }
                 }
         }
-        .defaultSize(width: 840, height: 560)
+        .defaultSize(width: 640, height: 420)
         .commands {
             CommandGroup(after: .appInfo) {
                 Button(updates.installationPending ? L10n.tr("安装已下载的更新…") : L10n.tr("检查更新…")) {
