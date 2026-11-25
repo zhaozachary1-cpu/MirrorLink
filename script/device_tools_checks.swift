@@ -10,6 +10,13 @@ private final class CompletedToolWorkers: @unchecked Sendable {
     func finish() { lock.lock(); completed += 1; lock.unlock() }
 }
 
+private final class ToolProgressMessages: @unchecked Sendable {
+    private let lock = NSLock()
+    private var messages: [String] = []
+    var values: [String] { lock.lock(); defer { lock.unlock() }; return messages }
+    func append(_ message: LocalizedMessage) { lock.lock(); messages.append(message.resolved); lock.unlock() }
+}
+
 private final class MockADB: @unchecked Sendable {
     struct Call { let arguments: [String]; let environment: [String: String] }
     private let lock = NSLock()
@@ -36,7 +43,7 @@ private final class MockADB: @unchecked Sendable {
             return BinaryProcessResult(status: 0, stdout: mode == "badPNG" ? Data("not png".utf8) : png,
                 stderr: Data(), timedOut: mode == "timeout", outputLimitExceeded: mode == "overflow")
         }
-        if command.last == "ro.build.version.sdk" { return result(mode == "oldAndroid" ? "27" : "36") }
+        if command.last == "ro.build.version.sdk" { return result(mode == "legacyAndroid" ? "21" : mode == "oldAndroid" ? "27" : "36") }
         if command.contains("resolve-activity") {
             if mode == "vivoLauncher" { return result("priority=0 isDefault=true\ncom.android.launcher3/com.bbk.launcher2.Launcher\n") }
             if mode == "launcherQueryFailed" { return result("", status: 1) }
@@ -47,6 +54,14 @@ private final class MockADB: @unchecked Sendable {
         if command == ["shell", "wm", "size"] { return result("Physical size: 1080x2400\nOverride size: 720x1600") }
         if command.first == "push" { stagedBytes = try? Data(contentsOf: URL(fileURLWithPath: command[1])) }
         if command.first == "install" {
+            stagedBytes = try? Data(contentsOf: URL(fileURLWithPath: command.last!))
+            if mode == "slowInstall" {
+                while cancellation?.isCancelled != true { Thread.sleep(forTimeInterval: 0.01) }
+                return result("", status: -999)
+            }
+            if mode == "installTimeout" {
+                return BinaryProcessResult(status: 15, stdout: Data(), stderr: Data(), timedOut: true, outputLimitExceeded: false)
+            }
             if mode.hasPrefix("INSTALL_") { return result("Failure [\(mode)] PRIVATE /Users/person/file", status: 1) }
             return result("Success\n")
         }
@@ -91,6 +106,25 @@ struct DeviceToolsChecks {
         let parent = URL(fileURLWithPath: ProcessInfo.processInfo.environment["MIRRORLINK_TEST_ROOT"]!)
         let root = try ToolFileSafety.temporaryDirectory(in: parent)
         defer { try? FileManager.default.removeItem(at: root) }
+        if CommandLine.arguments.contains("--benchmark-staging") {
+            let source = root.appendingPathComponent("synthetic-128MiB.apk")
+            try ToolFileSafety.writeExclusive(Data(), to: source)
+            let handle = try FileHandle(forWritingTo: source)
+            let block = Data(repeating: 0x5A, count: 1_048_576)
+            for _ in 0..<128 { try handle.write(contentsOf: block) }
+            try handle.close()
+            for preferClone in [false, true] {
+                var samples: [Double] = []
+                for index in 0..<3 {
+                    let target = root.appendingPathComponent("sample-\(preferClone)-\(index).apk")
+                    let start = ProcessInfo.processInfo.systemUptime
+                    try ToolFileSafety.copyRegularFile(source, to: target, cancellation: nil, preferClone: preferClone)
+                    samples.append((ProcessInfo.processInfo.systemUptime - start) * 1000)
+                }
+                print("BENCHMARK 128 MiB staging \(preferClone ? "clone preferred" : "byte copy"): \(samples.map { String(format: "%.2f ms", $0) }.joined(separator: ", "))")
+            }
+            return
+        }
         let frame = png(), fixture = root.appendingPathComponent("fixture.png")
         try frame.write(to: fixture)
         let paths = ToolPaths(root: root, adb: URL(fileURLWithPath: "/bin/cat"),
@@ -145,9 +179,26 @@ struct DeviceToolsChecks {
         rejects("ordinary send cannot silently install APK") { _ = try service.sendFile(apk, to: device, cancellation: nil) }
         rejects("APK installation requires explicit confirmation") { try service.installAPK(apk, to: device, confirmed: false, cancellation: nil) }
         expect(mock.calls.isEmpty, "unconfirmed APK issued no device command")
-        try service.installAPK(apk, to: device, confirmed: true, cancellation: nil)
+        let progress = ToolProgressMessages()
+        try service.installAPK(apk, to: device, confirmed: true, cancellation: nil, progress: { progress.append($0) })
         expect(mock.calls.contains { $0.arguments.dropFirst(2).first == "install" }, "confirmed APK uses dedicated install command")
-        expect(!mock.calls.contains { $0.arguments.contains("-r") }, "APK install does not silently replace an existing app")
+        expect(mock.calls.last?.arguments.dropFirst(2).dropLast() == ["install", "--streaming", "--no-incremental", "--no-fastdeploy", "-R"], "APK selects one streaming attempt and explicitly prohibits replacement")
+        expect(mock.stagedBytes == payload, "fast APK staging preserves the exact selected bytes")
+        expect(progress.values == [L10n.tr("正在检查手机连接…"), L10n.tr("正在准备 APK…"), L10n.tr("正在传输并安装 APK…")], "installation reports real phases without invented percentages")
+        expect(!FileManager.default.fileExists(atPath: mock.calls.last!.arguments.last!), "successful install removes its private local staging file")
+        mock.mode = "installTimeout"; mock.clear()
+        do { try service.installAPK(apk, to: device, confirmed: true, cancellation: nil); fatalError("expected install timeout") }
+        catch let error as DeviceToolsError { expect(error.localizedDescription == DeviceToolsError.apkTimedOut.localizedDescription, "install timeout asks to check the phone before retrying") }
+        expect(mock.calls.filter { $0.arguments.contains("install") }.count == 1, "timeout never retries an ambiguous installation automatically")
+        expect(!FileManager.default.fileExists(atPath: mock.calls.last!.arguments.last!), "timed-out install removes its private local staging file")
+        mock.mode = "oldAndroid"; mock.clear()
+        try service.installAPK(apk, to: device, confirmed: true, cancellation: nil)
+        expect(mock.calls.last!.arguments.contains("--streaming") && !mock.calls.last!.arguments.contains("-R") && !mock.calls.last!.arguments.contains("-r"),
+               "Android 7-8 streaming retains its default no-replacement behavior")
+        mock.mode = "legacyAndroid"; mock.clear()
+        try service.installAPK(apk, to: device, confirmed: true, cancellation: nil)
+        expect(!mock.calls.last!.arguments.contains("--streaming") && !mock.calls.last!.arguments.contains("-R") && !mock.calls.last!.arguments.contains("-r"),
+               "older USB phones retain compatible legacy installation without replacement")
         for (code, expected) in [("INSTALL_PARSE_FAILED_NOT_APK", DeviceToolsError.apkInvalid),
             ("INSTALL_FAILED_ALREADY_EXISTS", .apkConflict), ("INSTALL_FAILED_USER_RESTRICTED", .apkBlocked),
             ("INSTALL_FAILED_NO_MATCHING_ABIS", .apkIncompatible)] {
@@ -160,6 +211,26 @@ struct DeviceToolsChecks {
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: fixture)
         rejects("sending a symbolic link is rejected") { _ = try service.sendFile(link, to: device, cancellation: nil) }
         rejects("sending a directory is rejected") { _ = try service.sendFile(output, to: device, cancellation: nil) }
+        let snapshot = root.appendingPathComponent("snapshot.apk")
+        try ToolFileSafety.copyRegularFile(apk, to: snapshot, cancellation: nil, preferClone: true)
+        try Data("changed source".utf8).write(to: apk)
+        let snapshotBytes = try Data(contentsOf: snapshot)
+        expect(snapshotBytes == payload, "cloned snapshot is independent of later source edits")
+        rejects("clone staging cannot replace an existing destination") {
+            try ToolFileSafety.copyRegularFile(apk, to: snapshot, cancellation: nil, preferClone: true)
+        }
+        let preservedBytes = try Data(contentsOf: snapshot)
+        expect(preservedBytes == payload, "existing destination survives a failed clone attempt")
+        rejects("clone staging rejects symbolic links") {
+            try ToolFileSafety.copyRegularFile(link, to: root.appendingPathComponent("bad-clone"), cancellation: nil, preferClone: true)
+        }
+        rejects("clone staging enforces its file size cap before cloning") {
+            try ToolFileSafety.copyRegularFile(apk, to: root.appendingPathComponent("oversized-clone"), cancellation: nil, maximumBytes: 1, preferClone: true)
+        }
+        let cancelledClone = ProcessCancellation(); cancelledClone.cancel()
+        rejects("clone staging obeys pre-cancellation") {
+            try ToolFileSafety.copyRegularFile(apk, to: root.appendingPathComponent("cancelled-clone"), cancellation: cancelledClone, preferClone: true)
+        }
         mock.mode = "fail"
         rejects("failed ADB push cannot report success") { _ = try service.sendFile(hostile, to: device, cancellation: nil) }
         mock.mode = "normal"; mock.clear()
@@ -246,8 +317,25 @@ struct DeviceToolsChecks {
         expect(defaults.string(forKey: DeviceToolsStore.directoryPreferenceKey) == selected.path, "chosen output folder is persisted")
         let restored = DeviceToolsStore(paths: paths, defaults: defaults)
         expect(restored.outputDirectory.standardizedFileURL.path == selected.standardizedFileURL.path, "output folder restores without a maintainer path")
+        mock.mode = "slowInstall"
+        store.installAPK(apk, to: device, confirmed: true)
+        for _ in 0..<100 where store.status(for: device.id)?.contains(L10n.tr("正在传输并安装 APK…")) != true { try await Task.sleep(nanoseconds: 10_000_000) }
+        expect(store.isBusy(for: device.id) && (store.windowState(for: device)["installStatus"] as? String)?.contains("0") == true,
+               "active APK publishes an inline phase and elapsed time to the mirror window")
+        let resultID = store.windowState(for: device)["resultID"] as? String
+        store.cancel(for: device.id)
+        for _ in 0..<100 where store.isBusy(for: device.id) { try await Task.sleep(nanoseconds: 10_000_000) }
+        expect(store.isError(for: device.id) && store.status(for: device.id)?.contains("不会撤销") == true,
+               "cancelled APK explains that completed phone installation is not undone")
+        mock.mode = "normal"
+        store.installAPK(apk, to: device, confirmed: true)
+        for _ in 0..<100 where store.isBusy(for: device.id) { try await Task.sleep(nanoseconds: 10_000_000) }
+        expect(!store.isError(for: device.id) && store.status(for: device.id)?.contains("安装完成") == true,
+               "APK completion publishes a visible result with elapsed time")
+        expect(store.windowState(for: device)["resultID"] as? String != resultID, "new install gets a new identity for late-progress suppression")
         mock.mode = "slow"; mock.clear()
         store.captureScreenshot(for: device)
+        expect(store.windowState(for: device)["installStatus"] as? String == "", "next unrelated operation removes APK-specific feedback")
         expect(store.isBusy(for: device.id), "store publishes per-device processing state")
         store.captureScreenshot(for: device)
         try await Task.sleep(nanoseconds: 50_000_000)

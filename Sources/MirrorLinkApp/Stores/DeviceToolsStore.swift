@@ -23,6 +23,9 @@ final class DeviceToolsStore: ObservableObject {
     private var operations: [String: UUID] = [:]
     private var statusVersions: [String: UUID] = [:]
     private var cancellationMessages: [String: LocalizedMessage] = [:]
+    private var apkOperations: Set<String> = []
+    private var operationStarts: [String: TimeInterval] = [:]
+    private var operationEnds: [String: TimeInterval] = [:]
     private var feedbackToken: ProcessCancellation?
     private var hasShutdown = false
     static let directoryPreferenceKey = "deviceToolsOutputDirectory"
@@ -57,55 +60,70 @@ final class DeviceToolsStore: ObservableObject {
         defaults.set(outputDirectory.path, forKey: Self.directoryPreferenceKey)
     }
     func isBusy(for id: String) -> Bool { busy.contains(id) }
-    func status(for id: String) -> String? { statuses[id]?.resolved }
+    func status(for id: String) -> String? {
+        guard let message = statuses[id] else { return nil }
+        if apkOperations.contains(id), isBusy(for: id), let start = operationStarts[id] {
+            let elapsed = Int(ProcessInfo.processInfo.systemUptime - start)
+            if message.key == "正在传输并安装 APK…", tokens[id]?.isCancelled != true, elapsed >= 20 {
+                return L10n.tr("正在安装 · %@ 秒，请查看手机授权", String(elapsed))
+            }
+            return L10n.tr("%@ · 已用 %@ 秒", message.resolved, String(elapsed))
+        }
+        return message.resolved
+    }
     func isError(for id: String) -> Bool { errors.contains(id) }
     func lastScreenshotURL(for id: String) -> URL? { screenshots[id] }
     func healthReport(for id: String) -> DeviceHealthReport? { healthReports[id] }
     func windowState(for device: AndroidDevice) -> [String: Any] {
-        ["busy": isBusy(for: device.id), "status": status(for: device.id) ?? "",
+        let showAPK = apkOperations.contains(device.id) && (isBusy(for: device.id) ||
+            operationEnds[device.id].map { ProcessInfo.processInfo.systemUptime - $0 < 8 } == true)
+        return ["busy": isBusy(for: device.id), "status": status(for: device.id) ?? "",
+         "installStatus": showAPK ? status(for: device.id) ?? "" : "",
          "isError": isError(for: device.id), "resultID": statusVersions[device.id]?.uuidString ?? "initial",
          "screenshotPath": screenshots[device.id]?.path ?? "", "directory": outputDirectory.path]
     }
 
     func captureScreenshot(for device: AndroidDevice) {
         let directory = outputDirectory
-        perform(device, message: L10n.message("正在截取原始画面…")) { service, token in
+        perform(device, message: L10n.message("正在截取原始画面…")) { service, token, _ in
             .screenshot(try service.captureScreenshot(for: device, directory: directory, cancellation: token))
         }
     }
     func sendFile(_ url: URL, to device: AndroidDevice) {
         perform(device, message: L10n.message("正在发送文件…"),
-                cancellationMessage: L10n.message("已停止文件发送；手机可能保留已收到的部分文件，请在下载文件夹中检查。")) { service, token in
+                cancellationMessage: L10n.message("已停止文件发送；手机可能保留已收到的部分文件，请在下载文件夹中检查。")) { service, token, _ in
             .message(L10n.message("文件已发送到手机：%@", try service.sendFile(url, to: device, cancellation: token)))
         }
     }
     func installAPK(_ url: URL, to device: AndroidDevice, confirmed: Bool) {
+        let start = ProcessInfo.processInfo.systemUptime
         perform(device, message: L10n.message("正在安装 APK…"),
-                cancellationMessage: L10n.message("已停止等待安装结果，请检查手机当前安装状态；此操作不会撤销已经完成的安装。")) { service, token in
-            try service.installAPK(url, to: device, confirmed: confirmed, cancellation: token)
-            return .message(L10n.message("APK 安装完成。"))
+                cancellationMessage: L10n.message("已停止等待安装结果，请检查手机当前安装状态；此操作不会撤销已经完成的安装。"),
+                isAPK: true) { service, token, progress in
+            try service.installAPK(url, to: device, confirmed: confirmed, cancellation: token, progress: progress)
+            return .message(L10n.message("APK 安装完成 · 用时 %@ 秒", String(Int(ProcessInfo.processInfo.systemUptime - start))))
         }
     }
     func home(for device: AndroidDevice) {
-        perform(device, message: L10n.message("正在发送返回桌面指令…")) { service, token in
+        perform(device, message: L10n.message("正在发送返回桌面指令…")) { service, token, _ in
             try service.home(for: device, cancellation: token)
             return .message(L10n.message("已发送返回桌面指令。"))
         }
     }
     func openAppDrawer(for device: AndroidDevice) {
-        perform(device, message: L10n.message("正在请求应用抽屉…")) { service, token in
+        perform(device, message: L10n.message("正在请求应用抽屉…")) { service, token, _ in
             try service.openAppDrawer(for: device, cancellation: token)
             return .message(L10n.message("已发送应用抽屉指令；若桌面未响应，请尝试上滑兼容方式。"))
         }
     }
     func swipeUpForDrawer(for device: AndroidDevice) {
-        perform(device, message: L10n.message("正在发送上滑手势…")) { service, token in
+        perform(device, message: L10n.message("正在发送上滑手势…")) { service, token, _ in
             try service.swipeUpForDrawer(for: device, cancellation: token)
             return .message(L10n.message("已发送桌面上滑手势；不同桌面的显示方式可能不同。"))
         }
     }
     func runHealthCheck(for device: AndroidDevice) {
-        perform(device, message: L10n.message("正在检测所选手机…")) { service, token in
+        perform(device, message: L10n.message("正在检测所选手机…")) { service, token, _ in
             .health(try service.healthCheck(for: device, cancellation: token))
         }
     }
@@ -164,22 +182,34 @@ final class DeviceToolsStore: ObservableObject {
     private enum Output: Sendable { case screenshot(URL), health(DeviceHealthReport), message(LocalizedMessage) }
     private func perform(_ device: AndroidDevice, message: LocalizedMessage,
                          cancellationMessage: LocalizedMessage = L10n.message("操作已取消。"),
-                         operation: @escaping @Sendable (DeviceToolsService, ProcessCancellation) throws -> Output) {
+                         isAPK: Bool = false,
+                         operation: @escaping @Sendable (DeviceToolsService, ProcessCancellation,
+                             @Sendable (LocalizedMessage) -> Void) throws -> Output) {
         let id = device.id
         guard !hasShutdown, !busy.contains(id) else { return }
         guard let service else { statuses[id] = DeviceToolsError.toolsMissing.message; errors.insert(id); return }
         let token = ProcessCancellation(), generation = UUID()
         statusVersions[id] = generation
         tokens[id] = token; operations[id] = generation; cancellationMessages[id] = cancellationMessage
+        if isAPK { apkOperations.insert(id) } else { apkOperations.remove(id) }
+        operationStarts[id] = ProcessInfo.processInfo.systemUptime; operationEnds[id] = nil
         busy.insert(id); errors.remove(id); statuses[id] = message
         let workers = workers
         workers.enter()
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             defer { workers.leave() }
-            let result = Result { try operation(service, token) }
+            let result = Result {
+                try operation(service, token) { [weak self] message in
+                    DispatchQueue.main.async {
+                        guard let self, self.operations[id] == generation, !token.isCancelled else { return }
+                        self.statuses[id] = message
+                    }
+                }
+            }
             DispatchQueue.main.async {
                 guard let self, self.operations[id] == generation else { return }
                 self.busy.remove(id); self.tokens[id] = nil; self.operations[id] = nil
+                self.operationEnds[id] = ProcessInfo.processInfo.systemUptime
                 let cancelledMessage = self.cancellationMessages.removeValue(forKey: id)
                 if token.isCancelled {
                     self.statuses[id] = cancelledMessage ?? DeviceToolsError.cancelled.message

@@ -5,7 +5,7 @@ enum DeviceToolsError: Error, LocalizedError, Sendable {
     case toolsMissing, invalidTarget, deviceNotReady, cancelled, timedOut, outputTooLarge
     case commandFailed, invalidPNG, invalidFile, saveFailed, apkRequiresConfirmation
     case apkOnly, drawerUnsupported, invalidScreenSize, invalidAttachment
-    case apkInvalid, apkConflict, apkBlocked, apkIncompatible
+    case apkInvalid, apkConflict, apkBlocked, apkIncompatible, apkTimedOut
     var message: LocalizedMessage {
         switch self {
         case .toolsMissing: return L10n.message("内置工具不可用，请重新安装完整应用。")
@@ -24,6 +24,7 @@ enum DeviceToolsError: Error, LocalizedError, Sendable {
         case .apkConflict: return L10n.message("手机上已有这个应用，镜连没有覆盖它。如需更新，请使用该应用自己的更新方式。")
         case .apkBlocked: return L10n.message("手机拒绝了安装，请解锁手机并查看手机上的安装授权提示。")
         case .apkIncompatible: return L10n.message("这个 APK 不兼容当前手机，请选择适用于该手机 Android 版本和处理器的安装包。")
+        case .apkTimedOut: return L10n.message("安装等待超时。请查看手机上的安装授权和应用列表，确认结果后再试；停止等待不会撤销已完成的安装。")
         case .drawerUnsupported: return L10n.message("这台手机不支持标准应用抽屉指令，请使用上滑兼容方式。")
         case .invalidScreenSize: return L10n.message("无法确认屏幕尺寸，请在投屏窗口中手动上滑。")
         case .invalidAttachment: return L10n.message("反馈附件仅支持普通图片或视频文件，最多 8 个，每个不超过 512 MB，总计不超过 1 GB；不支持符号链接。")
@@ -83,15 +84,32 @@ struct DeviceToolsService: Sendable {
     }
 
     func installAPK(_ file: URL, to device: AndroidDevice, confirmed: Bool,
-                    cancellation: ProcessCancellation?) throws {
+                    cancellation: ProcessCancellation?,
+                    progress: @Sendable (LocalizedMessage) -> Void = { _ in }) throws {
         guard confirmed else { throw DeviceToolsError.apkRequiresConfirmation }
         guard file.pathExtension.lowercased() == "apk" else { throw DeviceToolsError.apkOnly }
-        try ready(device, cancellation)
+        progress(L10n.message("正在检查手机连接…"))
+        guard device.state == .ready else { throw DeviceToolsError.deviceNotReady }
+        // One successful, targeted query both checks the connection and selects
+        // compatible options. Android 9+ replaces by default unless -R is sent;
+        // older releases reject replacement by default and do not accept -R.
+        let version = try text(["shell", "getprop", "ro.build.version.sdk"], device, cancellation)
+        guard let api = Int(version), api >= 21 else { throw DeviceToolsError.deviceNotReady }
         let directory = try ToolFileSafety.temporaryDirectory(in: temporaryRoot)
         defer { try? FileManager.default.removeItem(at: directory) }
         let staged = directory.appendingPathComponent("selected-" + UUID().uuidString + ".apk")
-        try ToolFileSafety.copyRegularFile(file, to: staged, cancellation: cancellation)
-        let result = try command(["install", staged.path], device, timeout: 180, cancellation: cancellation)
+        progress(L10n.message("正在准备 APK…"))
+        try ToolFileSafety.copyRegularFile(file, to: staged, cancellation: cancellation, preferClone: true)
+        progress(L10n.message("正在传输并安装 APK…"))
+        // Android 7+ supports streaming. Earlier USB phones retain ADB's legacy
+        // mode. Neither path probes incremental installation or silently retries.
+        let mode = api >= 24 ? ["--streaming"] : []
+        let replacement = api >= 28 ? ["-R"] : []
+        let result: BinaryProcessResult
+        do {
+            result = try command(["install"] + mode + ["--no-incremental", "--no-fastdeploy"] + replacement + [staged.path],
+                                 device, timeout: 180, cancellation: cancellation)
+        } catch DeviceToolsError.timedOut { throw DeviceToolsError.apkTimedOut }
         guard String(decoding: result.stdout, as: UTF8.self).split(whereSeparator: \.isNewline)
             .contains(where: { $0.trimmingCharacters(in: .whitespacesAndNewlines) == "Success" }) else {
             throw DeviceToolsError.commandFailed

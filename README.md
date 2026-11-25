@@ -18,6 +18,10 @@
 
 > **0.5.5 / Build 18 is available:** fixes disabled mirror controls after closing an APK, file-transfer, or recording-save picker. It retains the compact 640 × 420 main window, visible phone brands/models, nearby-phone connections, and app-owned wireless backend. Control pages close when video arrives; More → Connect Another Phone, the Dock, or ⌘0 reopens the main window. See [TOOLS-QA.md](TOOLS-QA.md) and [WIRELESS-QA.md](WIRELESS-QA.md) for actual-device evidence and remaining limits.
 
+源码与本机验证版 **0.5.6 / Build 19** 优化 APK 安装：支持的本地磁盘优先快速克隆安装包，Android 7+ 直接使用流式安装；投屏窗口内显示阶段、已用秒数、取消和安装结果，较长等待时提醒查看手机授权。不会跳过手机安全检查，也不承诺所有 APK 的安装总时长缩短固定比例。顶部公开下载仍为 0.5.5；源码同步和本机安装不代表 0.5.6 已发布，验证范围见 [TOOLS-QA.md](TOOLS-QA.md)。
+
+**Source/local validation build 0.5.6 / Build 19:** uses fast local file cloning where supported and explicit streaming installation on Android 7+. Installation phase, elapsed time, cancellation and completion appear inside the mirror window. Phone security checks remain in place; total installation time is not guaranteed to improve by a fixed factor. Public downloads above remain 0.5.5 until a separate release is published.
+
 MirrorLink mirrors Android phones on a Mac over USB or authorized wireless debugging. It includes ADB and scrcpy; no Homebrew or separate tool installation is needed. Requires **macOS 13 or later**. The universal installer includes Apple Silicon and Intel binaries; Intel hardware acceptance testing remains incomplete. It does not support iPhone mirroring or Windows.
 
 1. [Download MirrorLink 0.5.5 for macOS (DMG)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.5/MirrorLink-0.5.5-macOS-universal.dmg), open it, and drag **MirrorLink.app** to **Applications**. An alternative [complete ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.5/MirrorLink-0.5.5-macOS-universal.zip) is available. Do not use “Source code” or the update-only ZIP as an installer. Before replacing an existing copy, stop mirroring, quit with **⌘Q**, and keep a backup.

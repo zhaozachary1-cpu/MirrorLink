@@ -129,6 +129,14 @@ int main(void) {
         deliver(sockets[0], toolbar, @"home-after-error", @"Working", YES, NO);
         deliver(sockets[0], toolbar, @"home-after-error", @"Completed", NO, NO);
         check(toolbar.presentations == 5, @"closing-animation race cannot reopen a popover for the next action");
+        NSDictionary *inlineFailure = @{@"type": @"state", @"resultID": @"inlineAPK",
+            @"status": @"Invalid APK", @"installStatus": @"Invalid APK", @"busy": @NO, @"isError": @YES};
+        NSData *inlineData = [NSJSONSerialization dataWithJSONObject:inlineFailure options:0 error:nil];
+        assert(send(sockets[0], inlineData.bytes, inlineData.length, 0) == inlineData.length);
+        [toolbar receive];
+        check(toolbar.presentations == 5, @"inline APK failure does not open a duplicate popover");
+        deliver(sockets[0], toolbar, @"inlineAPK", @"Invalid APK", NO, YES);
+        check(toolbar.presentations == 5, @"expiry of inline failure cannot reopen a dismissed result");
         close(sockets[0]); close(sockets[1]);
 
         MLPanelTestToolbar *files = [MLPanelTestToolbar new];

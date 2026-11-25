@@ -495,3 +495,10 @@
 "无法访问手机。请允许镜连的“本地网络”权限后重试；已允许时，请检查 VPN 或 Wi-Fi 设备隔离。" = "Cannot reach the phone. Allow Local Network access for MirrorLink and retry. If allowed already, check your VPN or Wi-Fi device isolation.";
 "连接其他手机…" = "Connect Another Phone…";
 "连接并投屏 %@" = "Connect and mirror %@";
+"正在检查手机连接…" = "Checking phone connection…";
+"正在准备 APK…" = "Preparing APK…";
+"正在传输并安装 APK…" = "Transferring and installing APK…";
+"正在安装 · %@ 秒，请查看手机授权" = "Installing · %@ s; check phone approval";
+"%@ · 已用 %@ 秒" = "%@ · %@ s elapsed";
+"APK 安装完成 · 用时 %@ 秒" = "APK installed · %@ s";
+"安装等待超时。请查看手机上的安装授权和应用列表，确认结果后再试；停止等待不会撤销已完成的安装。" = "Installation timed out. Check your phone for approval and the app in its app list before retrying. Stopping the wait does not undo a completed installation.";

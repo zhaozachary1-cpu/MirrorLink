@@ -21,6 +21,10 @@
 @property(nonatomic) id closeObserver;
 @property(nonatomic) NSAlert *activeAlert;
 @property(nonatomic) NSSavePanel *activePanel;
+@property(nonatomic) NSTitlebarAccessoryViewController *installAccessory;
+@property(nonatomic) NSTextField *installLabel;
+@property(nonatomic) NSButton *installCancel;
+@property(nonatomic) NSProgressIndicator *installSpinner;
 @property(nonatomic, copy) void (^alertAnswer)(NSModalResponse);
 - (void)send:(NSString *)action path:(NSString *)path;
 - (void)receive;
@@ -125,6 +129,53 @@
         }
         button.enabled = enabled;
     }
+    [self updateInstallStatus];
+}
+- (void)updateInstallStatus {
+    NSString *status = [self text:@"installStatus"];
+    if (!self.installAccessory && status.length && self.window) {
+        NSTitlebarAccessoryViewController *accessory = [NSTitlebarAccessoryViewController new];
+        accessory.layoutAttribute = NSLayoutAttributeBottom;
+        accessory.automaticallyAdjustsSize = NO;
+        accessory.view = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 400, 32)];
+        accessory.view.autoresizingMask = NSViewWidthSizable;
+        NSTextField *label = [NSTextField labelWithString:@""];
+        label.font = [NSFont systemFontOfSize:12];
+        label.lineBreakMode = NSLineBreakByTruncatingTail;
+        NSButton *cancel = [NSButton buttonWithTitle:@"" target:self action:@selector(cancelOperation:)];
+        cancel.bezelStyle = NSBezelStyleRounded;
+        NSProgressIndicator *spinner = [NSProgressIndicator new];
+        spinner.style = NSProgressIndicatorStyleSpinning;
+        spinner.controlSize = NSControlSizeSmall;
+        spinner.displayedWhenStopped = NO;
+        for (NSView *view in @[label, cancel, spinner]) {
+            view.translatesAutoresizingMaskIntoConstraints = NO;
+            [accessory.view addSubview:view];
+        }
+        [NSLayoutConstraint activateConstraints:@[
+            [spinner.leadingAnchor constraintEqualToAnchor:accessory.view.leadingAnchor constant:12],
+            [spinner.centerYAnchor constraintEqualToAnchor:accessory.view.centerYAnchor],
+            [spinner.widthAnchor constraintEqualToConstant:14], [spinner.heightAnchor constraintEqualToConstant:14],
+            [label.leadingAnchor constraintEqualToAnchor:spinner.trailingAnchor constant:8],
+            [label.centerYAnchor constraintEqualToAnchor:accessory.view.centerYAnchor],
+            [label.trailingAnchor constraintEqualToAnchor:cancel.leadingAnchor constant:-8],
+            [cancel.trailingAnchor constraintEqualToAnchor:accessory.view.trailingAnchor constant:-8],
+            [cancel.centerYAnchor constraintEqualToAnchor:accessory.view.centerYAnchor],
+            [cancel.widthAnchor constraintEqualToConstant:80]
+        ]];
+        self.installAccessory = accessory; self.installLabel = label;
+        self.installCancel = cancel; self.installSpinner = spinner;
+        [self.window addTitlebarAccessoryViewController:accessory];
+    }
+    self.installAccessory.hidden = self.closed || !status.length;
+    self.installLabel.stringValue = status;
+    self.installLabel.toolTip = status;
+    self.installLabel.textColor = [self flag:@"isError"] ? NSColor.systemRedColor : NSColor.labelColor;
+    self.installCancel.title = [self text:@"cancelOperationTitle"];
+    self.installCancel.hidden = ![self flag:@"busy"];
+    self.installCancel.enabled = !self.closed && [self flag:@"busy"];
+    if ([self flag:@"busy"] && status.length && !self.closed) [self.installSpinner startAnimation:nil];
+    else [self.installSpinner stopAnimation:nil];
 }
 - (void)receive {
     char bytes[8192];
@@ -145,7 +196,8 @@
             ![previousStatus isEqual:[self text:@"status"]] || wasError != [self flag:@"isError"];
         // Routine actions should leave the phone picture unobstructed. Progress
         // and results remain available in More; only a new failure opens it.
-        BOOL newFailure = [self flag:@"isError"] && ![self flag:@"busy"] && (resultChanged || !wasError);
+        BOOL newFailure = [self flag:@"isError"] && ![self flag:@"busy"] &&
+            ![self text:@"installStatus"].length && (resultChanged || !wasError);
         if (previous.length && current.length && statusChanged &&
             (self.result.shown || newFailure) && [self text:@"status"].length && !self.dialogOpen) {
             [self showResult];

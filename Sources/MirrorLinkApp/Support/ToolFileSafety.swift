@@ -32,7 +32,8 @@ enum ToolFileSafety {
     /// Copies bytes from one regular file descriptor; symbolic links and folders
     /// are never traversed. A size cap also applies if the source grows while read.
     static func copyRegularFile(_ source: URL, to destination: URL,
-                                cancellation: ProcessCancellation?, maximumBytes: Int64 = maximumFileSize) throws {
+                                cancellation: ProcessCancellation?, maximumBytes: Int64 = maximumFileSize,
+                                preferClone: Bool = false) throws {
         guard source.isFileURL else { throw DeviceToolsError.invalidFile }
         let sourceFD = open(source.path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK)
         guard sourceFD >= 0 else { throw DeviceToolsError.invalidFile }
@@ -40,6 +41,24 @@ enum ToolFileSafety {
         var info = stat()
         guard fstat(sourceFD, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG,
               info.st_size >= 0, info.st_size <= maximumBytes else { throw DeviceToolsError.invalidFile }
+        if cancellation?.isCancelled == true { throw DeviceToolsError.cancelled }
+        // Clone from the validated descriptor, never reopen the source path.
+        // APFS shares the initial blocks but keeps subsequent edits independent.
+        // Other volumes fall back to the same bounded, cancellable copy below.
+        if preferClone, fclonefileat(sourceFD, AT_FDCWD, destination.path, 0) == 0 {
+            var complete = false
+            defer { if !complete { try? FileManager.default.removeItem(at: destination) } }
+            let clonedFD = open(destination.path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK)
+            guard clonedFD >= 0 else { throw DeviceToolsError.saveFailed }
+            defer { close(clonedFD) }
+            var clonedInfo = stat()
+            guard fstat(clonedFD, &clonedInfo) == 0, (clonedInfo.st_mode & S_IFMT) == S_IFREG,
+                  clonedInfo.st_size >= 0, clonedInfo.st_size <= maximumBytes,
+                  fchmod(clonedFD, S_IRUSR | S_IWUSR) == 0 else { throw DeviceToolsError.invalidFile }
+            if cancellation?.isCancelled == true { throw DeviceToolsError.cancelled }
+            complete = true
+            return
+        }
         let destinationFD = open(destination.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, S_IRUSR | S_IWUSR)
         guard destinationFD >= 0 else { throw DeviceToolsError.saveFailed }
         var complete = false
