@@ -1,32 +1,28 @@
 # 镜连 MirrorLink
 
-[![一键下载安装包 — 镜连 macOS DMG](docs/assets/download-macos.svg)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.5/MirrorLink-0.5.5-macOS-universal.dmg)
+[![一键下载安装包 — 镜连 macOS DMG](docs/assets/download-macos.svg)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.6.0/MirrorLink-0.6.0-macOS-universal.dmg)
 
-**点击上方蓝色按钮，直接下载 0.5.5 安装包，无需进入 Assets 查找。**
+**点击上方蓝色按钮，直接下载 0.6.0 安装包，无需进入 Assets 查找。**
 
 下载后：**打开 DMG → 将 MirrorLink.app 拖入“应用程序” → 打开镜连**。按钮只负责下载，不会静默安装；浏览器可能按你的设置询问保存位置。
 
-按钮未显示？[直接下载 DMG](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.5/MirrorLink-0.5.5-macOS-universal.dmg) · [下载完整 ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.5/MirrorLink-0.5.5-macOS-universal.zip) · [其他版本](https://github.com/zhaozachary1-cpu/MirrorLink/releases)
+按钮未显示？[直接下载 DMG](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.6.0/MirrorLink-0.6.0-macOS-universal.dmg) · [下载完整 ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.6.0/MirrorLink-0.6.0-macOS-universal.zip) · [其他版本](https://github.com/zhaozachary1-cpu/MirrorLink/releases)
 
 > 免费社区版未经 Apple 公证。首次打开可能需要手动允许，具体见[首次打开的 macOS 安全提示](#首次打开的-macos-安全提示)；不要关闭系统安全保护。
 
-镜连是一个原生 macOS Android 投屏工具：它把官方 scrcpy v4.1 与 ADB 作为应用内置运行时，并用 SwiftUI 提供 USB / 同 Wi-Fi 无线连接、多设备选择、授权提示、并行投屏、独立开始/停止和诊断日志。
+镜连是一个原生 macOS Android 投屏工具，内置 scrcpy 和 ADB，支持数据线、无线连接和多台手机独立投屏，无需额外安装命令行工具。
 
-公开下载版本为 **0.5.5（Build 18）**：修复关闭“安装 APK”、发送文件或录屏保存窗口后，投屏工具栏持续置灰的问题。保留紧凑主窗口、手机品牌型号、附近手机优先的无线连接、独立无线后台，以及已实测 vivo 桌面的一键应用列表。收到手机画面后自动收起主页面，普通工具操作保持安静。保留投屏窗口工具栏、常用设备与独立设置、截图录屏、连接自检、受控断线恢复、窗口排列、演示模式、文件工具和本地问题反馈包，以及简体中文与 English、三档画质、多设备隔离和签名更新。实际可下载安装的版本以 [最新公开发行页](https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest) 为准；功能与真机证据见 [TOOLS-QA.md](TOOLS-QA.md)、[WIRELESS-QA.md](WIRELESS-QA.md)，完整发布记录见 [UPDATE-QA.md](UPDATE-QA.md)。
+公开下载版本为 **0.6.0（Build 23）**：主界面显示手机名称，点击大号“开始投屏”即可。新手机在原页面扫码，底部保留“设置”和“检查更新”；默认隐藏地址、技术参数和日志，中英文提示更简短。保留投屏窗口工具栏、截图录屏、设备偏好、受控断线恢复和文件/APK 工具；覆盖安装保留原应用数据，签名不匹配或降级仍拒绝。实际验证和限制见 [WIRELESS-QA.md](WIRELESS-QA.md)、[TOOLS-QA.md](TOOLS-QA.md) 和 [UPDATE-QA.md](UPDATE-QA.md)。
 
 ## English Quick Start
 
-> **0.5.5 / Build 18 is available:** fixes disabled mirror controls after closing an APK, file-transfer, or recording-save picker. It retains the compact 640 × 420 main window, visible phone brands/models, nearby-phone connections, and app-owned wireless backend. Control pages close when video arrives; More → Connect Another Phone, the Dock, or ⌘0 reopens the main window. See [TOOLS-QA.md](TOOLS-QA.md) and [WIRELESS-QA.md](WIRELESS-QA.md) for actual-device evidence and remaining limits.
+> **0.6.0 / Build 23 is available:** the compact main window shows phone names and large Start Mirroring buttons. QR pairing stays inline. Settings and Check for Updates remain at the bottom, with shorter Chinese and English messages. Phone tools stay in each mirror window. See [WIRELESS-QA.md](WIRELESS-QA.md) and [UPDATE-QA.md](UPDATE-QA.md) for actual verification and remaining limits.
 
-源码与本机验证版 **0.6.0 / Build 23** 采用极简主界面：直接显示手机品牌型号，点大号“开始投屏”即可；新手机在当前页面扫码连接。自动查找手机，主界面不显示地址、技术参数、诊断日志或批量勾选；设备偏好和诊断移到标准设置，常用手机工具继续放在投屏窗口。底部保留“设置”和“检查更新”。提示与异常文案同步精简为中英文短句。
-
-附近手机优先显示已读取的品牌和型号；标准无线服务名按完整硬件序列匹配本机历史记录，不凭 IP 猜测。首次发现且缺少记录时显示“Android 手机”；部分非标准服务名需在已连接时才能取得名称。顶部公开下载仍为 0.5.5；源码同步和本机安装不代表 0.6.0 已发布，验证范围见 [TOOLS-QA.md](TOOLS-QA.md) 和 [WIRELESS-QA.md](WIRELESS-QA.md)。
-
-**Source/local validation build 0.6.0 / Build 23:** phone names and large Start Mirroring buttons lead the simplified main page. Discovery runs automatically; new phones connect inline by QR. Technical addresses, parameters and diagnostics stay out of the default page. Device preferences and diagnostics are in Settings; phone tools remain in mirror windows. Settings and Check for Updates stay visible at the bottom. Chinese and English prompts use short sentences. Nearby names reuse full-serial history or exact authenticated aliases; unknown phones retain a generic label. Public downloads above remain 0.5.5 until a separate release is published.
+附近手机优先显示已读取的品牌和型号；首次发现且缺少记录时显示“Android 手机”。部分非标准服务名需在已连接时才能取得名称，不凭 IP 猜测。Nearby names reuse full-serial history or exact authenticated aliases; unknown phones retain a generic label. Preferences and diagnostics are in Settings. Discovery is separate from authorization and successful wireless video; see WIRELESS-QA.md for the current connection limits.
 
 MirrorLink mirrors Android phones on a Mac over USB or authorized wireless debugging. It includes ADB and scrcpy; no Homebrew or separate tool installation is needed. Requires **macOS 13 or later**. The universal installer includes Apple Silicon and Intel binaries; Intel hardware acceptance testing remains incomplete. It does not support iPhone mirroring or Windows.
 
-1. [Download MirrorLink 0.5.5 for macOS (DMG)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.5/MirrorLink-0.5.5-macOS-universal.dmg), open it, and drag **MirrorLink.app** to **Applications**. An alternative [complete ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.5/MirrorLink-0.5.5-macOS-universal.zip) is available. Do not use “Source code” or the update-only ZIP as an installer. Before replacing an existing copy, stop mirroring, quit with **⌘Q**, and keep a backup.
+1. [Download MirrorLink 0.6.0 for macOS (DMG)](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.6.0/MirrorLink-0.6.0-macOS-universal.dmg), open it, and drag **MirrorLink.app** to **Applications**. An alternative [complete ZIP](https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.6.0/MirrorLink-0.6.0-macOS-universal.zip) is available. Do not use “Source code” or the update-only ZIP as an installer. Before replacing an existing copy, stop mirroring, quit with **⌘Q**, and keep a backup.
 2. Launch MirrorLink from Applications. Open **MirrorLink → Settings…** with **⌘,**, find the bilingual **“语言 / Language”** section at the top, and choose **English**. Chinese users can find the same command as **“镜连 → 设置…”**. The other choices are **简体中文** and **跟随系统 / System**.
 3. For USB mirroring, enable **USB debugging** in your Android phone’s Developer options, connect it with a data cable, unlock it, and authorize this Mac on the phone. In 0.6.0, the phone appears automatically; click **Start Mirroring**.
 4. For wireless mirroring, use an **Android 11+** phone with Wireless debugging on the same reachable Wi-Fi network. In 0.6.0, click **Start Mirroring** beside an already paired nearby phone, or **Add a Phone**. On the phone, open **Developer options → Wireless debugging → Pair device with QR code** and scan there. Manual Connection is under **Other Ways to Connect** on the QR page. Being on the same network does not grant authorization.
@@ -43,7 +39,7 @@ Language changes update MirrorLink’s own interface without stopping active mir
 
 手机/服务名称、序列号、地址、已有诊断日志和第三方返回的原始错误不会被改写。中英文资源分别位于 `Sources/MirrorLinkApp/Resources/Localizations/zh-Hans.lproj/` 与 `en.lproj/`。本地化检查与尚未完成的原生界面验收见 [LOCALIZATION-QA.md](LOCALIZATION-QA.md)。
 
-## 常用设备、演示与设备工具（0.5.5）
+## 常用设备、演示与设备工具（0.6.0）
 
 每台手机有独立的设置和工具，操作前请确认设备名称。返回桌面、应用列表、截图、开始/结束录屏、发送文件和安装 APK 六个按钮位于每台手机的投屏窗口顶部。按钮只操作该窗口对应的手机，鼠标停留可查看说明；“更多投屏操作”中提供上滑兼容方式、查看结果和打开最近文件。主客户端保留设备设置、自检与反馈，无需来回切换窗口操作。
 
@@ -82,14 +78,14 @@ Optional recovery checks at most three times after an unexpected disconnect. Mir
 
 | 文件 | 用途 |
 | --- | --- |
-| `MirrorLink-0.5.5-macOS-universal.dmg` | 推荐给普通 Mac 用户；打开后拖拽安装 |
-| `MirrorLink-0.5.5-macOS-universal.zip` | 完整安装包；先解压，再拖拽安装 |
-| `MirrorLink-0.5.5-update.zip` / `appcast.xml` | 应用内更新专用；不要当作普通安装包转发 |
+| `MirrorLink-0.6.0-macOS-universal.dmg` | 推荐给普通 Mac 用户；打开后拖拽安装 |
+| `MirrorLink-0.6.0-macOS-universal.zip` | 完整安装包；先解压，再拖拽安装 |
+| `MirrorLink-0.6.0-update.zip` / `appcast.xml` | 应用内更新专用；不要当作普通安装包转发 |
 | `Source code (zip/tar.gz)` | 本项目源码，不是可双击安装的应用 |
-| `MirrorLink-0.5.5-third-party-sources.tar.gz` | 第三方对应源码及许可材料，普通使用不需要下载 |
+| `MirrorLink-0.6.0-third-party-sources.tar.gz` | 第三方对应源码及许可材料，普通使用不需要下载 |
 | `SHA256SUMS.txt` | 下载文件的 SHA-256 校验清单 |
 
-以上文件名对应 0.5.5；将来发布新版时请选择同一 Release 中对应版本的文件。分享时发送官方 Release 链接、DMG 或完整 ZIP，不直接转发裸 `.app` 目录。
+以上文件名对应 0.6.0；将来发布新版时请选择同一 Release 中对应版本的文件。分享时发送官方 Release 链接、DMG 或完整 ZIP，不直接转发裸 `.app` 目录。
 
 ### 正常安装 / 手动覆盖旧版
 
@@ -110,7 +106,7 @@ Optional recovery checks at most three times after an unexpected disconnect. Mir
 ### 旧版升级与使用边界
 
 - 0.3.1 及之后版本可主动点击“检查更新…”；安装需本人确认。网络或验签失败时不要跳过验证，可从官方 Release 下载完整包手动安装。
-- 0.3.0 需按下方“应用更新”配置一次更新地址；0.2.0 及更早需手动安装。**同 Build 的本地预览包与社区包不构成版本升级**，例如同为 0.5.5 / Build 18 时，不应期待更新器再次提示；需要时手动安装对应的完整社区包。本版 Build 18 高于公开版 0.5.4 / Build 17，可由已有更新器获取。更新前先结束录屏并确认保存，停止投屏与等待恢复，再按提示安装。
+- 0.3.0 需按下方“应用更新”配置一次更新地址；0.2.0 及更早需手动安装。**同 Build 的本地预览包与社区包不构成版本升级**，例如同为 0.6.0 / Build 23 时，不应期待更新器再次提示；需要时手动安装对应的完整社区包。本版 Build 23 高于此前公开版 0.5.5 / Build 18。更新前先结束录屏并确认保存，停止投屏与等待恢复，再按提示安装。
 - 无线首次配对必须在手机“开发者选项 → 无线调试”中扫码，不是微信或普通相机。不要转发配对二维码、配对码或含设备标识的诊断日志；同一 Wi-Fi 不代表已经授权。
 - 已有单台 USB、V2520 无线画面、本机 Build 16 → 17 及公开版 0.5.4 → 0.5.5 应用内覆盖升级记录。0.5.5 已实测文件窗口取消、APK 安装确认取消和无效包失败后的恢复；真实有效 APK 成功安装、长时间动态画质、多台无线同时投屏、Intel/macOS 13 实机、陌生 Mac 首次安装及更早公开版本直接升级仍未在本轮验收。查看 [TOOLS-QA.md](TOOLS-QA.md)、[QUALITY-QA.md](QUALITY-QA.md)、[STABILITY-QA.md](STABILITY-QA.md)、[WIRELESS-QA.md](WIRELESS-QA.md) 和 [UPDATE-QA.md](UPDATE-QA.md)，不要把构建/验签成功理解为所有设备已验收。
 
@@ -167,7 +163,7 @@ Optional recovery checks at most three times after an unexpected disconnect. Mir
 
 发现不到手机时，可手动填入地址；检查手机是否仍开启无线调试、macOS 是否允许本地网络访问，以及访客 Wi-Fi、路由器设备隔离或 VPN 是否阻止互访。没有无线调试选项的机型继续使用 USB，本版本不会自动打开旧式 5555 端口或修改手机安全设置。
 
-0.5.4 的“更多 → 检查本地网络权限”和扫码失败页提供权限入口。请检查 **系统设置 → 隐私与安全 → 本地网络 → MirrorLink**；部分系统需再点“本地网络”。已发现手机不代表端口可达：VPN、访客网络和设备隔离都可能阻止连接。无线调试使用由应用直接管理的调试进程与权限为 0700 的私有 Unix socket，不接管 USB 手机；正常退出镜连会关闭该进程，不重启共享 ADB。按照 [Apple TN3179](https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy) 在当前应用内先检查本地网络准备状态，并给初次权限决定留出等待时间；免费 ad-hoc 签名在 macOS 上仍存在身份跟踪限制，不能保证覆盖所有系统权限异常。镜连不会重置网络权限或关闭系统保护。
+“连接新手机 → 其他连接方式 → 本地网络权限”提供权限入口。请检查 **系统设置 → 隐私与安全 → 本地网络 → MirrorLink**；部分系统需再点“本地网络”。已发现手机不代表端口可达：VPN、访客网络和设备隔离都可能阻止连接。无线调试使用由应用直接管理的调试进程与权限为 0700 的私有 Unix socket，不接管 USB 手机；正常退出镜连会关闭该进程，不重启共享 ADB。按照 [Apple TN3179](https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy) 在当前应用内先检查本地网络准备状态，并给初次权限决定留出等待时间；免费 ad-hoc 签名在 macOS 上仍存在身份跟踪限制，不能保证覆盖所有系统权限异常。镜连不会重置网络权限或关闭系统保护。
 
 二维码在本机生成，是本次临时授权凭据，请勿分享或截图转发；每次生成都会更换，120 秒内有效，开始配对即隐藏。二维码密码和手动配对码仅在本次操作内存中使用，通过标准输入传给 ADB，不写入参数、日志、设置、剪贴板或 Git，不发送给外部二维码服务。连接须对应扫码认证的 GUID；部分手机不向调试命令提供 GUID 属性时，仅在其标准 GUID 与实际硬件序列号、唯一当前服务及连接地址全部一致时继续，无法核对仍停止自动投屏。关闭窗口、切换方式或停止操作会取消本次发现及自动连接；ADB 仍会维护已完成的配对授权，不会因此自动撤销，可在手机中忘记此电脑。仅在可信网络使用，用完可在手机关闭无线调试；停止镜连投屏不会擅自断开其他软件的 ADB 连接。
 
