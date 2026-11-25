@@ -1,16 +1,16 @@
 # 应用内更新与 GitHub 发布
 
-## 0.5.4 社区版配置 / Community configuration
+## 0.5.5 社区版配置 / Community configuration
 
 - 源码、公开安装包、签名更新清单使用现有 `zhaozachary1-cpu/MirrorLink`，不另建仓库。
-- `CFBundleShortVersionString=0.5.4`、`CFBundleVersion=17`，高于公开 0.5.2 / Build 12 和本机候选 0.5.4 / Build 16；Sparkle 固定为 2.10.0。同为 Build 17 的本地预览包不视为更低版本，需要时手动安装对应的完整社区包。源码中的版本号不是已发布的证据，每次发行都需完成下列发布与验证步骤。
+- `CFBundleShortVersionString=0.5.5`、`CFBundleVersion=18`，高于公开 0.5.4 / Build 17；Sparkle 固定为 2.10.0。同为 Build 18 的本地预览包不视为更低版本，需要时手动安装对应的完整社区包。源码中的版本号不是已发布的证据，每次发行都需完成下列发布与验证步骤。
 - 默认源：`https://github.com/zhaozachary1-cpu/MirrorLink/releases/latest/download/appcast.xml`。
 - `SURequireSignedFeed` 与 `SUVerifyUpdateBeforeExtraction` 均为 true，原有 Ed25519 公钥不变。更新来源不能替换信任公钥。
 - 不静默下载或安装、不发送系统配置；自动检查默认关闭，用户可主动开启。
 - 免费社区版没有 Apple 公证，首次打开可能需要用户在系统设置中手动允许。不是 Apple 验证的开发者发行。
 - 真实发布与旧版覆盖验证状态见 [UPDATE-QA.md](UPDATE-QA.md)。配置地址、源码 push 与“已发布并可安装”是三件事，分别核验。
 
-**English:** Version **0.5.4 / Build 17** is newer than public 0.5.2 / Build 12 and the local 0.5.4 / Build 16 candidate. It retains Sparkle 2.10.0, the original Ed25519 trust key, signed-feed verification, and pre-extraction package verification. Publishing source code does not publish an installer or make an update available. A preview already on Build 17 will not receive a same-build update. This community build is not Apple-notarized; publication and complete upgrade evidence are tracked separately in [UPDATE-QA.md](UPDATE-QA.md).
+**English:** Version **0.5.5 / Build 18** is newer than public 0.5.4 / Build 17. It retains Sparkle 2.10.0, the original Ed25519 trust key, signed-feed verification, and pre-extraction package verification. Publishing source code does not publish an installer or make an update available. A preview already on Build 18 will not receive a same-build update. This community build is not Apple-notarized; publication and complete upgrade evidence are tracked separately in [UPDATE-QA.md](UPDATE-QA.md).
 
 0.5.0 新增设备偏好与收藏、截图/录屏、连接自检、有限自动恢复、窗口布局、演示模式、文件/APK 工具和本地反馈导出；完整中英文功能与使用边界见 [RELEASE-NOTES.md](RELEASE-NOTES.md)。更新不改变已有 ADB 配对，也不自动启用恢复或发送反馈。持久保存设备设置要求验证设备身份，未确认身份时仅有本次连接偏好；录屏文件和手动选择的保存目录不随应用替换迁移。
 
@@ -18,11 +18,11 @@
 
 ## 用户使用
 
-0.5.4 使用应用菜单“检查更新…”或“设置 → 应用更新”；更早的 0.3.1+ 也提供主窗口更新按钮。0.3.0 需在设置中展开“设置更新地址”，保存上述完整 HTTPS 地址一次；0.2.0 及更早没有更新器，需要手动安装一次新版。
+0.5.4 及之后使用应用菜单“检查更新…”或“设置 → 应用更新”；更早的 0.3.1+ 也提供主窗口更新按钮。0.3.0 需在设置中展开“设置更新地址”，保存上述完整 HTTPS 地址一次；0.2.0 及更早没有更新器，需要手动安装一次新版。
 
 发现新版后由用户确认下载、安装，更新器验证签名再替换原应用并重启。投屏进行中或等待自动恢复时会询问是否延后；更新前应结束录屏并确认文件已保存。设置仍使用同一应用标识下的 UserDefaults。网络或签名错误必须失败，不降级为未验证的安装。
 
-**English:** In 0.5.4, choose **Check for Updates…** from the application menu or Settings; earlier 0.3.1+ builds also have a toolbar entry. Version 0.3.0 needs the HTTPS feed entered once; 0.2.0 and earlier need a manual installation. Download and installation require confirmation. Active mirrors or pending recovery trigger a defer/stop prompt; finish recordings and confirm their files are saved before updating. Signature or network failures must fail safely, with no unverified fallback.
+**English:** In 0.5.4 and later, choose **Check for Updates…** from the application menu or Settings; earlier 0.3.1+ builds also have a toolbar entry. Version 0.3.0 needs the HTTPS feed entered once; 0.2.0 and earlier need a manual installation. Download and installation require confirmation. Active mirrors or pending recovery trigger a defer/stop prompt; finish recordings and confirm their files are saved before updating. Signature or network failures must fail safely, with no unverified fallback.
 
 ## 发布者：免费社区路线
 
@@ -48,7 +48,7 @@
 
 ```zsh
 ./script/generate_update_feed.sh "/绝对路径/发行目录" \
-  "https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.4/" --community
+  "https://github.com/zhaozachary1-cpu/MirrorLink/releases/download/v0.5.5/" --community
 ```
 
 脚本必须确认社区渠道、ad-hoc 签名完整、对应源码包齐全、公钥与现有钥匙串匹配。它使用账户 `com.mirrorlink.desktop.updates` 内的原有密钥同时签署 XML 和更新 ZIP，并验证 XML。不要手工修改签名后的 XML；重新生成时要更新校验清单。
@@ -79,7 +79,7 @@ Release 必须明确“免费社区版、无 Apple 公证”和首次打开说�
 - 匿名 HTTPS 请求能取得 canonical appcast 及其引用的 ZIP，公开资产哈希与本地一致。
 - XML/ZIP 签名均通过；单字节修改的 XML/ZIP 被拒绝；不依赖 Apple 身份作为更新签名替代。
 - ZIP 解包、DMG 只读挂载后严格签名和许可检查通过。
-- 备份已安装旧版与设置，然后从旧版实际执行发现、下载、确认安装、覆盖、重启、0.5.4 / Build 17 核对、设置保留及再次检查无更新；另检查已保存截图/录屏仍可访问。
+- 备份已安装旧版与设置，然后从旧版实际执行发现、下载、确认安装、覆盖、重启、0.5.5 / Build 18 核对、设置保留及再次检查无更新；另检查已保存截图/录屏仍可访问。
 - 验证正在录屏和等待自动恢复时的更新交互，确认用户停止/延后选择受到尊重、没有旧会话在替换阶段重新启动；成功录屏与未完成文件须明确区分。
 - 另行验证断网重试、投屏中的延后安装、陌生 Mac 首次打开、Intel 实际运行；未执行的项目要单独记录，不以脚本或本机进程代替。
 
@@ -92,7 +92,7 @@ swiftc -swift-version 5 script/verify_update_artifacts.swift \
 .build/verify_update_artifacts \
   "/可信本地发行目录/MirrorLink.app/Contents/Info.plist" \
   "/公开下载目录/appcast.xml" \
-  "/公开下载目录/MirrorLink-0.5.4-update.zip" --self-test
+  "/公开下载目录/MirrorLink-0.5.5-update.zip" --self-test
 ```
 
 `--self-test` 在内存中对清单、ZIP、签名和尾部做负面测试，不修改原文件。验签成功不能代替旧版应用中的真实安装和重启测试；每次发布都要记录各自结果。
