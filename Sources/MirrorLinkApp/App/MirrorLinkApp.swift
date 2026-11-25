@@ -71,7 +71,7 @@ struct MirrorLinkApp: App {
                     }
                 }
         }
-        .defaultSize(width: 580, height: 460)
+        .defaultSize(width: 540, height: 400)
         .commands {
             CommandGroup(after: .appInfo) {
                 Button(updates.installationPending ? L10n.tr("安装已下载的更新…") : L10n.tr("检查更新…")) {
@@ -90,9 +90,9 @@ struct MirrorLinkApp: App {
 
                 Divider()
 
-                Button(L10n.tr("开始所选投屏")) { store.startMirroring() }
+                Button(L10n.tr("开始全部投屏")) { store.selectAllReadyDevices(); store.startMirroring() }
                     .keyboardShortcut(.return, modifiers: [.command])
-                    .disabled(!store.canStart)
+                    .disabled(!store.devices.contains { store.canStart(for: $0.id) })
 
                 Button(L10n.tr("停止全部投屏")) { store.stopMirroring() }
                     .keyboardShortcut(".", modifiers: [.command])

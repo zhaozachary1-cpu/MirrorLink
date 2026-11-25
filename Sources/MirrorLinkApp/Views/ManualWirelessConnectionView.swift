@@ -3,6 +3,8 @@ import SwiftUI
 struct ManualWirelessConnectionView: View {
     @ObservedObject private var language = LanguageStore.shared
     @ObservedObject var store: WirelessConnectionStore
+    var knownHardwareNames: [String: String] = [:]
+    var connectedDevices: [AndroidDevice] = []
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -16,8 +18,8 @@ struct ManualWirelessConnectionView: View {
             GroupBox(store.step == .pairing ? L10n.tr("1. 使用手机配对码授权此 Mac") : L10n.tr("2. 连接并开始投屏")) {
                 VStack(alignment: .leading, spacing: 14) {
                     Text(store.step == .pairing
-                         ? L10n.tr("在手机点“使用配对码配对设备”，保持弹窗打开。填写弹窗里的 IP 地址、端口和配对码。")
-                         : L10n.tr("返回手机“无线调试”主页面，填写该页的“IP 地址和端口”。已配对的手机可直接连接。"))
+                         ? L10n.tr("打开手机的“使用配对码配对设备”，填写地址和配对码。")
+                         : L10n.tr("填写手机“无线调试”页面的连接地址。"))
                         .font(.callout).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     if store.step == .pairing {
@@ -49,7 +51,8 @@ struct ManualWirelessConnectionView: View {
                     }
                 }.padding(8).disabled(store.isBusy)
             }
-            WirelessDiscoveryView(store: store, connectsDirectly: false)
+            WirelessDiscoveryView(store: store, connectsDirectly: false,
+                knownHardwareNames: knownHardwareNames, connectedDevices: connectedDevices)
         }
     }
 }

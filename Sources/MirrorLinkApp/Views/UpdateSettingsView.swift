@@ -44,7 +44,7 @@ struct UpdateSettingsView: View {
                     TextField(L10n.tr("发布者提供的 HTTPS appcast.xml 地址"), text: $draftFeed)
                         .textFieldStyle(.roundedBorder)
                     Button(L10n.tr("保存更新地址")) { updates.saveFeed(draftFeed) }
-                    Text(L10n.tr("只接受镜连内置公钥验证通过的更新包；不会将 GitHub 登录凭据写入应用。"))
+                    Text(L10n.tr("仅安装签名验证通过的更新。"))
                         .font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }

@@ -33,7 +33,7 @@ struct MirrorVideoStatus: Equatable {
 
     var encoderNotice: String? {
         hasEncoderConstraint
-            ? L10n.tr("手机编码器调整了画面参数，请以实际画面尺寸为准；若清晰度不足，可重新投屏或改用兼容档。")
+            ? L10n.tr("手机调整了画面尺寸；不清晰时请重新投屏。")
             : nil
     }
 
@@ -42,7 +42,7 @@ struct MirrorVideoStatus: Equatable {
     }
     var warning: String? {
         if let resolution, let initialResolution, resolution.isSmaller(than: initialResolution) {
-            return L10n.tr("收到的画面尺寸已由 %@ 减小为 %@。请检查手机显示设置或重新投屏。", initialResolution.displayText, resolution.displayText)
+            return L10n.tr("画面从 %@ 降至 %@，请重新投屏。", initialResolution.displayText, resolution.displayText)
         }
         return encoderNotice
     }

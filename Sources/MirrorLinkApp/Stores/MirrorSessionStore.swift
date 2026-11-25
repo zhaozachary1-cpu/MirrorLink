@@ -407,7 +407,7 @@ final class MirrorSessionStore: ObservableObject {
         setDeviceSelected(device.id, isSelected: true)
         remember([device])
         if let running = runningSessions[device.id], running.device.serial != device.serial {
-            appendLog(L10n.tr("%@ 已有投屏窗口，仍使用 %@。如需切到 Wi-Fi，请先停止该窗口再开始。", device.displayName, running.device.transport))
+            appendLog(L10n.tr("%@ 正通过 %@ 投屏；切换连接需先停止。", device.displayName, running.device.transport))
         } else {
             startMirroring(for: device.id)
         }
@@ -727,8 +727,8 @@ final class MirrorSessionStore: ObservableObject {
                       current.token == token,
                       self.sessionStates[device.id] == .starting else { return }
                 self.failDevice(device.id, message: device.isWireless
-                    ? L10n.message("启动超时：尚未收到手机画面。请检查 Wi-Fi 和无线调试；如端口变化，请重新无线连接。")
-                    : L10n.message("启动超时：尚未收到手机画面。请解锁手机、确认 USB 调试授权后重试。"))
+                    ? L10n.message("启动超时，请重新连接无线手机。")
+                    : L10n.message("启动超时，请解锁手机并允许 USB 调试。"))
                 self.terminateOwnedProcess(deviceID: device.id, token: token)
             }
         } catch {
@@ -855,12 +855,12 @@ final class MirrorSessionStore: ObservableObject {
             // line. A historical encoder error must not mask a later unplug.
             if session.videoEncoderFailed, videoStatuses[deviceID]?.initialResolution == nil,
                process.terminationStatus != 2, !session.reportedDisconnect {
-                failDevice(deviceID, message: L10n.message("视频采集或编码出错后投屏结束。请检查连接和手机负载，或选择“低负载兼容”后重试；本次未自动降低分辨率。"))
+                failDevice(deviceID, message: L10n.message("手机画面处理失败，请切换“低负载兼容”后重试。"))
                 return
             }
             let message = session.device.isWireless
-                ? L10n.message("连接中断或投屏组件退出（状态码 %@）。请检查 Wi-Fi 和手机无线调试，端口变化后需重新无线连接。", String(process.terminationStatus))
-                : L10n.message("连接中断或投屏组件退出（状态码 %@）。请检查 USB 连接后重试。", String(process.terminationStatus))
+                ? L10n.message("连接中断（%@），请重新连接无线手机。", String(process.terminationStatus))
+                : L10n.message("连接中断（%@），请检查 USB 后重试。", String(process.terminationStatus))
             failDevice(deviceID, message: message)
         }
     }
@@ -1006,20 +1006,20 @@ final class MirrorSessionStore: ObservableObject {
         state["chooseFileTitle"] = L10n.tr("选择要发送的文件")
         state["chooseAPKTitle"] = L10n.tr("选择要安装的 APK")
         state["installTitle"] = L10n.tr("确认安装所选 APK？")
-        state["installExplanation"] = L10n.tr("将所选 APK 安装到 %@。已有同一应用时将覆盖更新并保留数据；请确认文件来源。", displayName(for: session.device))
+        state["installExplanation"] = L10n.tr("向 %@ 安装 APK，覆盖已有版本并保留数据；请确认来源。", displayName(for: session.device))
         state["installConfirm"] = L10n.tr("安装到这台设备")
         state["sendPrompt"] = L10n.tr("发送到手机")
-        state["sendExplanation"] = L10n.tr("选择后直接发送到这台手机的 Download/MirrorLink 文件夹（最大 2 GB）。选择 APK 时将进入安装确认。")
+        state["sendExplanation"] = L10n.tr("发送到手机下载文件夹（最大 2 GB）；APK 需确认安装。")
         state["cancelOperationTitle"] = L10n.tr("取消操作")
         state["swipeTitle"] = L10n.tr("尝试上滑打开应用列表")
         state["showScreenshotTitle"] = L10n.tr("显示最近截图")
         state["showRecordingTitle"] = L10n.tr("显示最近录屏")
         state["statusTitle"] = L10n.tr("查看操作结果")
         state["startTitle"] = L10n.tr("开始这台设备的录屏？")
-        state["startExplanation"] = L10n.tr("将启动或重新启动这台设备的投屏并开始录制，当前画面会短暂中断；其他手机不受影响。录屏可能包含手机上的私人内容。")
+        state["startExplanation"] = L10n.tr("将重启本台投屏并录屏，画面可能包含隐私。")
         state["startConfirm"] = L10n.tr("选择保存位置并录屏…")
         state["stopTitle"] = L10n.tr("结束录屏并继续投屏？")
-        state["stopExplanation"] = L10n.tr("镜连将保存本次录屏，并重新打开这台设备的普通投屏窗口；其他手机不受影响。")
+        state["stopExplanation"] = L10n.tr("保存录屏后恢复本台投屏。")
         state["stopConfirm"] = L10n.tr("保存并继续投屏")
         state["cancelTitle"] = L10n.tr("取消")
         state["saveRecordingTitle"] = L10n.tr("保存录屏")

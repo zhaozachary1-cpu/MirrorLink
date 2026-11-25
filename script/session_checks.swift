@@ -61,7 +61,7 @@ private extension SessionChecks {
         try await wait("encoder constraints surfaced") { store.videoStatus(for: a.id)?.warning != nil }
         try check(store.videoStatus(for: b.id)?.warning == nil, "server encoder adjustments are visible only on the relevant session")
         L10n.setLanguage(.english)
-        try check(store.videoStatus(for: a.id)?.encoderNotice?.hasPrefix("The phone's encoder adjusted") == true, "an existing encoder notice follows the selected language")
+        try check(store.videoStatus(for: a.id)?.encoderNotice?.hasPrefix("The phone adjusted video size.") == true, "an existing encoder notice follows the selected language")
         L10n.setLanguage(.simplifiedChinese)
         try write("", serial: a.serial, suffix: "command")
 
@@ -161,7 +161,7 @@ private extension SessionChecks {
         guard case .failed(let englishFailure) = encoderStore.sessionState(for: encoder) else {
             throw CheckFailure(description: "localized device failure disappeared")
         }
-        try check(englishFailure.hasPrefix("Mirroring ended after a video capture or encoding error.") && encoderStore.sessionState == .failed(englishFailure) && encoderStore.logLines == historicalLogs && launches(encoder.serial).count == 1 && encoderStore.runningCount == 0, "stored device failures and aggregate failure resolve in English while historical logs and process ownership remain unchanged")
+        try check(englishFailure.hasPrefix("Phone video failed.") && encoderStore.sessionState == .failed(englishFailure) && encoderStore.logLines == historicalLogs && launches(encoder.serial).count == 1 && encoderStore.runningCount == 0, "stored device failures and aggregate failure resolve in English while historical logs and process ownership remain unchanged")
         L10n.setLanguage(.simplifiedChinese)
         try check(encoderStore.sessionState(for: encoder) == originalFailure, "stored device failure restores its original Chinese message")
 
@@ -552,7 +552,7 @@ private final class SessionChecks {
         try check(mixedStore.runningCount == 2, "USB and wireless phones mirror independently")
         try write("fail", serial: wifi.serial, suffix: "command")
         try await wait("Wi-Fi lost") { mixedStore.sessionState(for: wifi).isFailure }
-        try check(mixedStore.isMirroring(for: wiredPeer.id) && mixedStore.logLines.contains { $0.contains("端口变化") }, "wireless loss gives reconnect guidance without stopping USB peer")
+        try check(mixedStore.isMirroring(for: wiredPeer.id) && mixedStore.logLines.contains { $0.contains("请重新连接无线手机") }, "wireless loss gives reconnect guidance without stopping USB peer")
 
         let identitySource = SnapshotSource()
         let identityStore = makeStore(identitySource)

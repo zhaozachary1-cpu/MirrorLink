@@ -158,9 +158,9 @@ enum WirelessQRChecks {
             let expected: String
             switch scenario {
             case .denied: expected = "本地网络"
-            case .refused: expected = "关闭扫码端口"
+            case .refused: expected = "扫码已关闭"
             case .authFailure: expected = "授权已失效"
-            default: expected = "调试服务不可用"
+            default: expected = "连接服务不可用"
             }
             try check(error.localizedDescription.contains(expected), "QR failure gives cause-specific recovery")
             try check(errors.recorded().count == (scenario == .denied ? 2 : 1), "only transient network denial retries pairing, at most once")

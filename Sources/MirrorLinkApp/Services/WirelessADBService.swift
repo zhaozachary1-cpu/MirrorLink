@@ -69,10 +69,10 @@ struct WirelessADBService: Sendable {
         let services = WirelessService.merging(native + (result.succeeded ? ADBMDNSParser.parse(result.stdout) : []))
         if !services.isEmpty { return WirelessDiscoveryResult(services: services, warningMessage: nil) }
         guard result.succeeded else {
-            return WirelessDiscoveryResult(services: [], warningMessage: L10n.message("暂时无法发现手机。可手动填写地址；请检查 macOS 的本地网络权限、手机无线调试，以及 Wi-Fi 是否允许设备互访。"))
+            return WirelessDiscoveryResult(services: [], warningMessage: L10n.message("无法查找手机，请检查本地网络权限或手动连接。"))
         }
         return WirelessDiscoveryResult(services: services, warningMessage: services.isEmpty
-            ? L10n.message("暂未发现手机。请开启手机的无线调试，并确认 Mac 与手机在同一 Wi-Fi；访客网络可能禁止设备互访。") : nil)
+            ? L10n.message("未找到手机，请连接同一 Wi-Fi 并开启“无线调试”。") : nil)
     }
 
     func pair(endpoint: WirelessEndpoint, code: String, cancellation: ProcessCancellation? = nil) -> Result<Void, WirelessConnectionError> {
@@ -91,38 +91,38 @@ struct WirelessADBService: Sendable {
     func pairQR(endpoint: WirelessEndpoint, session: WirelessQRSession,
                 cancellation: ProcessCancellation? = nil) -> Result<WirelessPairingIdentity, WirelessConnectionError> {
         let remaining = session.expiresAt.timeIntervalSinceNow
-        guard remaining > 0 else { return .failure(.localizedFailure(L10n.message("二维码已过期，请生成新二维码。"))) }
+        guard remaining > 0 else { return .failure(.localizedFailure(L10n.message("二维码已过期，请刷新二维码。"))) }
         guard networkReadiness(endpoint, min(15, remaining), cancellation) else { return .failure(networkFailure) }
         // A privacy decision may arrive after the first helper failed. Retry
         // only a transport denial, on the same endpoint and live QR credential.
         let pairingBudget = session.expiresAt.timeIntervalSinceNow
-        guard pairingBudget > 0 else { return .failure(.localizedFailure(L10n.message("二维码已过期，请生成新二维码。"))) }
+        guard pairingBudget > 0 else { return .failure(.localizedFailure(L10n.message("二维码已过期，请刷新二维码。"))) }
         var result = execute(["pair", endpoint.address], session.password + "\n", min(25, pairingBudget), cancellation)
         if isNetworkDenied(result), cancellation?.isCancelled != true, session.expiresAt.timeIntervalSinceNow > 1,
            networkReadiness(endpoint, min(5, session.expiresAt.timeIntervalSinceNow), cancellation) {
             let retryBudget = session.expiresAt.timeIntervalSinceNow
-            guard retryBudget > 0 else { return .failure(.localizedFailure(L10n.message("二维码已过期，请生成新二维码。"))) }
+            guard retryBudget > 0 else { return .failure(.localizedFailure(L10n.message("二维码已过期，请刷新二维码。"))) }
             result = execute(["pair", endpoint.address], session.password + "\n", min(25, retryBudget), cancellation)
         }
         guard session.expiresAt > Date() else {
-            return .failure(.localizedFailure(L10n.message("二维码已过期，已停止自动连接。若手机已显示配对成功，可在“发现手机”中连接；否则请生成新二维码。")))
+            return .failure(.localizedFailure(L10n.message("二维码已过期；已配对可直接连接，否则请刷新二维码。")))
         }
         guard result.succeeded, let identity = WirelessPairingIdentity(output: result.stdout, endpoint: endpoint) else {
             // Never surface tool output: it can echo the QR credential.
             if isNetworkDenied(result) { return .failure(networkFailure) }
             let diagnostic = (result.stdout + result.stderr).lowercased()
             if diagnostic.contains("connection refused") {
-                return .failure(.localizedFailure(L10n.message("手机已关闭扫码端口。请保持扫码页面打开，生成新二维码后再扫一次。")))
+                return .failure(.localizedFailure(L10n.message("手机扫码已关闭，请重新打开后扫码。")))
             }
             if diagnostic.contains("authenticate") || diagnostic.contains("authentication") || diagnostic.contains("wrong password") {
-                return .failure(.localizedFailure(L10n.message("本次扫码授权已失效，请生成新二维码重新扫描。")))
+                return .failure(.localizedFailure(L10n.message("扫码授权已失效，请刷新二维码。")))
             }
             if diagnostic.contains("cannot connect to daemon") || diagnostic.contains("failed to start daemon") {
-                return .failure(.localizedFailure(L10n.message("调试服务不可用。请退出镜连后重新打开；仍失败可导出问题反馈。")))
+                return .failure(.localizedFailure(L10n.message("连接服务不可用，请重启镜连。")))
             }
             return .failure(.localizedFailure(result.timedOut
-                ? L10n.message("扫码配对超时。请检查 Wi-Fi 与本地网络权限，再生成新二维码。")
-                : L10n.message("扫码配对未完成。请生成新二维码，并使用手机“无线调试”里的扫码入口重新扫描。")))
+                ? L10n.message("扫码超时，请检查网络后刷新二维码。")
+                : L10n.message("扫码未完成，请刷新二维码后重新扫描。")))
         }
         return .success(identity)
     }
@@ -163,12 +163,12 @@ struct WirelessADBService: Sendable {
             }
         }
         guard var device = match, device.isWireless else {
-            return .failure(.localizedFailure(L10n.message("ADB 返回已连接，但尚未确认这台手机。请检查地址并重试；不会自动选择其他手机投屏。")))
+            return .failure(.localizedFailure(L10n.message("未确认目标手机，请核对地址后重试。")))
         }
         let state = execute(["-s", device.serial, "get-state"], nil, 5, cancellation)
         guard device.state == .ready, state.succeeded,
               state.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == "device" else {
-            return .failure(.localizedFailure(L10n.message("手机尚未就绪。请解锁手机，确认无线调试已开启；若授权已失效，请重新配对。")))
+            return .failure(.localizedFailure(L10n.message("手机未就绪，请解锁并开启“无线调试”。")))
         }
         device.hardwareSerial = ADBDeviceIdentity.hardwareSerial(from:
             execute(["-s", device.serial, "shell", "getprop", "ro.serialno"], nil, 3, cancellation))
@@ -185,7 +185,7 @@ struct WirelessADBService: Sendable {
                 verified = matches.count == 1 && matches[0].endpoint == endpoint
             }
             guard verified else {
-                return .failure(.localizedFailure(L10n.message("未能确认连接对象是刚才扫码的手机，已停止自动投屏。请重新扫码或手动核对地址。")))
+                return .failure(.localizedFailure(L10n.message("手机身份不匹配，请重新扫码。")))
             }
         }
         let metadata = execute(["-s", device.serial, "shell", AndroidDevice.brandQuery], nil, 2, cancellation)
@@ -206,21 +206,21 @@ struct WirelessADBService: Sendable {
         // Never return raw pair output: tool errors could echo the secret input.
         if result.timedOut {
             return .localizedFailure(pairing
-                ? L10n.message("配对超时。请确认手机和 Mac 在同一 Wi-Fi，允许镜连访问本地网络，并检查访客网络、VPN 或路由器的设备隔离设置。")
-                : L10n.message("连接超时。请确认手机和 Mac 在同一 Wi-Fi，允许镜连访问本地网络，并检查访客网络、VPN 或路由器的设备隔离设置。"))
+                ? L10n.message("配对超时，请检查 Wi-Fi 和本地网络权限。")
+                : L10n.message("连接超时，请检查 Wi-Fi 和本地网络权限。"))
         }
         let diagnostic = (result.stdout + result.stderr).lowercased()
         if isNetworkDenied(result) { return networkFailure }
         if !pairing && (diagnostic.contains("authenticate") || diagnostic.contains("authentication")) {
-            return .localizedFailure(L10n.message("无线调试尚未授权或授权已失效。请先到“扫码配对”扫描二维码；不支持扫码时可使用手动配对。"))
+            return .localizedFailure(L10n.message("连接授权已失效，请重新扫码。"))
         }
         return .localizedFailure(pairing
-            ? L10n.message("配对未成功。请保持手机配对码窗口打开，重新核对其中的 IP、配对端口和 6 位配对码；配对码过期后需重新生成。")
-            : L10n.message("连接未成功。请填写“无线调试”主页面的 IP 和连接端口（不是配对码窗口的端口）；重新开启无线调试或切换网络后，端口可能变化。"))
+            ? L10n.message("配对失败，请核对地址和配对码后重试。")
+            : L10n.message("连接失败，请重新开启手机的无线调试。"))
     }
 
     private var networkFailure: WirelessConnectionError {
-        .localizedFailure(L10n.message("无法访问手机。请允许镜连的“本地网络”权限后重试；已允许时，请检查 VPN 或 Wi-Fi 设备隔离。"))
+        .localizedFailure(L10n.message("无法访问手机，请允许镜连访问本地网络。"))
     }
 
     private func isNetworkDenied(_ result: ProcessResult) -> Bool {

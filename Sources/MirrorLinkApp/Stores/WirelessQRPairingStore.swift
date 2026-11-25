@@ -73,7 +73,7 @@ final class WirelessQRPairingStore: ObservableObject {
         pairedIdentity = nil
         discoveryWarningValue = nil
         phase = .idle
-        messageValue = L10n.message("已停止扫码发现。已完成的手机授权不会自动撤销，可在手机中手动忘记此电脑。")
+        messageValue = L10n.message("扫码已取消，已有手机授权保留。")
     }
 
     func retryConnection() {
@@ -103,7 +103,7 @@ final class WirelessQRPairingStore: ObservableObject {
             discoveryWarningValue = discovery.warningMessage
             let matches = discovery.services.filter(session.matches)
             if matches.count > 1 {
-                fail(L10n.message("多处服务响应了同一个二维码。请一次只用一台手机扫码，然后生成新二维码重试。"))
+                fail(L10n.message("多台手机同时响应，请逐台扫码。"))
                 return nil
             }
             if let match = matches.first {
@@ -123,7 +123,7 @@ final class WirelessQRPairingStore: ObservableObject {
             do { try await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000)) }
             catch { return nil }
         }
-        if isCurrent(id) { fail(L10n.message("二维码已过期。点击“生成新二维码”后重新扫描。")) }
+        if isCurrent(id) { fail(L10n.message("二维码已过期，请刷新后再扫。")) }
         return nil
     }
 
@@ -136,7 +136,7 @@ final class WirelessQRPairingStore: ObservableObject {
             guard isCurrent(id) else { return }
             let matches = discovery.services.filter(identity.matches)
             if matches.count > 1 {
-                fail(L10n.message("发现多个相同身份的连接服务，已停止自动连接。请使用手动连接核对地址。"))
+                fail(L10n.message("发现重复手机，请手动核对连接地址。"))
                 return
             }
             if let target = matches.first, Date() < deadline {
@@ -158,7 +158,7 @@ final class WirelessQRPairingStore: ObservableObject {
             catch { return }
         }
         if isCurrent(id) {
-            fail(lastError ?? L10n.message("已配对，但暂未发现这台手机的连接服务。请返回手机无线调试主页面，使用“发现手机”重试；网络不支持发现时可用“手动连接”。无需重复配对。"))
+            fail(lastError ?? L10n.message("已配对但未连上，请重试连接，无需重新扫码。"))
         }
     }
 

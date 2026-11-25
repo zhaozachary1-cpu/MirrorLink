@@ -64,7 +64,7 @@ final class AppUpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
             return
         }
         guard isConfigured, started else {
-            showNotice(L10n.tr("暂时无法检查更新"), message: L10n.tr("%@ 请在设置的“应用更新”中配置发布者提供的 HTTPS 更新地址。", status))
+            showNotice(L10n.tr("暂时无法检查更新"), message: L10n.tr("%@ 请在设置中填写更新地址。", status))
             return
         }
         statusMessage = L10n.message("正在检查更新…")
@@ -78,7 +78,7 @@ final class AppUpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
             return false
         }
         guard let url = UpdateConfiguration.validatedFeedURL(address) else {
-            showNotice(L10n.tr("更新地址无效"), message: L10n.tr("请使用完整的 HTTPS 地址，不能包含账号、密码或片段标记。"))
+            showNotice(L10n.tr("更新地址无效"), message: L10n.tr("请输入有效的 HTTPS 更新地址，不含账号密码。"))
             return false
         }
         feedAddress = url.absoluteString
@@ -104,7 +104,7 @@ final class AppUpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
             return
         }
         guard UpdateConfiguration.validatedFeedURL(feedAddress) != nil else {
-            statusMessage = L10n.message("更新服务尚未发布；配置更新地址后即可使用，当前未进行联网检查。")
+            statusMessage = L10n.message("尚未配置更新地址。")
             return
         }
         do {
@@ -153,7 +153,7 @@ final class AppUpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
         resumeInstallation = installHandler
         installationPending = true
         canCheckForUpdates = true
-        statusMessage = L10n.message("更新已就绪，正在等待结束投屏。点击“安装已下载的更新”继续。")
+        statusMessage = L10n.message("更新已就绪，点击“安装更新”继续。")
         // Leave Sparkle's delegate stack before presenting application UI.
         DispatchQueue.main.async { [weak self] in self?.confirmPendingInstallation() }
         return true
@@ -165,7 +165,7 @@ final class AppUpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
         if count > 0 {
             let alert = NSAlert()
             alert.messageText = L10n.tr("停止投屏并安装更新？")
-            alert.informativeText = L10n.tr("目前有 %@ 台手机正在启动或投屏。安装会停止镜连启动的投屏并重启应用，手机数据和应用设置不会被清除。", String(count))
+            alert.informativeText = L10n.tr("将停止 %@ 台投屏并安装更新，数据和设置保留。", String(count))
             alert.addButton(withTitle: L10n.tr("稍后安装"))
             alert.addButton(withTitle: L10n.tr("停止投屏并安装"))
             guard alert.runModal() == .alertSecondButtonReturn else { return }
@@ -184,7 +184,7 @@ final class AppUpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
         guard !terminationApproved, activeSessionCount() > 0 else { return true }
         let alert = NSAlert()
         alert.messageText = L10n.tr("停止投屏并退出镜连？")
-        alert.informativeText = L10n.tr("仍有 %@ 台手机正在启动或投屏。退出或安装更新会关闭镜连启动的投屏窗口，不会清除手机数据。", String(activeSessionCount()))
+        alert.informativeText = L10n.tr("将关闭 %@ 台投屏，手机数据保留。", String(activeSessionCount()))
         alert.addButton(withTitle: L10n.tr("继续投屏"))
         alert.addButton(withTitle: L10n.tr("停止投屏并退出"))
         guard alert.runModal() == .alertSecondButtonReturn else { return false }

@@ -14,23 +14,23 @@ enum DeviceToolsError: Error, LocalizedError, Sendable {
         case .cancelled: return L10n.message("操作已取消。")
         case .timedOut: return L10n.message("操作超时，请检查连接后重试。")
         case .outputTooLarge: return L10n.message("设备返回的数据过大，已停止操作。")
-        case .commandFailed: return L10n.message("操作未完成，请检查手机连接、可用空间和系统提示后重试。")
+        case .commandFailed: return L10n.message("操作失败，请检查手机连接和可用空间。")
         case .invalidPNG: return L10n.message("未获取到完整的 PNG 截图，请重试。")
-        case .invalidFile: return L10n.message("请选择不超过 2 GB 的普通文件；不支持文件夹或符号链接。")
+        case .invalidFile: return L10n.message("请选择 2 GB 以内的普通文件。")
         case .saveFailed: return L10n.message("无法保存文件，请选择可写的文件夹和未使用的文件名。")
-        case .apkRequiresConfirmation: return L10n.message("APK 需要使用“安装 APK”并明确确认，普通文件发送不会安装应用。")
+        case .apkRequiresConfirmation: return L10n.message("安装 APK 需单独确认。")
         case .apkOnly: return L10n.message("请选择 APK 安装文件。")
         case .apkInvalid: return L10n.message("这个 APK 已损坏或不是有效安装包，请重新下载后再试。")
-        case .apkConflict: return L10n.message("手机拒绝了覆盖安装，请确认安装包与原应用兼容。原应用和数据已保留。")
-        case .apkSignatureMismatch: return L10n.message("安装包与原应用签名不一致，无法覆盖。请选择同一来源的安装包；原应用和数据已保留。")
-        case .apkVersionDowngrade: return L10n.message("安装包版本低于手机上的版本，无法覆盖。请选择相同或更高版本；原应用和数据已保留。")
+        case .apkConflict: return L10n.message("手机拒绝覆盖，请检查安装包；原应用和数据保留。")
+        case .apkSignatureMismatch: return L10n.message("签名不一致，请换同一来源的安装包；原应用和数据保留。")
+        case .apkVersionDowngrade: return L10n.message("安装包版本过低，请换新版；原应用和数据保留。")
         case .apkBlocked: return L10n.message("手机拒绝了安装，请解锁手机并查看手机上的安装授权提示。")
-        case .apkIncompatible: return L10n.message("这个 APK 不兼容当前手机，请选择适用于该手机 Android 版本和处理器的安装包。")
-        case .apkTimedOut: return L10n.message("安装等待超时。请查看手机上的安装授权和应用列表，确认结果后再试；停止等待不会撤销已完成的安装。")
-        case .apkTransferTimedOut: return L10n.message("APK 传输超时，尚未发起安装。请检查 Wi-Fi 信号或改用 USB 后重试。")
+        case .apkIncompatible: return L10n.message("APK 不兼容，请选择适合这台手机的版本。")
+        case .apkTimedOut: return L10n.message("等待超时，请在手机确认安装结果；已安装内容保留。")
+        case .apkTransferTimedOut: return L10n.message("APK 传输超时，请检查 Wi-Fi 或改用数据线。")
         case .drawerUnsupported: return L10n.message("这台手机不支持标准应用抽屉指令，请使用上滑兼容方式。")
         case .invalidScreenSize: return L10n.message("无法确认屏幕尺寸，请在投屏窗口中手动上滑。")
-        case .invalidAttachment: return L10n.message("反馈附件仅支持普通图片或视频文件，最多 8 个，每个不超过 512 MB，总计不超过 1 GB；不支持符号链接。")
+        case .invalidAttachment: return L10n.message("仅支持普通图片/视频：最多 8 个，单个 512 MB，总计 1 GB。")
         }
     }
     var errorDescription: String? { message.resolved }
@@ -212,7 +212,7 @@ struct DeviceToolsService: Sendable {
             .trimmingCharacters(in: .whitespacesAndNewlines) == "device"
         item("connection", connected ? .success : .error, L10n.message("目标手机连接"),
              connected ? L10n.message("已确认所选手机处于已授权、就绪状态。") : L10n.message("所选手机未就绪，可能离线或尚未授权。"),
-             connected ? nil : L10n.message("解锁手机并确认调试授权；无线连接请检查同一网络与配对状态。"))
+             connected ? nil : L10n.message("请解锁手机并允许连接。"))
         var version: String?, model: String?, size: String?
         if connected {
             version = try? text(["shell", "getprop", "ro.build.version.release"], device, cancellation)
@@ -228,8 +228,8 @@ struct DeviceToolsService: Sendable {
             item("device-tools", components == nil ? .warning : .success, L10n.message("手机工具"),
                  components == nil ? L10n.message("无法确认手机的截图与输入工具。") : L10n.message("手机的截图与输入工具可用。"))
         }
-        item("observability", .info, L10n.message("检测范围"), L10n.message("此检测不测量实时码率、帧率或温度，也不读取画面和原始日志。"),
-             L10n.message("持续卡顿时优先尝试 USB、降低帧率或画质，并检查手机温度与其他占用网络的应用。"))
+        item("observability", .info, L10n.message("检测范围"), L10n.message("仅检查连接状态，不读取画面或日志。"),
+             L10n.message("持续卡顿请改用数据线，或降低画质。"))
         try checkCancellation(cancellation)
         return DeviceHealthReport(checkedAt: Date(), isReady: connected, androidVersion: version,
                                   model: model, screenSize: size, items: items)

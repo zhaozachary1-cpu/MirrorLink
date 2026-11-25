@@ -13,26 +13,23 @@ struct ContentView: View {
 
     var body: some View {
         let _ = language.selection
-        DetailView(store: store, wireless: wireless)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { wireless.selectMode(.qr) } label: {
-                    Label(L10n.tr("连接新手机"), systemImage: "plus")
+        VStack(spacing: 0) {
+            DetailView(store: store, wireless: wireless)
+            HStack(spacing: 16) {
+                if #available(macOS 14.0, *) {
+                    SettingsLink { Text(L10n.tr("设置")) }
+                } else {
+                    Button(L10n.tr("设置")) {
+                        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                    }
                 }
-                .labelStyle(.titleAndIcon)
-                .help(L10n.tr("配对或连接同一 Wi-Fi 下的 Android 手机"))
-                .disabled(!store.toolchainAvailable)
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    store.refresh()
-                    wireless.discover(preservingServices: true)
-                } label: {
-                    Label(L10n.tr("刷新设备"), systemImage: "arrow.clockwise")
+                Button(updates.installationPending ? L10n.tr("安装更新") : L10n.tr("检查更新")) {
+                    updates.checkForUpdates()
                 }
-                .help(L10n.tr("重新扫描已连接的 Android 设备"))
-                .disabled(store.isRefreshing)
+                .disabled(!updates.canCheckForUpdates)
             }
+            .font(.caption).buttonStyle(.link)
+            .padding(.bottom, 16)
         }
         .frame(minWidth: 500, minHeight: 360)
         .background(SceneWindowReference { window in
@@ -40,9 +37,9 @@ struct ContentView: View {
             // SwiftUI restores saved geometry instead of defaultSize. Migrate
             // only this scene once; subsequent user resizing stays untouched.
             DispatchQueue.main.async { [weak window] in
-                let key = "mainWindowUnifiedLayoutV2"
+                let key = "mainWindowSimpleLayoutV3"
                 guard let window, !UserDefaults.standard.bool(forKey: key) else { return }
-                window.setContentSize(NSSize(width: 580, height: 460))
+                window.setContentSize(NSSize(width: 540, height: 400))
                 store.logsExpanded = false
                 UserDefaults.standard.set(true, forKey: key)
             }

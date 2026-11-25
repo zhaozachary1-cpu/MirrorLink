@@ -21,9 +21,9 @@ enum MirrorQualityProfile: String, CaseIterable, Identifiable {
     }
     var detail: String {
         switch self {
-        case .nativeClarity: return L10n.tr("保留手机原生细节，限制到最高 30 fps，优先文字清晰与持续使用。")
-        case .nativeSmooth: return L10n.tr("保留手机原生细节，最高 60 fps；适合滑动和动态内容，手机与网络负载更高。")
-        case .compatibility: return L10n.tr("主动限制画面长边到 1920 像素以减轻负载，适合带宽不足、多设备或编码失败时使用。")
+        case .nativeClarity: return L10n.tr("保留原生细节，最高 30 fps，适合阅读。")
+        case .nativeSmooth: return L10n.tr("保留原生细节，最高 60 fps，适合动态画面。")
+        case .compatibility: return L10n.tr("最高 1920 像素，降低手机和网络负载。")
         }
     }
     var maxSize: Int { self == .compatibility ? 1920 : 0 }

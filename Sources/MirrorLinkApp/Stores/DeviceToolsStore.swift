@@ -91,14 +91,14 @@ final class DeviceToolsStore: ObservableObject {
     }
     func sendFile(_ url: URL, to device: AndroidDevice) {
         perform(device, message: L10n.message("正在发送文件…"),
-                cancellationMessage: L10n.message("已停止文件发送；手机可能保留已收到的部分文件，请在下载文件夹中检查。")) { service, token, _ in
+                cancellationMessage: L10n.message("发送已停止，手机可能保留部分文件。")) { service, token, _ in
             .message(L10n.message("文件已发送到手机：%@", try service.sendFile(url, to: device, cancellation: token)))
         }
     }
     func installAPK(_ url: URL, to device: AndroidDevice, confirmed: Bool) {
         let start = ProcessInfo.processInfo.systemUptime
         perform(device, message: L10n.message("正在安装 APK…"),
-                cancellationMessage: L10n.message("已停止等待安装结果，请检查手机当前安装状态；此操作不会撤销已经完成的安装。"),
+                cancellationMessage: L10n.message("已停止等待，请在手机确认安装结果；已安装内容保留。"),
                 isAPK: true) { service, token, progress in
             try service.installAPK(url, to: device, confirmed: confirmed, cancellation: token, progress: progress)
             return .message(L10n.message("APK 安装完成 · 用时 %@ 秒", String(Int(ProcessInfo.processInfo.systemUptime - start))))

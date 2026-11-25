@@ -61,7 +61,7 @@ struct DevicePreferencesEditor: View {
                     Toggle(L10n.tr("收藏为常用设备"), isOn: $draft.favorite)
                         .disabled(knownID == nil)
                     if knownID == nil {
-                        Text(L10n.tr("尚未确认设备身份，当前偏好仅用于本次连接；收藏与自动恢复暂不可用。"))
+                        Text(L10n.tr("未确认手机身份，偏好仅对本次连接生效。"))
                             .font(.caption).foregroundStyle(.orange)
                     }
                 }
@@ -78,7 +78,7 @@ struct DevicePreferencesEditor: View {
                     Toggle(L10n.tr("意外断开后自动恢复"), isOn: $draft.autoReconnect)
                         .disabled(knownID == nil)
                     Toggle(L10n.tr("演示模式"), isOn: $draft.presentationMode)
-                    Text(L10n.tr("只读投屏、关闭剪贴板同步，并在界面和窗口标题隐藏设备序列号。截图和反馈附件仍可能包含屏幕上的私人内容。"))
+                    Text(L10n.tr("禁止控制和剪贴板同步，隐藏设备标识；画面仍可能含隐私。"))
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Section(L10n.tr("窗口")) {
@@ -93,7 +93,7 @@ struct DevicePreferencesEditor: View {
                 } }
             }
             if confirmsForget {
-                Text(L10n.tr("仅清除镜连保存的昵称、收藏和设备偏好，不会撤销手机上的 ADB 配对授权，也不会删除手机数据。"))
+                Text(L10n.tr("仅清除昵称和设备偏好，手机授权与数据保留。"))
                     .font(.caption).foregroundStyle(.secondary)
                 HStack {
                     Button(L10n.tr("取消")) { confirmsForget = false }

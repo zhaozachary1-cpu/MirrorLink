@@ -19,11 +19,19 @@ struct LocalizationChecks {
         let zh = try catalog("zh-Hans")
         check(en.count > 200 && Set(en.keys) == Set(zh.keys), "both catalogs contain the same complete set of keys")
         let placeholder = try NSRegularExpression(pattern: #"%(?:[0-9]+\$)?@"#)
+        // Keep ordinary interface messages brief. The two About descriptions
+        // retain platform support and the community build's security notice.
+        let extendedDescriptions: Set<String> = [
+            "支持 macOS 13+，可通过数据线或 Wi-Fi 同时投屏多台 Android 手机。",
+            "社区版未经 Apple 公证，首次打开可能需手动允许。仅从官方 GitHub 下载，勿关闭安全检查。"
+        ]
         for (key, translation) in en {
             let matches = placeholder.matches(in: key, range: NSRange(key.startIndex..., in: key))
             let translatedMatches = placeholder.matches(in: translation, range: NSRange(translation.startIndex..., in: translation))
             check(matches.count == translatedMatches.count, "placeholder parity: \(key)")
             check(zh[key] == key, "Chinese source is preserved: \(key)")
+            check(key.count <= 42 || extendedDescriptions.contains(key), "Chinese prompt is concise: \(key)")
+            check(translation.count <= 110 || extendedDescriptions.contains(key), "English prompt is concise: \(key)")
             let args = matches.indices.map { "VALUE\($0) 100% %@ 中文" }
             for language in [AppLanguage.english, .simplifiedChinese] {
                 let text = L10n.resolve(key, arguments: args, language: language)
@@ -81,7 +89,7 @@ struct LocalizationChecks {
         video.noteEncoderConstraint()
         let englishWarning = video.warning
         settings.selection = .simplifiedChinese
-        check(video.warning != englishWarning && video.warning == zh["手机编码器调整了画面参数，请以实际画面尺寸为准；若清晰度不足，可重新投屏或改用兼容档。"], "existing video warning re-resolves")
+        check(video.warning != englishWarning && video.warning == zh["手机调整了画面尺寸；不清晰时请重新投屏。"], "existing video warning re-resolves")
         let restored = LanguageStore(defaults: defaults, preferredLanguages: { ["en"] })
         check(restored.selection == .simplifiedChinese, "selection survives a new store")
         restored.selection = .system

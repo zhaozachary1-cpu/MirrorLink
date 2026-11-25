@@ -46,8 +46,8 @@ struct FeedbackReport: Sendable {
                       L10n.tr("实际视频尺寸：%@", clean(session.videoSize)),
                       L10n.tr("会话错误：%@", session.failure == nil ? L10n.tr("无") : L10n.tr("有错误（不包含原始错误文本）"))]
         }
-        lines += ["", L10n.tr("默认不包含屏幕画面、原始日志、序列号、网络地址、本机路径或配对凭据。"),
-                  L10n.tr("附件仅来自用户本次明确选择的图片或视频；附件内容和元数据不会自动脱敏。"),
+        lines += ["", L10n.tr("默认不含画面、日志、设备标识或配对信息。"),
+                  L10n.tr("仅添加你选择的附件，画面和元数据不会自动脱敏。"),
                   L10n.tr("此反馈包仅保存到本地，不会自动发送。")]
         return lines.joined(separator: "\n") + "\n"
     }

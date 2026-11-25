@@ -99,6 +99,7 @@ struct WirelessChecks {
     }
 
     static func run() async throws {
+        try checkDiscoveryNames()
         let endpoint = try WirelessEndpoint(" 192.168.1.8:39847\n")
         try check(endpoint.address == "192.168.1.8:39847", "trim and normalize IPv4 endpoint")
         try check(try WirelessEndpoint("[fd00:0:0:0::8]:65535").address == "[fd00::8]:65535", "normalize IPv6")
@@ -260,6 +261,39 @@ struct WirelessChecks {
         try check(BonjourWirelessDiscovery.discover(cancellation: token).isEmpty && Date().timeIntervalSince(started) < 0.2, "cancelled native scan launches no browser or blocking wait")
     }
 
+    private static func checkDiscoveryNames() throws {
+        let endpoint = try WirelessEndpoint("192.168.1.8:39847")
+        let cached = ["FIXTURE-A1": "Example Phone 9", "FIXTURE-A10": "Other Phone"]
+        func candidate(_ name: String, kind: WirelessServiceKind = .connection) -> WirelessService {
+            WirelessService(name: name, kind: kind, endpoint: endpoint)
+        }
+        let known = candidate("adb-FIXTURE-A1-Ab12Cd")
+        try check(known.deviceName(knownHardwareNames: cached, connectedDevices: []) == "Example Phone 9", "nearby title restores saved brand/model without connecting the phone")
+        try check(known.id.contains(known.name) && known.adbSerial.hasPrefix(known.name), "friendly title leaves service identity and routing unchanged")
+        try check(candidate("adb-FIXTURE-A10-Ab12Cd").deviceName(knownHardwareNames: cached, connectedDevices: []) == "Other Phone", "full serial matching distinguishes similar devices")
+        for name in ["adb-FIXTURE-A-Ab12Cd", "adb-FIXTURE-A1-Ab12C", "adb-FIXTURE-A1-Ab12Cd7", "adb-FIXTURE-A1-Ab12C!", "adb-FIXTURE-A1-１２３４５６", "adb--Ab12Cd", "adb-FIXTURE-A1-Ab12Cd.local", "opaque-oem-guid"] {
+            try check(candidate(name).deviceName(knownHardwareNames: cached, connectedDevices: []) == nil, "unrecognized service name cannot borrow another phone label")
+        }
+        try check(candidate(known.name, kind: .pairing).deviceName(knownHardwareNames: cached, connectedDevices: []) == nil, "pairing service is not mistaken for a known connection")
+        try check(known.deviceName(knownHardwareNames: ["FIXTURE-A1": " \n"], connectedDevices: []) == nil, "empty saved label falls back gracefully")
+        try check(known.deviceName(knownHardwareNames: ["FIXTURE-A1": "Invalid\nTitle"], connectedDevices: []) == nil, "multiline metadata cannot inject a discovery row")
+        var usb = AndroidDevice(serial: "FIXTURE-A1", model: "Phone_10", product: nil, transport: "USB", state: .ready, adbSocket: nil, brand: "Example")
+        try check(known.deviceName(knownHardwareNames: cached, connectedDevices: [usb]) == "Example Phone 10", "current authenticated complete metadata takes priority over cache")
+        usb.brand = nil
+        try check(known.deviceName(knownHardwareNames: cached, connectedDevices: [usb]) == "Example Phone 9", "temporary missing brand retains the cached complete title")
+        try check(known.deviceName(knownHardwareNames: [:], connectedDevices: [usb]) == "Phone 10", "current model remains usable when no brand or cache is available")
+        let offline = AndroidDevice(serial: "FIXTURE-A1", model: "Wrong", product: nil, transport: "USB", state: .offline, adbSocket: nil, brand: "Other")
+        try check(known.deviceName(knownHardwareNames: [:], connectedDevices: [offline]) == nil, "offline metadata does not establish a new nearby label")
+        let tcp = AndroidDevice(serial: endpoint.address, model: "Wrong", product: nil, transport: "Wi-Fi", state: .ready, adbSocket: nil, brand: "Other")
+        try check(known.deviceName(knownHardwareNames: [:], connectedDevices: [tcp]) == nil, "same network address alone never assigns a phone model")
+        let opaque = candidate("opaque-oem-guid")
+        for suffix in ["", ".", ".local", ".local."] {
+            let authenticated = AndroidDevice(serial: opaque.adbSerial + suffix, model: "Phone_11", product: nil, transport: "Wi-Fi", state: .ready, adbSocket: nil, brand: "Example")
+            try check(opaque.deviceName(knownHardwareNames: [:], connectedDevices: [authenticated]) == "Example Phone 11", "exact authenticated OEM alias can supply display metadata")
+        }
+        try check(candidate("adb-NEWPHONE-Ab12Cd").deviceName(knownHardwareNames: cached, connectedDevices: []) == nil, "first-time unknown phone gets no invented brand or model")
+    }
+
     private static func checkLocalizedMessages(paths: ToolPaths) async throws {
         let initialLanguage = L10n.language
         defer { L10n.setLanguage(initialLanguage) }
@@ -289,11 +323,11 @@ struct WirelessChecks {
         }
         let englishExpiry = expiryError.localizedDescription
         L10n.setLanguage(.simplifiedChinese)
-        try check(emptyDiscovery.warning != englishEmpty && emptyDiscovery.warning == L10n.tr("暂未发现手机。请开启手机的无线调试，并确认 Mac 与手机在同一 Wi-Fi；访客网络可能禁止设备互访。"), "retained empty discovery warning changes language without rediscovery")
-        try check(failedDiscovery.warning != englishFailedDiscovery && failedDiscovery.warning == L10n.tr("暂时无法发现手机。可手动填写地址；请检查 macOS 的本地网络权限、手机无线调试，以及 Wi-Fi 是否允许设备互访。"), "retained discovery failure warning changes language")
+        try check(emptyDiscovery.warning != englishEmpty && emptyDiscovery.warning == L10n.tr("未找到手机，请连接同一 Wi-Fi 并开启“无线调试”。"), "retained empty discovery warning changes language without rediscovery")
+        try check(failedDiscovery.warning != englishFailedDiscovery && failedDiscovery.warning == L10n.tr("无法查找手机，请检查本地网络权限或手动连接。"), "retained discovery failure warning changes language")
         try check(pairError.localizedDescription != englishPairError && !pairError.localizedDescription.contains("123456"), "retained pairing failure changes language without exposing secret input")
         try check(timeoutError.localizedDescription != englishTimeout, "retained connection timeout changes language")
-        try check(expiryError.localizedDescription != englishExpiry && expiryError.localizedDescription == L10n.tr("二维码已过期，请生成新二维码。"), "retained QR expiry changes language")
+        try check(expiryError.localizedDescription != englishExpiry && expiryError.localizedDescription == L10n.tr("二维码已过期，请刷新二维码。"), "retained QR expiry changes language")
         let rawWarning = WirelessDiscoveryResult(services: [], warning: "ADB diagnostic: 100% %@")
         let rawError = WirelessConnectionError.failed("Upstream diagnostic: 100% %@")
         try check(rawWarning.warning == "ADB diagnostic: 100% %@" && rawError.localizedDescription == "Upstream diagnostic: 100% %@", "legacy raw warning and failure remain verbatim")

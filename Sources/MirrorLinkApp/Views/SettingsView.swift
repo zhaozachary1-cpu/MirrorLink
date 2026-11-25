@@ -1,5 +1,7 @@
 import SwiftUI
 
+private typealias SettingsViewState<Value> = SwiftUI.State<Value>
+
 struct SettingsView: View {
     @ObservedObject private var language = LanguageStore.shared
     @ObservedObject var store: MirrorSessionStore
@@ -8,12 +10,12 @@ struct SettingsView: View {
     private var distributionNote: String {
         let channel = Bundle.main.object(forInfoDictionaryKey: "MirrorLinkDistributionChannel") as? String
         if channel == "developer-id" {
-            return L10n.tr("Developer ID 签名构建。公证结果以随安装包提供的发行清单及 macOS 安全验证为准。")
+            return L10n.tr("Developer ID 已签名；公证结果见安装包说明。")
         }
         if channel == "community" {
-            return L10n.tr("免费社区版：更新包和更新清单使用镜连自己的签名校验，应用使用 ad-hoc 完整性签名，未获 Apple 公证。首次打开可能需要在“系统设置 → 隐私与安全”中手动允许；受管理的 Mac 可能不允许安装。请仅从镜连官方 GitHub 下载，不要关闭系统安全检查。")
+            return L10n.tr("社区版未经 Apple 公证，首次打开可能需手动允许。仅从官方 GitHub 下载，勿关闭安全检查。")
         }
-        return L10n.tr("开发体验版：仅使用本地 ad-hoc 签名，未通过 Developer ID 签名与 Apple 公证。下载到其他 Mac 可能被系统拦截，不属于正式公开发行版。")
+        return L10n.tr("本地体验版未经 Apple 公证，其他 Mac 可能无法打开。")
     }
 
     var body: some View {
@@ -43,6 +45,14 @@ struct SettingsView: View {
             StorageSettingsSection()
 
             UpdateSettingsView(updates: updates)
+
+            Section(L10n.tr("设备与诊断")) {
+                ForEach(store.displayedDevices) { device in
+                    DeviceSettingsRow(store: store, device: device)
+                }
+                OfflineFavoritesCard(store: store)
+                LogCard(store: store)
+            }
             Section {
               DisclosureGroup(L10n.tr("关于镜连")) {
                 LabeledContent(L10n.tr("状态")) {
@@ -67,5 +77,37 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 540, height: 590)
         .scenePadding()
+    }
+}
+
+private struct DeviceSettingsRow: View {
+    @ObservedObject var store: MirrorSessionStore
+    let device: AndroidDevice
+    @SettingsViewState private var expanded = false
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $expanded) {
+            VStack(alignment: .leading, spacing: 12) {
+                DevicePreferencesEditor(store: store, device: device) { expanded = false }
+                if let video = store.videoStatus(for: device.id) {
+                    Text(video.configurationSummary).font(.caption).foregroundStyle(.secondary)
+                    if let resolution = video.resolution {
+                        Text(L10n.tr("接收画面：%@ px", resolution.displayText)).font(.caption)
+                    }
+                    if let warning = video.warning { Text(warning).font(.caption).foregroundStyle(.orange) }
+                }
+                if case let .failed(message) = store.sessionState(for: device) {
+                    Text(store.isPresentationMode(for: device) ? L10n.tr("投屏中断，请重试。") : message)
+                        .font(.caption).foregroundStyle(.red)
+                }
+                if store.isMirroring(for: device.id) {
+                    Button(L10n.tr("重新投屏")) { store.restartMirroring(for: device.id) }
+                        .disabled(store.sessionState(for: device) == .stopping)
+                }
+                DeviceToolsView(store: store, device: device)
+            }.padding(.vertical, 8)
+        } label: {
+            Text(store.displayName(for: device))
+        }
     }
 }

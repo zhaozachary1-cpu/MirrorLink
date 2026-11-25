@@ -395,7 +395,7 @@ struct DeviceToolsChecks {
         let resultID = store.windowState(for: device)["resultID"] as? String
         store.cancel(for: device.id)
         for _ in 0..<100 where store.isBusy(for: device.id) { try await Task.sleep(nanoseconds: 10_000_000) }
-        expect(store.isError(for: device.id) && store.status(for: device.id)?.contains("不会撤销") == true,
+        expect(store.isError(for: device.id) && store.status(for: device.id)?.contains("已安装内容保留") == true,
                "cancelled APK explains that completed phone installation is not undone")
         mock.mode = "normal"
         store.installAPK(apk, to: device, confirmed: true)

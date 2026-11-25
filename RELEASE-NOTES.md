@@ -1,3 +1,22 @@
+# 镜连 MirrorLink 0.6.0 — 点一下，开始投屏 / One Click to Mirror（免费社区版）
+
+版本 / Version：**0.6.0 / Build 23**。
+
+- 主界面只展示手机名称和大号“开始投屏”按钮，自动发现手机，无侧边栏或勾选步骤。
+- 新手机在主界面扫码连接；二维码、刷新和返回同时可见，手动连接按需展开。
+- 附近手机优先展示已读取的品牌和型号；没有记录时显示“Android 手机”，不猜测型号或授权状态。
+- 底部保留“设置”和“检查更新”；画质、设备偏好与诊断放入设置，常用工具仍在投屏窗口。
+- 中英文提示与异常改为短句，保留安装覆盖、录屏中断和反馈隐私等必要说明。
+- 包含此前未公开的 APK 安装进度、无线安装速度及保留数据的覆盖安装改进；签名不匹配或版本过低仍拒绝安装，不卸载原应用。
+
+**English:** The compact main window shows phone names and large Start Mirroring buttons. Discovery is automatic, without a sidebar or selection step. New-phone QR pairing stays inline; refresh and back remain visible. Nearby labels reuse previously read brands/models or exact authenticated aliases, with a generic Android phone label when unknown. Settings and Check for Updates remain at the bottom; preferences and diagnostics are in Settings, and phone tools remain in mirror windows. Chinese and English messages are shorter. This release also includes APK progress, faster wireless installation, and in-place app replacement that preserves data; incompatible signatures and downgrades remain blocked.
+
+安装：下载完整 DMG 或 macOS-universal.zip，将 MirrorLink.app 拖入“应用程序”；旧版可点击“检查更新”。更新前保存录屏并停止投屏。免费社区版，使用 ad-hoc 完整性签名，未经 Apple 公证；首次打开说明见 README。更新包和清单继续使用既有 Sparkle Ed25519 密钥签名。
+
+**Installation:** Use the full DMG or macOS-universal.zip, or Check for Updates in an existing installation. Save recordings and stop mirroring first. This is a free community build with an ad-hoc integrity signature, without Apple notarization. See README for first-open guidance. The existing Sparkle Ed25519 update key is retained. See WIRELESS-QA.md and UPDATE-QA.md for actual verification and remaining limits; nearby discovery does not establish successful wireless video.
+
+---
+
 # 镜连 MirrorLink 0.5.5 — 修复文件选择后按钮置灰 / Restore Controls After File Selection（免费社区版）
 
 版本 / Version：**0.5.5 / Build 18**。

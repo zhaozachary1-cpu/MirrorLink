@@ -169,7 +169,7 @@ final class WirelessConnectionStore: ObservableObject {
         do {
             let endpoint = try WirelessEndpoint(connectionAddress)
             guard endpoint != lastPairedEndpoint else {
-                show(L10n.message("这里仍是刚才的配对端口。请返回手机“无线调试”主页面，填写该页面的连接端口。"))
+                show(L10n.message("这是配对端口，请填写手机的连接端口。"))
                 return
             }
             guard let service else { throw WirelessConnectionError.toolsMissing }

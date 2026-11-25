@@ -23,7 +23,7 @@ struct FeedbackExportSheet: View {
                     .keyboardShortcut(.cancelAction)
                     .disabled(tools.feedbackIsBusy)
             }
-            Text(L10n.tr("先检查下方内容，再保存到本地 ZIP 文件。镜连不会自动上传或发送反馈。"))
+            Text(L10n.tr("检查后保存到本地，反馈不会自动上传。"))
                 .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             GroupBox(L10n.tr("诊断内容预览")) {
                 ScrollView {
@@ -34,12 +34,12 @@ struct FeedbackExportSheet: View {
                         .padding(8)
                 }.frame(minHeight: 190, maxHeight: .infinity)
             }
-            Text(L10n.tr("诊断内容已限制为必要的版本和状态信息，不收集原始日志、配对码或手机文件。"))
+            Text(L10n.tr("仅收集版本和状态，不含日志、配对码或手机文件。"))
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             GroupBox(L10n.tr("可选附件")) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(L10n.tr("默认不附加截图或录屏。附件可能包含屏幕上的私人内容，请自行检查；上方文本预览不包含附件画面。"))
+                    Text(L10n.tr("附件可能包含隐私，请检查后添加；预览仅显示文字。"))
                         .font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     if !attachments.isEmpty {
