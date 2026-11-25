@@ -18,7 +18,7 @@ private final class ToolProgressMessages: @unchecked Sendable {
 }
 
 private final class MockADB: @unchecked Sendable {
-    struct Call { let arguments: [String]; let environment: [String: String] }
+    struct Call { let arguments: [String]; let environment: [String: String]; let timeout: TimeInterval; let hasCancellation: Bool }
     private let lock = NSLock()
     private var recorded: [Call] = []
     var mode = "normal"
@@ -28,7 +28,8 @@ private final class MockADB: @unchecked Sendable {
     func clear() { lock.lock(); recorded = []; lock.unlock() }
     func run(_ args: [String], _ environment: [String: String], _ timeout: TimeInterval, _ limit: Int,
              _ cancellation: ProcessCancellation?) -> BinaryProcessResult {
-        lock.lock(); recorded.append(Call(arguments: args, environment: environment)); lock.unlock()
+        lock.lock(); recorded.append(Call(arguments: args, environment: environment, timeout: timeout,
+                                          hasCancellation: cancellation != nil)); lock.unlock()
         let command = Array(args.dropFirst(2))
         func result(_ text: String, status: Int32 = 0) -> BinaryProcessResult {
             BinaryProcessResult(status: status, stdout: Data(text.utf8), stderr: Data(), timedOut: false, outputLimitExceeded: false)
@@ -52,9 +53,16 @@ private final class MockADB: @unchecked Sendable {
         if command.last == "ro.build.version.release" { return result("16") }
         if command.last == "ro.product.model" { return result("Mock Phone") }
         if command == ["shell", "wm", "size"] { return result("Physical size: 1080x2400\nOverride size: 720x1600") }
-        if command.first == "push" { stagedBytes = try? Data(contentsOf: URL(fileURLWithPath: command[1])) }
-        if command.first == "install" {
-            stagedBytes = try? Data(contentsOf: URL(fileURLWithPath: command.last!))
+        if command.first == "push" {
+            stagedBytes = try? Data(contentsOf: URL(fileURLWithPath: command[command.contains("-z") ? 3 : 1]))
+            if mode == "wirelessTransferTimeout" {
+                return BinaryProcessResult(status: 15, stdout: Data(), stderr: Data(), timedOut: true, outputLimitExceeded: false)
+            }
+            if mode == "cancelWirelessTransfer" { cancellation?.cancel(); return result("", status: -999) }
+        }
+        if command.first == "install" || command.starts(with: ["shell", "cmd", "package", "install"]) {
+            if command.first == "install" { stagedBytes = try? Data(contentsOf: URL(fileURLWithPath: command.last!)) }
+            if mode == "parseFileError" { return result("Exception: Failed to parse APK file: PRIVATE /Users/person/file", status: 255) }
             if mode == "slowInstall" {
                 while cancellation?.isCancelled != true { Thread.sleep(forTimeInterval: 0.01) }
                 return result("", status: -999)
@@ -133,8 +141,8 @@ struct DeviceToolsChecks {
         let service = DeviceToolsService(paths: paths, temporaryRoot: root) { args, env, timeout, limit, token in
             mock.run(args, env, timeout, limit, token)
         }
-        let device = AndroidDevice(serial: "192.168.2.3:38123", model: "Mock Phone", product: nil,
-            transport: "Wi-Fi", state: .ready, adbSocket: "tcp:5038", hardwareSerial: "SecretSerial123")
+        let device = AndroidDevice(serial: "usb-install-target", model: "Mock Phone", product: nil,
+            transport: "USB", state: .ready, adbSocket: "tcp:5038", hardwareSerial: "SecretSerial123")
         let output = root.appendingPathComponent("captures", isDirectory: true)
         let screenshot = try service.captureScreenshot(for: device, directory: output, cancellation: nil)
         let savedFrame = try Data(contentsOf: screenshot)
@@ -206,6 +214,47 @@ struct DeviceToolsChecks {
             do { try service.installAPK(apk, to: device, confirmed: true, cancellation: nil); fatalError("expected install rejection") }
             catch let error as DeviceToolsError { expect(error.localizedDescription == expected.localizedDescription && !error.localizedDescription.contains("PRIVATE"), "APK failure \(code) gives actionable localized guidance without raw private output") }
         }
+        let wireless = AndroidDevice(serial: "wireless-install-target", model: nil, product: nil, transport: "Wi-Fi",
+                                     state: .ready, adbSocket: "localfilesystem:/tmp/mock-wireless-adb")
+        mock.mode = "normal"; mock.clear()
+        let wirelessProgress = ToolProgressMessages()
+        try service.installAPK(apk, to: wireless, confirmed: true, cancellation: nil, progress: { wirelessProgress.append($0) })
+        let wifiCalls = mock.calls
+        let push = wifiCalls.first { $0.arguments.contains("push") }!
+        let remoteAPK = push.arguments.last!
+        expect(Array(push.arguments.dropFirst(2).prefix(3)) == ["push", "-z", "any"], "Wi-Fi APK transfer negotiates ADB compression")
+        expect(remoteAPK.hasPrefix("/data/local/tmp/MirrorLink-install-") && remoteAPK.hasSuffix(".apk") && !remoteAPK.contains(apk.lastPathComponent),
+               "wireless installer uses only its own unpredictable remote APK name")
+        expect(wifiCalls.allSatisfy { $0.arguments.prefix(2) == ["-s", wireless.serial] && $0.environment["ADB_SERVER_SOCKET"] == wireless.adbSocket },
+               "compressed transfer installation and cleanup remain on the exact wireless route")
+        expect(wifiCalls.contains { Array($0.arguments.dropFirst(2)) == ["shell", "cmd", "package", "install", "-R", remoteAPK] },
+               "wireless installation runs only after push and explicitly rejects replacement")
+        expect(Array(wifiCalls.last!.arguments.dropFirst(2)) == ["shell", "rm", "-f", remoteAPK] && wifiCalls.last!.timeout == 1.5 && !wifiCalls.last!.hasCancellation,
+               "wireless cleanup removes one exact owned file with an independent bounded wait")
+        expect(wirelessProgress.values.suffix(2) == [L10n.tr("正在传输 APK…"), L10n.tr("正在手机上安装 APK…")],
+               "wireless feedback separates completed transfer from phone installation")
+        expect(!FileManager.default.fileExists(atPath: push.arguments[5]), "wireless installation also removes its local staging file")
+        mock.clear()
+        try service.installAPK(apk, to: wireless, confirmed: true, cancellation: nil)
+        expect(mock.calls.first { $0.arguments.contains("push") }!.arguments.last != remoteAPK, "each wireless APK gets a distinct temporary destination")
+        for (mode, failure) in [("wirelessTransferTimeout", DeviceToolsError.apkTransferTimedOut),
+                                ("installTimeout", .apkTimedOut), ("INSTALL_FAILED_USER_RESTRICTED", .apkBlocked),
+                                ("INSTALL_PARSE_FAILED_NOT_APK", .apkInvalid), ("parseFileError", .apkInvalid), ("INSTALL_FAILED_ALREADY_EXISTS", .apkConflict)] {
+            mock.mode = mode; mock.clear()
+            do { try service.installAPK(apk, to: wireless, confirmed: true, cancellation: nil); fatalError("expected wireless error") }
+            catch let error as DeviceToolsError { expect(error.localizedDescription == failure.localizedDescription, "wireless \(mode) has the correct actionable failure") }
+            expect(mock.calls.last!.arguments.contains("rm"), "wireless \(mode) still attempts exact-file cleanup")
+            if mode == "wirelessTransferTimeout" {
+                expect(!mock.calls.contains { $0.arguments.contains("install") }, "incomplete transfer cannot initiate phone installation")
+            }
+        }
+        mock.mode = "cancelWirelessTransfer"; mock.clear()
+        let transferCancellation = ProcessCancellation()
+        rejects("wireless transfer can be cancelled") {
+            try service.installAPK(apk, to: wireless, confirmed: true, cancellation: transferCancellation)
+        }
+        expect(!mock.calls.contains { $0.arguments.contains("install") } && mock.calls.last!.arguments.contains("rm") && !mock.calls.last!.hasCancellation,
+               "cancelled wireless transfer never installs but can still clean its owned partial file")
         mock.mode = "normal"
         let link = root.appendingPathComponent("linked.png")
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: fixture)

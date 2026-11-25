@@ -5,7 +5,7 @@ enum DeviceToolsError: Error, LocalizedError, Sendable {
     case toolsMissing, invalidTarget, deviceNotReady, cancelled, timedOut, outputTooLarge
     case commandFailed, invalidPNG, invalidFile, saveFailed, apkRequiresConfirmation
     case apkOnly, drawerUnsupported, invalidScreenSize, invalidAttachment
-    case apkInvalid, apkConflict, apkBlocked, apkIncompatible, apkTimedOut
+    case apkInvalid, apkConflict, apkBlocked, apkIncompatible, apkTimedOut, apkTransferTimedOut
     var message: LocalizedMessage {
         switch self {
         case .toolsMissing: return L10n.message("内置工具不可用，请重新安装完整应用。")
@@ -25,6 +25,7 @@ enum DeviceToolsError: Error, LocalizedError, Sendable {
         case .apkBlocked: return L10n.message("手机拒绝了安装，请解锁手机并查看手机上的安装授权提示。")
         case .apkIncompatible: return L10n.message("这个 APK 不兼容当前手机，请选择适用于该手机 Android 版本和处理器的安装包。")
         case .apkTimedOut: return L10n.message("安装等待超时。请查看手机上的安装授权和应用列表，确认结果后再试；停止等待不会撤销已完成的安装。")
+        case .apkTransferTimedOut: return L10n.message("APK 传输超时，尚未发起安装。请检查 Wi-Fi 信号或改用 USB 后重试。")
         case .drawerUnsupported: return L10n.message("这台手机不支持标准应用抽屉指令，请使用上滑兼容方式。")
         case .invalidScreenSize: return L10n.message("无法确认屏幕尺寸，请在投屏窗口中手动上滑。")
         case .invalidAttachment: return L10n.message("反馈附件仅支持普通图片或视频文件，最多 8 个，每个不超过 512 MB，总计不超过 1 GB；不支持符号链接。")
@@ -100,16 +101,38 @@ struct DeviceToolsService: Sendable {
         let staged = directory.appendingPathComponent("selected-" + UUID().uuidString + ".apk")
         progress(L10n.message("正在准备 APK…"))
         try ToolFileSafety.copyRegularFile(file, to: staged, cancellation: cancellation, preferClone: true)
-        progress(L10n.message("正在传输并安装 APK…"))
         // Android 7+ supports streaming. Earlier USB phones retain ADB's legacy
         // mode. Neither path probes incremental installation or silently retries.
         let mode = api >= 24 ? ["--streaming"] : []
         let replacement = api >= 28 ? ["-R"] : []
         let result: BinaryProcessResult
-        do {
-            result = try command(["install"] + mode + ["--no-incremental", "--no-fastdeploy"] + replacement + [staged.path],
-                                 device, timeout: 180, cancellation: cancellation)
-        } catch DeviceToolsError.timedOut { throw DeviceToolsError.apkTimedOut }
+        if device.isWireless, api >= 30 {
+            // Streaming install cannot compress its APK stream. Negotiate ADB
+            // sync compression for Wi-Fi; already-compressed files may gain less.
+            // This private name is generated here, never derived from user input.
+            let remote = "/data/local/tmp/MirrorLink-install-" + UUID().uuidString + ".apk"
+            defer {
+                // Cancellation must still allow bounded cleanup of this exact
+                // owned file. Never reuse a cancelled token or remove a directory.
+                _ = try? command(["shell", "rm", "-f", remote], device, timeout: 1.5, cancellation: nil)
+            }
+            progress(L10n.message("正在传输 APK…"))
+            do {
+                _ = try command(["push", "-z", "any", staged.path, remote], device, timeout: 300, cancellation: cancellation)
+            } catch DeviceToolsError.timedOut { throw DeviceToolsError.apkTransferTimedOut }
+            try checkCancellation(cancellation)
+            progress(L10n.message("正在手机上安装 APK…"))
+            do {
+                result = try command(["shell", "cmd", "package", "install"] + replacement + [remote],
+                                     device, timeout: 180, cancellation: cancellation, apkInstall: true)
+            } catch DeviceToolsError.timedOut { throw DeviceToolsError.apkTimedOut }
+        } else {
+            progress(L10n.message("正在传输并安装 APK…"))
+            do {
+                result = try command(["install"] + mode + ["--no-incremental", "--no-fastdeploy"] + replacement + [staged.path],
+                                     device, timeout: 180, cancellation: cancellation)
+            } catch DeviceToolsError.timedOut { throw DeviceToolsError.apkTimedOut }
+        }
         guard String(decoding: result.stdout, as: UTF8.self).split(whereSeparator: \.isNewline)
             .contains(where: { $0.trimmingCharacters(in: .whitespacesAndNewlines) == "Success" }) else {
             throw DeviceToolsError.commandFailed
@@ -261,7 +284,7 @@ struct DeviceToolsService: Sendable {
         return String(decoding: result.stdout, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
     }
     private func command(_ arguments: [String], _ device: AndroidDevice, timeout: TimeInterval = 8,
-                         limit: Int = 262_144, cancellation: ProcessCancellation?) throws -> BinaryProcessResult {
+                         limit: Int = 262_144, cancellation: ProcessCancellation?, apkInstall: Bool = false) throws -> BinaryProcessResult {
         try validate(device)
         try checkCancellation(cancellation)
         let result = execute(["-s", device.serial] + arguments, route(device), timeout, limit, cancellation)
@@ -270,9 +293,10 @@ struct DeviceToolsService: Sendable {
         if result.timedOut { throw DeviceToolsError.timedOut }
         if result.outputLimitExceeded { throw DeviceToolsError.outputTooLarge }
         guard result.succeeded else {
-            if arguments.first == "install" {
+            if arguments.first == "install" || apkInstall {
                 let failure = String(decoding: result.stdout + result.stderr, as: UTF8.self)
-                if failure.contains("INSTALL_PARSE_FAILED") || failure.contains("INSTALL_FAILED_INVALID_APK") { throw DeviceToolsError.apkInvalid }
+                if failure.contains("INSTALL_PARSE_FAILED") || failure.contains("INSTALL_FAILED_INVALID_APK") ||
+                    failure.contains("Failed to parse APK file:") { throw DeviceToolsError.apkInvalid }
                 if failure.contains("INSTALL_FAILED_ALREADY_EXISTS") || failure.contains("INSTALL_FAILED_UPDATE_INCOMPATIBLE") { throw DeviceToolsError.apkConflict }
                 if failure.contains("INSTALL_FAILED_USER_RESTRICTED") || failure.contains("INSTALL_CANCELED_BY_USER") { throw DeviceToolsError.apkBlocked }
                 if failure.contains("INSTALL_FAILED_NO_MATCHING_ABIS") || failure.contains("INSTALL_FAILED_OLDER_SDK") { throw DeviceToolsError.apkIncompatible }

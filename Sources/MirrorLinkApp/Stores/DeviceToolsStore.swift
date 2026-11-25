@@ -64,7 +64,7 @@ final class DeviceToolsStore: ObservableObject {
         guard let message = statuses[id] else { return nil }
         if apkOperations.contains(id), isBusy(for: id), let start = operationStarts[id] {
             let elapsed = Int(ProcessInfo.processInfo.systemUptime - start)
-            if message.key == "正在传输并安装 APK…", tokens[id]?.isCancelled != true, elapsed >= 20 {
+            if ["正在传输并安装 APK…", "正在手机上安装 APK…"].contains(message.key), tokens[id]?.isCancelled != true, elapsed >= 20 {
                 return L10n.tr("正在安装 · %@ 秒，请查看手机授权", String(elapsed))
             }
             return L10n.tr("%@ · 已用 %@ 秒", message.resolved, String(elapsed))

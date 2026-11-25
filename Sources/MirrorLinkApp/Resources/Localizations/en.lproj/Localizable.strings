@@ -498,6 +498,9 @@
 "正在检查手机连接…" = "Checking phone connection…";
 "正在准备 APK…" = "Preparing APK…";
 "正在传输并安装 APK…" = "Transferring and installing APK…";
+"正在传输 APK…" = "Transferring APK…";
+"正在手机上安装 APK…" = "Installing APK on phone…";
+"APK 传输超时，尚未发起安装。请检查 Wi-Fi 信号或改用 USB 后重试。" = "APK transfer timed out before installation started. Check the Wi-Fi signal or retry using USB.";
 "正在安装 · %@ 秒，请查看手机授权" = "Installing · %@ s; check phone approval";
 "%@ · 已用 %@ 秒" = "%@ · %@ s elapsed";
 "APK 安装完成 · 用时 %@ 秒" = "APK installed · %@ s";
